@@ -129,7 +129,6 @@ export default function LeverageAndGroup() {
     // }
 
 
-
     const fetchGroups = async () => {
         try {
             const token = localStorage.getItem("superadminToken");
