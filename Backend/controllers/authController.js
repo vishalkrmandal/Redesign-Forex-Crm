@@ -162,7 +162,7 @@ exports.signup = async (req, res, next) => {
         }
 
         // Create new user (with default role as 'client')
-        const user = await User.create({
+        const user = new User({
             firstname,
             lastname,
             email,
@@ -179,10 +179,11 @@ exports.signup = async (req, res, next) => {
 
         // Generate verification token
         const verificationToken = user.generateEmailVerificationToken();
-        await user.save();
+        
 
         // Send verification email
         await sendVerificationEmail(user, verificationToken);
+        await user.save();
 
         // Auto-create IB configuration if user signed up through referral
         if (validReferral && referringIBConfig) {

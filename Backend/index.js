@@ -127,6 +127,13 @@ app.get('/api/sync/status', (req, res) => {
 // IMPORTANT: Add notification middleware BEFORE routes that need it
 app.use(addNotificationTriggers);
 
+
+// app.use('/', (req,res)=>{
+//   res.status(200).json({
+//     message: "welcome to the server"
+//   });
+// })
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/leverages', leverageRoutes);
