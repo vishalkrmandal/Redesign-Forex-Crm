@@ -33,7 +33,7 @@ exports.adminSignup = async (req, res, next) => {
         }
 
         // Create new admin user
-        const user = await User.create({
+        const user = new User({
             firstname,
             lastname,
             email,
@@ -49,10 +49,11 @@ exports.adminSignup = async (req, res, next) => {
 
         // Generate verification token
         const verificationToken = user.generateEmailVerificationToken();
-        await user.save();
+
 
         // Send verification email
         await sendVerificationEmail(user, verificationToken);
+        await user.save();
 
         res.status(201).json({
             success: true,

@@ -36,7 +36,7 @@ class TradeSyncService {
             } catch (error) {
                 console.error('❌ Auto sync error:', error);
             }
-        }, 10000);
+        }, 30000);
     }
 
     setSyncMode(mode, customDays = null) {

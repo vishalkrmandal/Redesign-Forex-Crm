@@ -11,6 +11,11 @@ module.exports = {
     EMAIL_USERNAME: process.env.EMAIL_USERNAME,
     EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
     EMAIL_FROM: process.env.EMAIL_FROM,
+    SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
+    SMTP_PORT: process.env.SMTP_PORT || 587,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS,
+    FROM_EMAIL: process.env.FROM_EMAIL,
     CLIENT_URL: process.env.CLIENT_URL || 'https://raisecrm.vercel.app',
     SERVER_URL: process.env.SERVER_URL || 'https://vishal-test.testcrm.top'
 };
