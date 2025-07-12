@@ -124,7 +124,6 @@ export default function LeverageAndGroup() {
         }
     }
 
-
     // const toggleActive = (id: number) => {
     //     setLeverages(leverages.map((l) => (l.id === id ? { ...l, active: !l.active } : l)))
     // }
