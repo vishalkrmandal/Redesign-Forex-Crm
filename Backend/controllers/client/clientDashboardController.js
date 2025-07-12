@@ -5,6 +5,9 @@ const Deposit = require('../../models/Deposit');
 const Withdrawal = require('../../models/Withdrawal');
 const Transfer = require('../../models/client/Transfer');
 const mongoose = require('mongoose');
+// Get commission statistics
+const IBCommission = require('../../models/IBCommission');
+const IBWithdrawal = require('../../models/IBWithdrawal');
 
 /**
  * Get dashboard overview statistics
@@ -323,6 +326,152 @@ const getAccountPerformance = async (req, res) => {
     }
 };
 
+/**
+ * Get IB commission statistics for pie chart
+ */
+const getIBCommissionStats = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // Get user's IB configuration
+        const IBClientConfiguration = require('../../models/client/IBClientConfiguration');
+        const ibConfig = await IBClientConfiguration.findOne({ userId });
+
+        if (!ibConfig) {
+            return res.status(200).json({
+                success: true,
+                data: {
+                    totalCommissions: '0.00',
+                    totalClients: 0,
+                    totalWithdrawals: '0.00',
+                    availableBalance: '0.00',
+                    isIBActive: false,
+                    commissionsByLevel: [],
+                    monthlyCommissions: []
+                }
+            });
+        }
+
+        // Total commissions
+        const totalCommissionsResult = await IBCommission.aggregate([
+            {
+                $match: {
+                    ibUserId: new mongoose.Types.ObjectId(userId),
+                    status: { $in: ['confirmed', 'paid'] }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: '$commissionAmount' },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // Commissions by level
+        const commissionsByLevel = await IBCommission.aggregate([
+            {
+                $match: {
+                    ibUserId: new mongoose.Types.ObjectId(userId),
+                    status: { $in: ['confirmed', 'paid'] }
+                }
+            },
+            {
+                $group: {
+                    _id: '$level',
+                    total: { $sum: '$commissionAmount' },
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $sort: { _id: 1 }
+            }
+        ]);
+
+        // Monthly commissions (last 6 months)
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+        const monthlyCommissions = await IBCommission.aggregate([
+            {
+                $match: {
+                    ibUserId: new mongoose.Types.ObjectId(userId),
+                    status: { $in: ['confirmed', 'paid'] },
+                    createdAt: { $gte: sixMonthsAgo }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: '$createdAt' },
+                        month: { $month: '$createdAt' }
+                    },
+                    total: { $sum: '$commissionAmount' },
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $sort: { '_id.year': 1, '_id.month': 1 }
+            }
+        ]);
+
+        // Total withdrawals
+        const totalWithdrawalsResult = await IBWithdrawal.aggregate([
+            {
+                $match: {
+                    userId: new mongoose.Types.ObjectId(userId),
+                    status: { $in: ['approved', 'completed'] }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: '$amount' }
+                }
+            }
+        ]);
+
+        // Count unique clients
+        const uniqueClients = await IBCommission.distinct('clientId', {
+            ibUserId: new mongoose.Types.ObjectId(userId)
+        });
+
+        const totalCommissions = totalCommissionsResult[0]?.total || 0;
+        const totalWithdrawals = totalWithdrawalsResult[0]?.total || 0;
+        const availableBalance = Math.max(0, ibConfig.IBbalance || 0);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                totalCommissions: totalCommissions.toFixed(2),
+                totalClients: uniqueClients.length,
+                totalWithdrawals: totalWithdrawals.toFixed(2),
+                availableBalance: availableBalance.toFixed(2),
+                isIBActive: ibConfig.status === 'active',
+                commissionsByLevel: commissionsByLevel.map(item => ({
+                    level: item._id,
+                    amount: parseFloat(item.total.toFixed(2)),
+                    count: item.count
+                })),
+                monthlyCommissions: monthlyCommissions.map(item => ({
+                    month: `${item._id.year}-${item._id.month.toString().padStart(2, '0')}`,
+                    amount: parseFloat(item.total.toFixed(2)),
+                    count: item.count
+                }))
+            }
+        });
+
+    } catch (error) {
+        console.error('IB commission stats error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch IB commission statistics',
+            error: error.message
+        });
+    }
+};
+
 // Get all transaction history - no pagination
 // const getTransactionHistory = async (req, res) => {
 //     try {
@@ -482,5 +631,6 @@ module.exports = {
     getDashboardOverview,
     getRecentTransactions,
     getActiveAccounts,
-    getAccountPerformance
+    getAccountPerformance,
+    getIBCommissionStats
 };

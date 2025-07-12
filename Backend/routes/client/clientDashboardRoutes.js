@@ -6,6 +6,7 @@ const {
     getRecentTransactions,
     getActiveAccounts,
     getAccountPerformance,
+    getIBCommissionStats
     // getTransactionHistory,
     // getAccountDetails
 } = require('../../controllers/client/clientDashboardController');
@@ -34,6 +35,10 @@ router.get('/accounts', getActiveAccounts);
 // @access  Private (Client)
 router.get('/performance', getAccountPerformance);
 
+// @route   GET /api/client/dashboard/ib-stats
+// @desc    Get IB commission statistics
+// @access  Private (Client)
+router.get('/ib-stats', getIBCommissionStats);
 
 // @desc    Get detailed transaction history with pagination and filters
 // @route   GET /api/client/dashboard/transactions
