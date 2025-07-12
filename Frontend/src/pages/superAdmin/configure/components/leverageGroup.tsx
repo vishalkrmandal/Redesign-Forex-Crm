@@ -128,6 +128,7 @@ export default function LeverageAndGroup() {
     //     setLeverages(leverages.map((l) => (l.id === id ? { ...l, active: !l.active } : l)))
     // }
 
+
     const fetchGroups = async () => {
         try {
             const token = localStorage.getItem("superadminToken");
