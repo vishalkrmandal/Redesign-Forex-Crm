@@ -12,10 +12,10 @@ const router = express.Router();
 
 router.route('/')
     .get(getLeverages)
-    .post(protect, authorize('admin'), createLeverage);
+    .post(protect, authorize('superadmin'), createLeverage);
 
 router.route('/:id')
-    .put(protect, authorize('admin'), updateLeverage)
-    .delete(protect, authorize('admin'), deleteLeverage);
+    .put(protect, authorize('superadmin'), updateLeverage)
+    .delete(protect, authorize('superadmin'), deleteLeverage);
 
 module.exports = router;
