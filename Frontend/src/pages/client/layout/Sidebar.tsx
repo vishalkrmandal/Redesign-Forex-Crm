@@ -14,7 +14,7 @@ import {
   Monitor,
   Users,
   Briefcase,
-  HeadphonesIcon,
+  // HeadphonesIcon,
   Home,
 } from "lucide-react"
 
@@ -86,11 +86,11 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
         { title: "IB Withdrawal", path: "/client/partner/ib-withdrawal" },
       ],
     },
-    {
-      title: "Customer Support",
-      icon: HeadphonesIcon,
-      submenu: [{ title: "My Enquiries", path: "/client/support/clientportal" }],
-    },
+    // {
+    //   title: "Customer Support",
+    //   icon: HeadphonesIcon,
+    //   submenu: [{ title: "My Enquiries", path: "/client/support/clientportal" }],
+    // },
   ]
 
   const toggleMenu = (title: string) => {

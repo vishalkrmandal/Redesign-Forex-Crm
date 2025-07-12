@@ -100,9 +100,28 @@ export default function LeverageAndGroup() {
         setIsDeleteDialogOpen(true)
     }
 
-    const confirmDelete = () => {
-        setLeverages(leverages.filter((l) => l._id !== currentLeverage._id))
-        setIsDeleteDialogOpen(false)
+    const confirmDelete = async () => {
+        try {
+            const token = localStorage.getItem("superadminToken");
+            if (!token) {
+                toast.error("Authentication token not found");
+                return;
+            }
+
+            await axios.delete(`${API_BASE_URL}/api/leverages/${currentLeverage._id}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            toast.success('Leverage deleted successfully');
+            fetchLeverages();
+            setIsDeleteDialogOpen(false);
+
+        } catch (error) {
+            console.error('Error deleting leverage:', error);
+            toast.error('Failed to delete leverage');
+        }
     }
 
 

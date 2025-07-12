@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast, Toaster } from 'sonner';
 import { ThemeToggle } from '@/components/theme-toggle';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const resetPasswordSchema = z.object({
     password: z.string()
