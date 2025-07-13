@@ -45,7 +45,7 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
     {
       title: "Dashboard",
       icon: Home,
-      path: "/client",
+      path: "/client/dashboard",
     },
     {
       title: "Financial Operations",
@@ -230,8 +230,8 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
                   <button
                     onClick={() => toggleMenu(item.title)}
                     className={`flex w-full items-center rounded-sidebar px-3 py-2 text-sm font-medium transition-all duration-300 ease-in-out ${isSubmenuActive(item.submenu)
-                      ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100 font-semibold"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg transform scale-100 font-semibold"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-400 hover:to-purple-500 hover:text-white hover:shadow-md hover:scale-102"
                       } ${shouldShowExpanded ? "" : "justify-center"}`}
                   >
                     <item.icon className={`h-5 w-5 transition-all duration-300 ease-in-out ${isSubmenuActive(item.submenu)
@@ -292,8 +292,8 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
                             to={subItem.path}
                             onClick={handleItemClick}
                             className={`block rounded-sidebar ml-12 px-3 py-2 text-sm font-medium transition-all duration-300 ease-in-out ${isActive(subItem.path)
-                              ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100 font-semibold"
-                              : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+                              ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg transform scale-100 font-semibold"
+                              : "text-gray-600 dark:text-gray-400 hover:bg-gradient-to-r hover:from-emerald-400 hover:to-teal-500 hover:text-white hover:shadow-md hover:scale-102"
                               }`}
                           >
                             <span className="whitespace-nowrap">{subItem.title}</span>
@@ -309,8 +309,8 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
                   to={item.path || "#"}
                   onClick={handleItemClick}
                   className={`flex items-center rounded-sidebar px-3 py-2 text-sm font-medium transition-all duration-300 ease-in-out ${isActive(item.path || "")
-                    ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100 font-semibold"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg transform scale-100 font-semibold"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-400 hover:to-purple-500 hover:text-white hover:shadow-md hover:scale-102"
                     } ${shouldShowExpanded ? "" : "justify-center"}`}
                 >
                   <item.icon className={`h-5 w-5 transition-all duration-300 ease-in-out ${isActive(item.path || "")
