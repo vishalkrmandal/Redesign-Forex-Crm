@@ -195,6 +195,19 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
       onMouseEnter={handleSidebarMouseEnter}
       onMouseLeave={handleSidebarMouseLeave}
     >
+      {/* Animated Background Layer */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-800 dark:to-indigo-900">
+        {/* Sidebar-specific animated blobs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-8 left-8 w-28 h-28 bg-blue-300/60 rounded-full mix-blend-multiply filter blur-xl animate-blob dark:bg-blue-600/30"></div>
+          <div className="absolute top-1/3 right-6 w-24 h-24 bg-purple-300/50 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000 dark:bg-purple-600/25"></div>
+          <div className="absolute bottom-1/3 left-6 w-26 h-26 bg-indigo-300/55 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000 dark:bg-indigo-600/30"></div>
+          <div className="absolute bottom-12 right-10 w-20 h-20 bg-cyan-300/45 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-1000 dark:bg-cyan-600/20"></div>
+          <div className="absolute top-2/3 left-1/3 w-18 h-18 bg-teal-300/40 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-3000 dark:bg-teal-600/25"></div>
+          <div className="absolute top-1/2 right-8 w-16 h-16 bg-pink-300/35 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-5000 dark:bg-pink-600/20"></div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex h-16 items-center justify-center border-gray-200 dark:border-gray-700 transition-all duration-500 ease-in-out flex-shrink-0">
         <div className={`transition-all duration-500 ease-in-out ${shouldShowExpanded ? 'opacity-100 scale-100' : 'opacity-100 scale-100'}`}>
