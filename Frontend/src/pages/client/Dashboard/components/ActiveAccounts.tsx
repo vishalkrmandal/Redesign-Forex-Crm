@@ -1,7 +1,7 @@
 // Frontend/src/pages/client/Dashboard/components/ActiveAccounts.tsx
 
 import { useState } from "react";
-import { AlertCircle, ChevronDown, ChevronUp, MoreHorizontal, RefreshCw } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, CreditCard, MoreHorizontal, RefreshCw } from "lucide-react";
 
 // Active Accounts
 type ActiveAccount = {
@@ -45,11 +45,16 @@ const ActiveAccounts: React.FC<ActiveAccountsProps> = ({
     };
 
     return (
-        <div className="bg-card text-card-foreground rounded-lg shadow-sm border border-border p-3">
-            <div className="flex items-center justify-between mb-4">
-                <div>
-                    <h3 className="text-lg font-semibold text-foreground">Active Accounts</h3>
-                    <p className="text-sm text-muted-foreground">{accounts.length} accounts connected</p>
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-lg border-2 border-gray-200 dark:border-gray-700 p-6 hover:shadow-2xl transition-all duration-300">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg">
+                        <CreditCard className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-foreground">Active Accounts</h3>
+                        <p className="text-sm text-muted-foreground">{accounts.length} accounts connected</p>
+                    </div>
                 </div>
                 <button
                     onClick={handleRefresh}
@@ -65,13 +70,13 @@ const ActiveAccounts: React.FC<ActiveAccountsProps> = ({
                 {accounts.length > 0 ? accounts.map((account) => (
                     <div
                         key={account._id}
-                        className="border border-border rounded-lg p-4 hover:border-primary/50 transition-colors cursor-pointer"
+                        className="group border-2 border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:border-primary/50 transition-all duration-300 cursor-pointer bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-750 hover:shadow-lg hover:-translate-y-1"
                     >
                         <div className="flex items-start justify-between mb-3">
                             <div>
                                 <div className="flex items-center space-x-2">
                                     <h4 className="font-medium text-foreground">{account.name}</h4>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getAccountTypeColor(account.accountType)}`}>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${getAccountTypeColor(account.accountType)} shadow-sm`}>
                                         {account.accountType}
                                     </span>
                                 </div>

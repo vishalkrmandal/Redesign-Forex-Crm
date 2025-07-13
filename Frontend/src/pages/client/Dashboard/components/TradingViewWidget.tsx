@@ -1,4 +1,4 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface TradingViewWidgetProps {
@@ -60,17 +60,22 @@ const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ theme = 'light' }
     }, [selectedSymbol, theme]);
 
     return (
-        <div className="bg-card text-card-foreground rounded-lg shadow-sm border border-border p-2">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-lg border-2 border-gray-200 dark:border-gray-700 p-1 md:p-6 hover:shadow-xl transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
-                <div>
-                    <h3 className="text-lg font-semibold text-foreground">Live Market Data</h3>
-                    <p className="text-sm text-muted-foreground">Real-time trading charts</p>
+                <div className="flex items-center gap-2 md:gap-4 px-2 py-1">
+                    <div className="p-3 rounded-xl bg-gradient-to-r from-green-500 to-teal-600 shadow-lg">
+                        <TrendingUp className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-foreground">Live Market Data</h3>
+                        <p className="text-sm text-muted-foreground">Real-time trading charts</p>
+                    </div>
                 </div>
                 <div className="flex items-center space-x-3">
                     <select
                         value={selectedSymbol}
                         onChange={(e) => setSelectedSymbol(e.target.value)}
-                        className="px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="px-4 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-800 text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-300 shadow-sm hover:shadow-md"
                     >
                         {symbols.map(symbol => (
                             <option key={symbol.value} value={symbol.value}>{symbol.label}</option>

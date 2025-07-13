@@ -1,15 +1,17 @@
-// Frontend/src/pages/client/Dashboard/Dashboard.tsx
+// Frontend/src/pages/client/Dashboard/ClientDashboard.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import DashboardStats from './components/DashboardStats';
-import TradingViewWidget from './components/TradingViewWidget';
 import RecentTransactions from './components/RecentTransactions';
 import ActiveAccounts from './components/ActiveAccounts';
-import { dashboardApi } from './dashboardApi';
+import { dashboardApi, Partner } from './dashboardApi';
 import { useTheme } from '@/context/ThemeContext';
 import LoadingSpinner from './components/LoadingSpinner';
+// Add these imports after your existing imports
+import PartnerLevelsPieChart from './components/PartnerLevelsPieChart';
+import CommissionEarningsBarChart from './components/CommissionEarningsBarChart';
 
 interface DashboardData {
   overview: {
@@ -36,6 +38,10 @@ const ClientDashboard: React.FC = () => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Add this after your existing state declarations
+  const [partnersData, setPartnersData] = useState<Partner[]>([]);
+
+  // Replace your existing fetchDashboardData function with this:
   const fetchDashboardData = async (showRefreshLoader = false, isAutoRefresh = false) => {
     try {
       if (showRefreshLoader) {
@@ -44,10 +50,11 @@ const ClientDashboard: React.FC = () => {
         setLoading(true);
       }
 
-      const [overviewResponse, transactionsResponse, accountsResponse] = await Promise.all([
+      const [overviewResponse, transactionsResponse, accountsResponse, partnersResponse] = await Promise.all([
         dashboardApi.getOverview(),
         dashboardApi.getRecentTransactions(),
-        dashboardApi.getActiveAccounts()
+        dashboardApi.getActiveAccounts(),
+        dashboardApi.getPartners()
       ]);
 
       setDashboardData({
@@ -56,8 +63,9 @@ const ClientDashboard: React.FC = () => {
         activeAccounts: accountsResponse.data.accounts
       });
 
+      setPartnersData(partnersResponse.partners);
       setLastRefresh(new Date());
-      setCountdown(5); // Reset countdown
+      setCountdown(5);
 
       if (showRefreshLoader && !isAutoRefresh) {
         toast.success('Dashboard refreshed successfully');
@@ -160,10 +168,13 @@ const ClientDashboard: React.FC = () => {
     <div className="min-h-screen transition-colors duration-200">
       <div className="container mx-auto px-0 py-6 max-w-7xl">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
-            <p className="text-sm mt-1 text-muted-foreground">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+          <div className="relative">
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Dashboard
+            </h1>
+            <p className="text-sm mt-2 text-muted-foreground flex items-center gap-2">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
               Welcome back! Here's your trading overview.
             </p>
           </div>
@@ -182,9 +193,9 @@ const ClientDashboard: React.FC = () => {
               {/* Open Account button */}
               <button
                 onClick={handleOpenAccount}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 bg-green-600 hover:bg-green-700 text-white"
+                className="flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-5 h-5" />
                 <span className="hidden sm:inline">Open Account</span>
               </button>
 
@@ -192,7 +203,7 @@ const ClientDashboard: React.FC = () => {
               <button
                 onClick={handleManualRefresh}
                 disabled={refreshing}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed`}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 <RefreshCw
                   className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
@@ -213,13 +224,23 @@ const ClientDashboard: React.FC = () => {
           />
         )}
 
-        {/* Trading View Widget */}
-        <div className="mb-8">
-          <TradingViewWidget theme={theme} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+          {/* Commission Earnings Bar Chart */}
+          <CommissionEarningsBarChart
+            partners={partnersData}
+            theme={theme}
+          />
+
+          {/* Partner Levels Pie Chart */}
+          <PartnerLevelsPieChart
+            partners={partnersData}
+            theme={theme}
+          />
         </div>
 
         {/* Recent Transactions and Active Accounts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Transactions */}
           <RecentTransactions
             transactions={dashboardData?.recentTransactions || []}

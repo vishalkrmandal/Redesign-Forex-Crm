@@ -92,19 +92,17 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({
         : transactions.filter(t => t.type === filter);
 
     return (
-        <div className="bg-card text-card-foreground rounded-lg shadow-sm border border-border p-3">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-lg border-2 border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 pb-3">
             {/* Header - Fixed height */}
             <div className="flex-shrink-0 p-6">
                 <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                            <History className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 shadow-lg">
+                            <History className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold">Recent Transactions</h3>
-                            <p className="text-sm text-muted-foreground">
-                                Latest activity on your accounts
-                            </p>
+                            <h3 className="text-xl font-bold">Recent Transactions</h3>
+                            <p className="text-sm text-muted-foreground">Latest activity on your accounts</p>
                         </div>
                     </div>
 
@@ -123,9 +121,9 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({
                         <button
                             key={filterType}
                             onClick={() => setFilter(filterType as any)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filter === filterType
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 ${filter === filterType
+                                ? 'bg-gradient-to-r from-primary to-primary/80 text-white shadow-lg'
+                                : 'bg-gray-100 dark:bg-gray-800 text-muted-foreground hover:bg-gray-200 dark:hover:bg-gray-700'
                                 }`}
                         >
                             {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
@@ -145,11 +143,11 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({
                         </p>
                     </div>
                 ) : (
-                    <div className="px-2 grid grid-cols-1 gap-2">
+                    <div className="px-2 grid grid-cols-1 gap-2 mt-2">
                         {filteredTransactions.map((transaction) => (
                             <div
                                 key={transaction.id}
-                                className="border border-border rounded-lg p-2 hover:border-primary/50 transition-colors cursor-pointer hover:bg-muted/50"
+                                className="group border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:border-primary/50 transition-all duration-300 cursor-pointer bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-750 hover:shadow-md hover:-translate-y-1"
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">

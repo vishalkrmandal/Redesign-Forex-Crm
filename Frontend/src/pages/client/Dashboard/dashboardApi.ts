@@ -102,6 +102,26 @@ export interface GetPerformanceParams {
     period?: '1d' | '7d' | '30d' | '90d';
 }
 
+export interface Partner {
+    _id: string;
+    userId: {
+        _id: string;
+        firstname: string;
+        lastname: string;
+        email: string;
+    };
+    referralCode: string | null;
+    level: number;
+    totalVolume: number;
+    totalEarned: number;
+    createdAt: string;
+}
+
+export interface PartnersResponse {
+    success: boolean;
+    partners: Partner[];
+}
+
 class DashboardApiService {
     /**
      * Get dashboard overview statistics
@@ -222,6 +242,23 @@ class DashboardApiService {
             throw error;
         }
     }
+
+    /**
+      * Get all partners for the current user
+      */
+    async getPartners(): Promise<PartnersResponse> {
+        try {
+            const response = await apiClient.get('api/ibclients/ib-configurations/partners');
+            return {
+                success: response.data.success,
+                partners: response.data.partners || []
+            };
+        } catch (error) {
+            console.error('Error fetching partners:', error);
+            throw error;
+        }
+    }
 }
+
 
 export const dashboardApi = new DashboardApiService();

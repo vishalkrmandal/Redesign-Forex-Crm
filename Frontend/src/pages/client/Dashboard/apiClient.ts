@@ -10,6 +10,7 @@ interface ApiError {
 }
 
 interface ApiResponse<T = any> {
+    partners: any;
     success: boolean;
     data?: T;
     message?: string;
@@ -29,7 +30,7 @@ class ApiClient {
     private baseURL: string;
 
     constructor() {
-        this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
         this.client = axios.create({
             baseURL: this.baseURL,
@@ -220,7 +221,7 @@ class ApiClient {
     // Health check
     async healthCheck(): Promise<boolean> {
         try {
-            const response = await this.client.get('/health', { timeout: 5000 });
+            const response = await this.client.get('/health', { timeout: 3000 });
             return response.data.success;
         } catch (error) {
             return false;
