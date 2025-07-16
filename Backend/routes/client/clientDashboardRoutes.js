@@ -35,20 +35,5 @@ router.get('/accounts', getActiveAccounts);
 // @access  Private (Client)
 router.get('/performance', getAccountPerformance);
 
-// @route   GET /api/client/dashboard/ib-stats
-// @desc    Get IB commission statistics
-// @access  Private (Client)
-router.get('/ib-stats', getIBCommissionStats);
-
-// @desc    Get detailed transaction history with pagination and filters
-// @route   GET /api/client/dashboard/transactions
-// @access  Private (Client)
-// router.get('/transactions', getTransactionHistory);
-
-
-// @desc    Get specific account details with real-time balance
-// @route   GET /api/client/dashboard/account/:accountId
-// @access  Private (Client)
-// router.get('/account/:accountId', getAccountDetails);
 
 module.exports = router;
