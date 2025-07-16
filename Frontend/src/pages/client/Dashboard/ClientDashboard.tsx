@@ -173,107 +173,107 @@ const ClientDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-200">
+    // <div className="min-h-screen transition-colors duration-200">
 
-      <div className="container mx-auto px-0 max-w-7xl">
+    <div className="container mx-auto px-0 max-w-7xl">
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-          <div className="relative">
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Dashboard
-            </h1>
-            <p className="text-sm mt-2 text-muted-foreground flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              Welcome back! Here's your trading overview.
-            </p>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+        <div className="relative">
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            Dashboard
+          </h1>
+          <p className="text-sm mt-2 text-muted-foreground flex items-center gap-2">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+            Welcome back! Here's your trading overview.
+          </p>
+        </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            {/* Last refresh info */}
-            {lastRefresh && (
-              <div className="text-xs text-muted-foreground text-center sm:text-right">
-                <div>Last updated: {formatLastRefresh(lastRefresh)}</div>
-                <div>Next refresh in: {countdown}s</div>
-              </div>
-            )}
-
-            {/* Action buttons */}
-            <div className="flex gap-2">
-              {/* Open Account button */}
-              <button
-                onClick={handleOpenAccount}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">Open Account</span>
-              </button>
-
-              {/* Manual refresh button */}
-              <button
-                onClick={handleManualRefresh}
-                disabled={refreshing}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              >
-                <RefreshCw
-                  className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
-                />
-                <span className="hidden sm:inline">
-                  {refreshing ? 'Refreshing...' : 'Refresh'}
-                </span>
-              </button>
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {/* Last refresh info */}
+          {lastRefresh && (
+            <div className="text-xs text-muted-foreground text-center sm:text-right">
+              <div>Last updated: {formatLastRefresh(lastRefresh)}</div>
+              <div>Next refresh in: {countdown}s</div>
             </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            {/* Open Account button */}
+            <button
+              onClick={handleOpenAccount}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="hidden sm:inline">Open Account</span>
+            </button>
+
+            {/* Manual refresh button */}
+            <button
+              onClick={handleManualRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+              />
+              <span className="hidden sm:inline">
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </span>
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Dashboard Stats */}
-        {dashboardData?.overview && (
-          <DashboardStats
-            data={dashboardData.overview}
-            theme={theme}
-          />
-        )}
+      {/* Dashboard Stats */}
+      {dashboardData?.overview && (
+        <DashboardStats
+          data={dashboardData.overview}
+          theme={theme}
+        />
+      )}
 
 
-        <div className="space-y-6 pb-4">
-          {/* Other dashboard components */}
-          <OptimizedDailyPerformance />
-        </div>
+      <div className="space-y-6 pb-4">
+        {/* Other dashboard components */}
+        <OptimizedDailyPerformance />
+      </div>
 
-        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6"> */}
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6"> */}
 
-        {/* Commission Earnings Bar Chart */}
-        {/* <CommissionEarningsBarChart
+      {/* Commission Earnings Bar Chart */}
+      {/* <CommissionEarningsBarChart
             partners={partnersData}
             theme={theme}
           /> */}
 
-        {/* Partner Levels Pie Chart */}
-        {/* <PartnerLevelsPieChart
+      {/* Partner Levels Pie Chart */}
+      {/* <PartnerLevelsPieChart
             partners={partnersData}
             theme={theme}
           />
         </div> */}
 
-        {/* Recent Transactions and Active Accounts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Recent Transactions and Active Accounts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-          {/* Recent Transactions */}
-          <RecentTransactions
-            transactions={dashboardData?.recentTransactions || []}
-            theme={theme}
-            onRefresh={() => fetchDashboardData(true)}
-          />
+        {/* Recent Transactions */}
+        <RecentTransactions
+          transactions={dashboardData?.recentTransactions || []}
+          theme={theme}
+          onRefresh={() => fetchDashboardData(true)}
+        />
 
-          {/* Active Accounts */}
-          <ActiveAccounts
-            accounts={dashboardData?.activeAccounts || []}
-            theme={theme}
-            onRefresh={() => fetchDashboardData(true)}
-          />
-        </div>
+        {/* Active Accounts */}
+        <ActiveAccounts
+          accounts={dashboardData?.activeAccounts || []}
+          theme={theme}
+          onRefresh={() => fetchDashboardData(true)}
+        />
       </div>
     </div>
+    // </div>
   );
 };
 

@@ -21,7 +21,7 @@ import {
   ChevronDown,
   X,
 } from "lucide-react"
-import NotificationDropdown from "@/components/notifications/NotificationDropdown"
+// import NotificationDropdown from "@/components/notifications/NotificationDropdown"
 
 interface HeaderProps {
   toggleSidebar: () => void
@@ -38,15 +38,15 @@ interface UserData {
 export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
   const { user, logout, activeRole } = useAuth()
-  const {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    loading,
-    isConnected
-  } = useNotifications()
+  // const {
+  //   notifications,
+  //   unreadCount,
+  //   markAsRead,
+  //   markAllAsRead,
+  //   deleteNotification,
+  //   loading,
+  //   isConnected
+  // } = useNotifications()
   const navigate = useNavigate()
 
   const [showNotifications, setShowNotifications] = useState(false)
@@ -147,12 +147,25 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-30 h-16 backdrop-blur-xl">
-      <div className="flex h-full items-center justify-between pr-4">
+      {/* Animated Background Layer */}
+      {/* <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-800 dark:to-indigo-900"> */}
+      {/* Sidebar-specific animated blobs */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-8 left-8 w-28 h-28 bg-blue-300/60 rounded-full mix-blend-multiply filter blur-xl animate-blob dark:bg-blue-600/30"></div>
+        <div className="absolute top-1/3 right-6 w-24 h-24 bg-purple-300/50 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000 dark:bg-purple-600/25"></div>
+        <div className="absolute bottom-1/3 left-6 w-26 h-26 bg-indigo-300/55 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000 dark:bg-indigo-600/30"></div>
+        <div className="absolute bottom-12 right-10 w-20 h-20 bg-cyan-300/45 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-1000 dark:bg-cyan-600/20"></div>
+        <div className="absolute top-2/3 left-1/3 w-18 h-18 bg-teal-300/40 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-3000 dark:bg-teal-600/25"></div>
+        <div className="absolute top-1/2 right-8 w-16 h-16 bg-pink-300/35 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-5000 dark:bg-pink-600/20"></div>
+      </div>
+      {/* </div> */}
+
+      <div className="flex h-full items-center justify-between pr-4 pl-2 ">
         {/* Left Section */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 ">
           <button
             onClick={toggleSidebar}
-            className="group relative rounded-lg p-2 text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground active:scale-95"
+            className="group relative rounded-lg p-2 outline-none border-none text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground active:scale-95 "
             aria-label="Toggle sidebar"
           >
             <Menu className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
@@ -160,7 +173,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
 
           {!isMobile && (
             <div className="hidden md:block">
-              <h1 className="text-xl font-semibold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+              <h1 className="text-xl font-semibold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">
                 Test CRM
               </h1>
             </div>
@@ -177,7 +190,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search transactions, accounts..."
-                className="w-full rounded-lg border border-border bg-background/50 backdrop-blur-sm px-4 py-2 pl-10 pr-10 text-sm transition-all duration-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-lg bg-background/50 backdrop-blur-sm px-4 py-2 pl-10 pr-10 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <button
@@ -210,7 +223,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
             className="md:hidden rounded-lg p-2 text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground active:scale-95"
             aria-label="Search"
           >
-            <Search className="h-5 w-5" />
+            <Search className="h-5 w-5 " />
           </button>
 
           {/* Theme Toggle */}
@@ -229,7 +242,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
           </button>
 
           {/* Notifications */}
-          <div className="relative" ref={notificationRef}>
+          {/* <div className="relative" ref={notificationRef}>
             <button
               onClick={toggleNotifications}
               className="group relative rounded-lg p-2 text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground active:scale-95"
@@ -260,7 +273,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                 unreadCount={unreadCount}
               />
             )}
-          </div>
+          </div> */}
 
           {/* User Menu */}
           <div className="relative" ref={userMenuRef}>

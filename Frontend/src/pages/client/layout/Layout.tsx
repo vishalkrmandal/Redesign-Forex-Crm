@@ -159,9 +159,9 @@ export default function Layout() {
             {/* Main Content */}
             <main className="flex-1 overflow-auto relative bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-500/20 border-t-2 border-l-2 md:rounded-t-lg md:p-2 shadow-lg">
               <div className="mx-auto p-2 max-w-7xl">
-                <div className="min-h-full bg-white/20 dark:bg-gray-900/20 backdrop-blur-sm rounded-lg shadow-sm ">
-                  <Outlet />
-                </div>
+                {/* <div className="min-h-full bg-white/20 dark:bg-gray-900/20 backdrop-blur-sm rounded-lg shadow-sm "> */}
+                <Outlet />
+                {/* </div> */}
               </div>
             </main>
           </div>
