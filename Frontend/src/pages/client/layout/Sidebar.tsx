@@ -6,6 +6,11 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Link, useLocation } from "react-router-dom"
 import {
+<<<<<<< HEAD
+=======
+  ChevronDown,
+  ChevronRight,
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
   BarChart2,
   DollarSign,
   User,
@@ -14,6 +19,7 @@ import {
   Briefcase,
   // HeadphonesIcon,
   Home,
+<<<<<<< HEAD
   UserPlus,
   BarChart3,
   Percent,
@@ -25,6 +31,8 @@ import {
   Trophy,
   History,
   Wallet,
+=======
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
 } from "lucide-react"
 
 interface SidebarProps {
@@ -41,13 +49,20 @@ interface MenuItem {
   submenu?: {
     title: string
     path: string
+<<<<<<< HEAD
     icon: React.ElementType  // Add this line
+=======
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
   }[]
 }
 
 export default function Sidebar({ open, isMobile = false, onItemClick }: SidebarProps) {
   const location = useLocation()
+<<<<<<< HEAD
   // const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({})
+=======
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({})
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
   const [isHoveringCollapsed, setIsHoveringCollapsed] = useState(false)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -61,19 +76,32 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
       title: "Financial Operations",
       icon: DollarSign,
       submenu: [
+<<<<<<< HEAD
         { title: "Deposit", path: "/client/financial/deposit", icon: Wallet },
         { title: "Withdrawal", path: "/client/financial/withdrawal", icon: ArrowDownToLine },
         { title: "Transfer", path: "/client/financial/transfer", icon: ArrowUpDown },
         { title: "Transaction History", path: "/client/financial/history", icon: History },
+=======
+        { title: "Deposit", path: "/client/financial/deposit" },
+        { title: "Withdrawal", path: "/client/financial/withdrawal" },
+        { title: "Transfer", path: "/client/financial/transfer" },
+        { title: "Transaction History", path: "/client/financial/history" },
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
       ],
     },
     {
       title: "My Account",
       icon: User,
       submenu: [
+<<<<<<< HEAD
         { title: "Open New Account", path: "/client/account/new", icon: PlusCircle },
         { title: "Account List", path: "/client/account/list", icon: List },
         { title: "Trading Contest", path: "/client/account/trading-contest", icon: Trophy },
+=======
+        { title: "Open New Account", path: "/client/account/new" },
+        { title: "Account List", path: "/client/account/list" },
+        { title: "Trading Contest", path: "/client/account/trading-contest" },
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
       ],
     },
     {
@@ -90,6 +118,7 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
       title: "Partner Zone",
       icon: Briefcase,
       submenu: [
+<<<<<<< HEAD
         { title: "Create New Account", path: "/client/partner/new-account", icon: UserPlus },
         { title: "Partner Dashboard", path: "/client/partner/dashboard", icon: BarChart3 },
         { title: "IB Commission", path: "/client/partner/ib-commission", icon: Percent },
@@ -97,6 +126,14 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
       ],
     },
 
+=======
+        { title: "Create New Account", path: "/client/partner/new-account" },
+        { title: "Partner Dashboard", path: "/client/partner/dashboard" },
+        { title: "IB Commission", path: "/client/partner/ib-commission" },
+        { title: "IB Withdrawal", path: "/client/partner/ib-withdrawal" },
+      ],
+    },
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
     // {
     //   title: "Customer Support",
     //   icon: HeadphonesIcon,
@@ -104,10 +141,27 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
     // },
   ]
 
+<<<<<<< HEAD
+=======
+  const toggleMenu = (title: string) => {
+    setExpandedMenus((prev) => ({
+      ...prev,
+      [title]: !prev[title],
+    }))
+  }
+
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
   const isActive = (path: string) => {
     return location.pathname === path
   }
 
+<<<<<<< HEAD
+=======
+  const isSubmenuActive = (submenu: { title: string; path: string }[]) => {
+    return submenu.some(item => location.pathname === item.path)
+  }
+
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
   const handleItemClick = () => {
     if (onItemClick) {
       onItemClick()
@@ -148,6 +202,7 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
     }
   }, [])
 
+<<<<<<< HEAD
   // useEffect(() => {
   //   const initializeExpandedMenus = () => {
   //     const newExpandedMenus: Record<string, boolean> = {}
@@ -181,6 +236,41 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
   //   }
   //   updateExpandedMenus()
   // }, [location.pathname])
+=======
+  useEffect(() => {
+    const initializeExpandedMenus = () => {
+      const newExpandedMenus: Record<string, boolean> = {}
+      menuItems.forEach(item => {
+        if (item.submenu) {
+          const hasActiveItem = item.submenu.some(subItem => location.pathname === subItem.path)
+          if (hasActiveItem) {
+            newExpandedMenus[item.title] = true
+          }
+        }
+      })
+      setExpandedMenus(newExpandedMenus)
+    }
+    initializeExpandedMenus()
+  }, [])
+
+  useEffect(() => {
+    const updateExpandedMenus = () => {
+      setExpandedMenus(prev => {
+        const newExpandedMenus = { ...prev }
+        menuItems.forEach(item => {
+          if (item.submenu) {
+            const hasActiveItem = item.submenu.some(subItem => location.pathname === subItem.path)
+            if (hasActiveItem && !newExpandedMenus[item.title]) {
+              newExpandedMenus[item.title] = true
+            }
+          }
+        })
+        return newExpandedMenus
+      })
+    }
+    updateExpandedMenus()
+  }, [location.pathname])
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
 
   return (
     <aside
@@ -221,6 +311,7 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
 
       {/* Navigation */}
       <nav className="mt-2 px-2 mb-4 overflow-y-auto flex-1 scrollbar-hidden min-h-0">
+<<<<<<< HEAD
         <ul className="">
           {menuItems.map((item) => (
             <div key={item.title}>
@@ -260,10 +351,22 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
                     to={item.path || "#"}
                     onClick={handleItemClick}
                     className={`flex items-center rounded-sidebar px-3 py-2 text-sm font-medium transition-all duration-300 ease-in-out ${isActive(item.path || "")
+=======
+        <ul className="space-y-1">
+          {menuItems.map((item) => (
+            <li key={item.title} className="relative">
+              {item.submenu ? (
+                <div>
+                  {/* Parent Menu Item */}
+                  <button
+                    onClick={() => toggleMenu(item.title)}
+                    className={`flex w-full items-center rounded-sidebar px-3 py-2 text-sm font-medium transition-all duration-300 ease-in-out ${isSubmenuActive(item.submenu)
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
                       ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg transform scale-100 font-semibold"
                       : "text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-400 hover:to-purple-500 hover:text-white hover:shadow-md hover:scale-102"
                       } ${shouldShowExpanded ? "" : "justify-center"}`}
                   >
+<<<<<<< HEAD
                     <item.icon className={`h-5 w-5 transition-all duration-300 ease-in-out ${isActive(item.path || "")
                       ? "text-gray-900 dark:text-gray-100"
                       : "text-gray-500 dark:text-gray-400"
@@ -276,6 +379,98 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
                 </li>
               )}
             </div>
+=======
+                    <item.icon className={`h-5 w-5 transition-all duration-300 ease-in-out ${isSubmenuActive(item.submenu)
+                      ? "text-gray-900 dark:text-gray-100"
+                      : "text-gray-500 dark:text-gray-400"
+                      }`} />
+                    <div className={`ml-3 flex-1 flex items-center justify-between transition-all duration-500 ease-in-out overflow-hidden ${shouldShowExpanded ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0 ml-0'
+                      }`}>
+                      <span className="text-left whitespace-nowrap">{item.title}</span>
+                      {expandedMenus[item.title] ? (
+                        <ChevronDown className="h-4 w-4 transition-all duration-300 ease-in-out flex-shrink-0" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 transition-all duration-300 ease-in-out flex-shrink-0" />
+                      )}
+                    </div>
+                  </button>
+
+                  {/* Expanded Submenu with Hierarchical Lines */}
+                  <div className={`relative mt-1 transition-all duration-400 ease-in-out overflow-hidden ${shouldShowExpanded && expandedMenus[item.title]
+                    ? 'opacity-100 max-h-96'
+                    : 'opacity-0 max-h-0'
+                    }`}>
+                    <ul className="space-y-1">
+                      {item.submenu.map((subItem, index) => (
+                        <li key={subItem.title} className="relative">
+                          {/* Curved Hierarchical Line for each item */}
+                          <div className={`absolute left-6 top-0 h-full w-8 flex items-center transition-all duration-400 ease-in-out ${shouldShowExpanded && expandedMenus[item.title] ? 'opacity-100' : 'opacity-0'
+                            }`}>
+                            <svg
+                              className="w-8 h-12 text-gray-300 dark:text-gray-600"
+                              viewBox="0 0 32 48"
+                              fill="none"
+                            >
+                              {/* Vertical line from top */}
+                              {index > 0 && (
+                                <path
+                                  d="M 12 0 L 12 24"
+                                  stroke="currentColor"
+                                  strokeWidth="1.5"
+                                  fill="none"
+                                />
+                              )}
+
+                              {/* Curved connection to horizontal line */}
+                              <path
+                                d={index === item.submenu!.length - 1
+                                  ? "M 12 24 Q 12 28 16 28 L 32 28" // Last item: curved corner only
+                                  : "M 12 24 Q 12 28 16 28 L 32 28 M 12 28 L 12 48" // Middle items: curve + continue down
+                                }
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                fill="none"
+                              />
+                            </svg>
+                          </div>
+
+                          <Link
+                            to={subItem.path}
+                            onClick={handleItemClick}
+                            className={`block rounded-sidebar ml-12 px-3 py-2 text-sm font-medium transition-all duration-300 ease-in-out ${isActive(subItem.path)
+                              ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg transform scale-100 font-semibold"
+                              : "text-gray-600 dark:text-gray-400 hover:bg-gradient-to-r hover:from-emerald-400 hover:to-teal-500 hover:text-white hover:shadow-md hover:scale-102"
+                              }`}
+                          >
+                            <span className="whitespace-nowrap">{subItem.title}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                /* Single Menu Item */
+                <Link
+                  to={item.path || "#"}
+                  onClick={handleItemClick}
+                  className={`flex items-center rounded-sidebar px-3 py-2 text-sm font-medium transition-all duration-300 ease-in-out ${isActive(item.path || "")
+                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg transform scale-100 font-semibold"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-400 hover:to-purple-500 hover:text-white hover:shadow-md hover:scale-102"
+                    } ${shouldShowExpanded ? "" : "justify-center"}`}
+                >
+                  <item.icon className={`h-5 w-5 transition-all duration-300 ease-in-out ${isActive(item.path || "")
+                    ? "text-gray-900 dark:text-gray-100"
+                    : "text-gray-500 dark:text-gray-400"
+                    }`} />
+                  <span className={`ml-3 whitespace-nowrap transition-all duration-500 ease-in-out overflow-hidden ${shouldShowExpanded ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0 ml-0'
+                    }`}>
+                    {item.title}
+                  </span>
+                </Link>
+              )}
+            </li>
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
           ))}
         </ul>
       </nav>

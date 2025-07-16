@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import DashboardStats from './components/DashboardStats';
 import RecentTransactions from './components/RecentTransactions';
 import ActiveAccounts from './components/ActiveAccounts';
+<<<<<<< HEAD
 import { dashboardApi } from './dashboardApi';
 import { useTheme } from '@/context/ThemeContext';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -15,6 +16,14 @@ import LoadingSpinner from './components/LoadingSpinner';
 // import OptimizedFinancialAnalytics from './components/OptimizedFinancialAnalytics';
 import OptimizedDailyPerformance from './components/OptimizedDailyPerformance';
 
+=======
+import { dashboardApi, Partner } from './dashboardApi';
+import { useTheme } from '@/context/ThemeContext';
+import LoadingSpinner from './components/LoadingSpinner';
+// Add these imports after your existing imports
+import PartnerLevelsPieChart from './components/PartnerLevelsPieChart';
+import CommissionEarningsBarChart from './components/CommissionEarningsBarChart';
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
 
 interface DashboardData {
   overview: {
@@ -42,7 +51,11 @@ const ClientDashboard: React.FC = () => {
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
   // Add this after your existing state declarations
+<<<<<<< HEAD
   // const [partnersData, setPartnersData] = useState<Partner[]>([]);
+=======
+  const [partnersData, setPartnersData] = useState<Partner[]>([]);
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
 
   // Replace your existing fetchDashboardData function with this:
   const fetchDashboardData = async (showRefreshLoader = false, isAutoRefresh = false) => {
@@ -53,7 +66,11 @@ const ClientDashboard: React.FC = () => {
         setLoading(true);
       }
 
+<<<<<<< HEAD
       const [overviewResponse, transactionsResponse, accountsResponse] = await Promise.all([
+=======
+      const [overviewResponse, transactionsResponse, accountsResponse, partnersResponse] = await Promise.all([
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
         dashboardApi.getOverview(),
         dashboardApi.getRecentTransactions(),
         dashboardApi.getActiveAccounts(),
@@ -66,7 +83,11 @@ const ClientDashboard: React.FC = () => {
         activeAccounts: accountsResponse.data.accounts
       });
 
+<<<<<<< HEAD
       // setPartnersData(partnersResponse.partners);
+=======
+      setPartnersData(partnersResponse.partners);
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
       setLastRefresh(new Date());
       setCountdown(5);
 
@@ -169,7 +190,11 @@ const ClientDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-200">
+<<<<<<< HEAD
       <div className="container mx-auto px-0 max-w-7xl">
+=======
+      <div className="container mx-auto px-0 py-6 max-w-7xl">
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
           <div className="relative">
@@ -227,6 +252,7 @@ const ClientDashboard: React.FC = () => {
           />
         )}
 
+<<<<<<< HEAD
         <div className="space-y-6 pb-4">
           {/* Other dashboard components */}
           <OptimizedDailyPerformance />
@@ -249,6 +275,25 @@ const ClientDashboard: React.FC = () => {
 
         {/* Recent Transactions and Active Accounts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+=======
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+          {/* Commission Earnings Bar Chart */}
+          <CommissionEarningsBarChart
+            partners={partnersData}
+            theme={theme}
+          />
+
+          {/* Partner Levels Pie Chart */}
+          <PartnerLevelsPieChart
+            partners={partnersData}
+            theme={theme}
+          />
+        </div>
+
+        {/* Recent Transactions and Active Accounts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+>>>>>>> f806768ba8dc147a3cca36fb32e2161b526190d1
           {/* Recent Transactions */}
           <RecentTransactions
             transactions={dashboardData?.recentTransactions || []}
