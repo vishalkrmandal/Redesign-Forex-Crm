@@ -6,12 +6,12 @@ import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { useTheme } from "@/context/ThemeContext"
 import { useAuth } from "@/hooks/useAuth"
-import { useNotifications } from "@/context/NotificationContext"
+// import { useNotifications } from "@/context/NotificationContext"
 import {
   Menu,
   Moon,
   Sun,
-  Bell,
+  // Bell,
   User,
   Search,
   Settings,
@@ -49,7 +49,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
   // } = useNotifications()
   const navigate = useNavigate()
 
-  const [showNotifications, setShowNotifications] = useState(false)
+  // const [showNotifications, setShowNotifications] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -78,7 +78,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setShowNotifications(false)
+        // setShowNotifications(false)
       }
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false)
@@ -96,21 +96,21 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
     }
   }, [showSearch])
 
-  const toggleNotifications = () => {
-    setShowNotifications(!showNotifications)
-    setShowUserMenu(false)
-    setShowSearch(false)
-  }
+  // const toggleNotifications = () => {
+  //   setShowNotifications(!showNotifications)
+  //   setShowUserMenu(false)
+  //   setShowSearch(false)
+  // }
 
   const toggleUserMenu = () => {
     setShowUserMenu(!showUserMenu)
-    setShowNotifications(false)
+    // setShowNotifications(false)
     setShowSearch(false)
   }
 
   const toggleSearch = () => {
     setShowSearch(!showSearch)
-    setShowNotifications(false)
+    // setShowNotifications(false)
     setShowUserMenu(false)
     if (!showSearch) {
       setSearchQuery("")
