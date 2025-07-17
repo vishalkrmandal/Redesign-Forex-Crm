@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 const config = require('../config/config');
 
+
 /**
  * Send an email using nodemailer
  * @param {Object} options - Email options
@@ -11,21 +12,23 @@ const config = require('../config/config');
  */
 const sendEmail = async (options) => {
     // Create transporter
-    const transporter = nodemailer.createTransport({
-        service: config.EMAIL_SERVICE,
-        auth: {
-            user: config.EMAIL_USERNAME,
-            pass: config.EMAIL_PASSWORD
-        }
-    });
-
-    // Define email options
-    const mailOptions = {
-        from: `${config.EMAIL_FROM}`,
-        to: options.email,
-        subject: options.subject,
-        html: options.message
-    };
+     const transporter = nodemailer.createTransport({
+            host: config.SMTP_HOST,
+            port: config.SMTP_PORT,
+            secure: false,
+            auth: {
+                user: config.SMTP_USER,
+                pass: config.SMTP_PASS
+            }
+        });
+    
+        // Define email options
+        const mailOptions = {
+            from: `"zforexlive" <${config.EMAIL_FROM}>`,
+            to: options.to,
+            subject: options.subject,
+            html: options.html
+        };
 
     // Send email
     await transporter.sendMail(mailOptions);

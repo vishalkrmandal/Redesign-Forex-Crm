@@ -9,8 +9,9 @@ class NotificationTriggers {
     // 1. Account Created Notifications
     async handleAccountCreated(accountData) {
         try {
-            console.log('Handling account created notification:', accountData);
-            const { user, mt5Account, accountType, leverage, investor_pwd, master_pwd, platform } = accountData;
+
+            const { user, mt5Account, accountType, leverage } = accountData;
+
             console.log('Handling account created notification for user:', user);
             // Notify the client
             await this.notificationService.createNotification({

@@ -9,12 +9,12 @@ class EmailService {
 
     createTransporter() {
         return nodemailer.createTransport({
-            host: process.env.SMTP_HOST || 'smtp.gmail.com',
-            port: process.env.SMTP_PORT || 587,
+            host: config.SMTP_HOST || 'email-smtp.eu-north-1.amazonaws.com',
+            port: config.SMTP_PORT || 587,
             secure: false, // true for 465, false for other ports
             auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS
+                user: config.SMTP_USER,
+                pass: config.SMTP_PASS
             },
             tls: {
                 rejectUnauthorized: false
@@ -25,13 +25,13 @@ class EmailService {
     async sendEmail({ to, subject, html, attachments = [] }) {
         try {
             // Check if SMTP credentials are configured
-            if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+            if (!config.SMTP_USER || !config.SMTP_PASS) {
                 console.warn('SMTP credentials not configured. Email will not be sent.');
                 return { success: false, message: 'SMTP not configured' };
             }
 
             const mailOptions = {
-                from: `"Test CRM" <${process.env.SMTP_USER}>`,
+                from: `"zforexlive" <${config.EMAIL_FROM}>`,
                 to,
                 subject,
                 html,
@@ -49,7 +49,7 @@ class EmailService {
 
     async verifyConnection() {
         try {
-            if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+            if (!config.SMTP_USER || !config.SMTP_PASS) {
                 console.warn('SMTP credentials not configured. Email service unavailable.');
                 return false;
             }

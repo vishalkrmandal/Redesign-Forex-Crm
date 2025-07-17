@@ -39,8 +39,6 @@ const verificationEmailTemplate = (name, url) => {
           <p>Hi ${name},</p>
           <p>Thank you for signing up! To complete your registration, please verify your email address by clicking the button below:</p>
           <a href="${url}" class="button">Verify Email</a>
-          <p>If the button doesn't work, you can also copy and paste the following link into your browser:</p>
-          <p>${url}</p>
           <p>This link will expire in 24 hours.</p>
           <p>If you didn't create an account, you can safely ignore this email.</p>
           <div class="footer">
@@ -93,8 +91,6 @@ const passwordResetTemplate = (name, url) => {
         <p>Hi ${name},</p>
         <p>You requested a password reset for your account. Click the button below to set a new password:</p>
         <a href="${url}" class="button">Reset Password</a>
-        <p>If the button doesn't work, you can also copy and paste the following link into your browser:</p>
-        <p>${url}</p>
         <p>This link will expire in 10 minutes.</p>
         <p>If you didn't request a password reset, you can safely ignore this email.</p>
         <div class="footer">
