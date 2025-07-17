@@ -1,5 +1,6 @@
 // Backend/controllers/admin/adminTransactionController.js
 const axios = require('axios');
+require('dotenv').config();
 
 // Get all transactions (deposits, withdrawals, transfers)
 exports.getAllTransactions = async (req, res) => {
@@ -19,7 +20,7 @@ exports.getAllTransactions = async (req, res) => {
         };
 
         // Base URL for API requests
-        const baseUrl = process.env.API_BASE_URL || 'http://localhost:5000';
+        const baseUrl = process.env.SERVER_URL || 'http://localhost:3000';
 
         // Fetch data from all three endpoints in parallel
         const [depositsResponse, withdrawalsResponse, transfersResponse] = await Promise.all([

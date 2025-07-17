@@ -1,6 +1,7 @@
 // backend/controllers/groupController.js
 const Group = require('../models/Group');
 const axios = require('axios');
+require('dotenv').config();
 
 // @desc    Get all groups
 // @route   GET /api/groups

@@ -178,7 +178,7 @@ exports.getMyIBConfiguration = async (req, res) => {
             });
 
         if (!ibConfiguration) {
-            return res.status(404).json({
+            return res.status(200).json({
                 success: false,
                 message: 'No IB configuration found for this user'
             });
@@ -219,7 +219,7 @@ exports.getIBDashboardSummary = async (req, res) => {
         const ibConfiguration = await IBClientConfiguration.findOne({ userId: req.user.id });
 
         if (!ibConfiguration) {
-            return res.status(404).json({
+            return res.status(200).json({
                 success: false,
                 message: 'No IB configuration found. Please create your referral code first.'
             });
@@ -319,7 +319,7 @@ exports.getPartnersList = async (req, res) => {
 
         console.log('IB Configuration:', ibConfiguration);
         if (!ibConfiguration) {
-            return res.status(404).json({
+            return res.status(200).json({
                 success: false,
                 message: 'No IB configuration found. Please create your referral code first.'
             });
@@ -422,7 +422,7 @@ exports.verifyReferralCode = async (req, res) => {
         });
 
         if (!ibConfiguration) {
-            return res.status(404).json({
+            return res.status(200).json({
                 success: false,
                 message: 'Invalid or inactive referral code'
             });
@@ -431,7 +431,7 @@ exports.verifyReferralCode = async (req, res) => {
         const referringUser = await User.findById(ibConfiguration.userId);
 
         if (!referringUser) {
-            return res.status(404).json({
+            return res.status(200).json({
                 success: false,
                 message: 'Referring user not found'
             });
@@ -490,7 +490,7 @@ exports.getIBTree = async (req, res) => {
             .populate('userId', 'firstname lastname email');
 
         if (!userIBConfig) {
-            return res.status(404).json({
+            return res.status(200).json({
                 success: false,
                 message: 'No IB configuration found. Please create your referral code first.'
             });
