@@ -7,11 +7,12 @@ const IBAdminConfiguration = require('../models/admin/IBAdminConfiguration');
 const Account = require('../models/client/Account');
 const Group = require('../models/Group');
 const User = require('../models/User');
+require('dotenv').config();
 
 class CommissionService {
     constructor() {
         this.isProcessing = false;
-        this.apiBaseUrl = 'https://api.infoapi.biz/api/mt5';
+        this.apiBaseUrl = process.env.MT5_API_URL || 'https://api2.infoapi.biz/api/mt5';
         this.debugMode = true; // Enable detailed logging
     }
 

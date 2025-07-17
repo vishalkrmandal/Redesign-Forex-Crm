@@ -8,6 +8,7 @@ const PDFDocument = require('pdfkit');
 const docx = require('docx');
 const { Document, Paragraph, Table, TableRow, TableCell, TextRun } = docx;
 const axios = require('axios'); // Add this import
+require('dotenv').config();
 
 // Get all deposits with filtering and sorting
 exports.getDeposits = async (req, res) => {
@@ -294,7 +295,7 @@ exports.approveDeposit = async (req, res) => {
 
         // Get Manager Index from environment variables
         // const managerIndex = process.env.Manager_Index || '1';
-        const managerIndex = deposit.account.managerIndex || '1';
+        const managerIndex = deposit.account.managerIndex || '3';
         const mt5Account = deposit.account.mt5Account;
         const totalAmount = deposit.amount + (bonus || 0);
 
@@ -309,7 +310,7 @@ exports.approveDeposit = async (req, res) => {
 
         try {
             // Step 1: Make deposit through external API
-            const depositApiUrl = `https://api.infoapi.biz/api/mt5/MakeDepositBalance`;
+            const depositApiUrl = `${process.env.MT5_API_URL}/MakeDepositBalance`;
             const depositParams = {
                 Manager_Index: managerIndex,
                 MT5Account: mt5Account,
@@ -332,7 +333,7 @@ exports.approveDeposit = async (req, res) => {
             }
 
             // Step 2: Get updated balance and equity
-            const balanceApiUrl = `https://api.infoapi.biz/api/mt5/GetUserInfo`;
+            const balanceApiUrl = `${process.env.MT5_API_URL}/GetUserInfo`;
             const balanceParams = {
                 Manager_Index: managerIndex,
                 MT5Account: mt5Account

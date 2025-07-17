@@ -3,6 +3,7 @@
 const Withdrawal = require('../../models/Withdrawal');
 const Account = require('../../models/client/Account');
 const axios = require('axios');
+require('dotenv').config();
 
 // Create new withdrawal request
 exports.createWithdrawal = async (req, res, next) => {

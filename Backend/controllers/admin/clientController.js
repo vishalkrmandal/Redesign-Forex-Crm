@@ -8,6 +8,7 @@ const { promisify } = require('util');
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const Account = require('../../models/client/Account');
+require('dotenv').config();
 
 // @desc    Get all clients
 // @route   GET /api/clients
@@ -401,7 +402,7 @@ exports.getUserAccounts = async (req, res) => {
             const accountsByManager = {};
 
             accounts.forEach(account => {
-                const managerIndex = account.managerIndex || '2';
+                const managerIndex = account.managerIndex || '3';
                 if (!accountsByManager[managerIndex]) {
                     accountsByManager[managerIndex] = [];
                 }
@@ -419,7 +420,7 @@ exports.getUserAccounts = async (req, res) => {
 
                 console.log(`Fetching info for Manager ${managerIndex}:`, mt5AccountNumbers);
 
-                const apiUrl = 'https://api.infoapi.biz/api/mt5/GetUserInfoByAccounts';
+                const apiUrl = `${process.env.MT5_API_URL}/GetUserInfoByAccounts`;
                 const requestData = {
                     Manager_Index: parseInt(managerIndex),
                     MT5Accounts: mt5AccountNumbers

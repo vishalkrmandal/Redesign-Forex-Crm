@@ -2,6 +2,7 @@ const Account = require('../../models/client/Account');
 const User = require('../../models/User');
 const Group = require('../../models/Group');
 const axios = require('axios');
+require('dotenv').config();
 
 // Helper function to generate a random MT5 account with format YYMMDD + 3 random digits
 const generateRandomMT5Account = () => {
@@ -62,7 +63,7 @@ exports.createAccount = async (req, res) => {
 
         // Create payload for external API
         const externalAPIPayload = {
-            Manager_Index: "1",
+            Manager_Index: process.env.Manager_Index || "3",
             MT5Account: mt5Account,
             Name: name,
             Leverage: leverage,
@@ -73,7 +74,7 @@ exports.createAccount = async (req, res) => {
         let externalAPIResponse;
         try {
             externalAPIResponse = await axios.post(
-                'https://api.infoapi.biz/api/mt5/Adduser',
+                `${process.env.MT5_API_URL}/Adduser`,
                 externalAPIPayload
             );
             console.log(externalAPIResponse.data);
@@ -127,7 +128,7 @@ exports.createAccount = async (req, res) => {
             balance: 0,
             equity: 0,
             status: true,
-            managerIndex: "1"
+            managerIndex: process.env.Manager_Index || "3"
         });
 
         // Populate user data for notifications

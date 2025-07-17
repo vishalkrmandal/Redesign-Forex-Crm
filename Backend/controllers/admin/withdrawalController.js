@@ -4,10 +4,11 @@ const Withdrawal = require('../../models/Withdrawal');
 const Account = require('../../models/client/Account');
 const User = require('../../models/User');
 const axios = require('axios');
+require('dotenv').config();
 
 // MT5 API Configuration
-const MT5_API_BASE_URL = 'https://api.infoapi.biz/api/mt5';
-const MANAGER_INDEX = 1; // You might want to move this to environment variables
+const MT5_API_BASE_URL = process.env.MT5_API_URL;
+const MANAGER_INDEX = process.env.Manager_Index || 3; // fallback to 3 if not set
 
 exports.getAllWithdrawals = async (req, res) => {
 

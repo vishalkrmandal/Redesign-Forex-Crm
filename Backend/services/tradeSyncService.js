@@ -7,13 +7,14 @@ const IBClientConfiguration = require('../models/client/IBClientConfiguration');
 const IBAdminConfiguration = require('../models/admin/IBAdminConfiguration');
 const Group = require('../models/Group');
 const User = require('../models/User');
+require('dotenv').config();
 
 class TradeSyncService {
     constructor() {
         this.isProcessing = false;
         this.lastSyncTime = new Date();
-        this.managerIndexes = process.env.Manager_Index || 1;
-        this.apiBaseUrl = process.env.MT5_API_URL || 'https://api.infoapi.biz/api/mt5';
+        this.managerIndexes = process.env.Manager_Index || 3;
+        this.apiBaseUrl = process.env.MT5_API_URL || 'https://api2.infoapi.biz/api/mt5';
 
         this.syncModes = {
             INITIAL_SETUP: 365,

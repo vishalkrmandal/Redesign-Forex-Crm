@@ -212,7 +212,7 @@ async function runTests() {
 
         try {
             const axios = require('axios');
-            const managerIndex = 1; // Test with manager index 1
+            const managerIndex = process.env.Manager_Index || 3; // Test with manager index 3
             const endTime = new Date();
             const startTime = new Date(endTime.getTime() - (24 * 60 * 60 * 1000)); // Last 24 hours
 
@@ -226,12 +226,12 @@ async function runTests() {
                 return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
             };
 
-            const apiUrl = `https://api.infoapi.biz/api/mt5/GetCloseTradeAllUsers?Manager_Index=${managerIndex}&StartTime=${formatDate(startTime)}&EndTime=${formatDate(endTime)}`;
+            const apiUrl = `${process.env.MT5_API_URL}/GetCloseTradeAllUsers?Manager_Index=${managerIndex}&StartTime=${formatDate(startTime)}&EndTime=${formatDate(endTime)}`;
 
             console.log('🌐 Testing API call...');
             console.log('🔗 URL:', apiUrl);
 
-            const response = await axios.get(apiUrl, { timeout: 10000 });
+            const response = await axios.get(apiUrl, { timeout: 30000 });
 
             console.log('✅ API response received');
             console.log('📊 Status:', response.status);

@@ -17,7 +17,7 @@ const sendEmail = async (options) => {
 
     // Define email options
     const mailOptions = {
-        from: `"vishal mandal" <${config.EMAIL_FROM}>`,
+        from: `"zforexlive" <${config.EMAIL_FROM}>`,
         to: options.to,
         subject: options.subject,
         html: options.html

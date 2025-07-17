@@ -1,6 +1,7 @@
 // Backend/controllers/client/tradingController.js
 const axios = require('axios');
 const Account = require('../../models/client/Account');
+require('dotenv').config();
 
 // Cache to store trading data and reduce API calls
 const tradingDataCache = new Map();
@@ -11,7 +12,7 @@ const fetchExternalTradeData = async (mt5Account, managerIndex, type = 'open') =
     try {
         let url;
         if (type === 'open') {
-            url = `https://api.infoapi.biz/api/mt5/GetOpenTradeByAccount?Manager_Index=${managerIndex}&MT5Accont=${mt5Account}`;
+           url = `${process.env.MT5_API_URL}/GetOpenTradeByAccount?Manager_Index=${managerIndex}&MT5Accont=${mt5Account}`;
         } else {
             // For closed trades, get trades from last 30 days
             const endDate = new Date();
@@ -21,7 +22,7 @@ const fetchExternalTradeData = async (mt5Account, managerIndex, type = 'open') =
             const startTime = startDate.toISOString().slice(0, 19).replace('T', ' ');
             const endTime = endDate.toISOString().slice(0, 19).replace('T', ' ');
 
-            url = `https://api.infoapi.biz/api/mt5/GetCloseTradeAll?Manager_Index=${managerIndex}&MT5Accont=${mt5Account}&StartTime=${encodeURIComponent(startTime)}&EndTime=${encodeURIComponent(endTime)}`;
+            url = `${process.env.MT5_API_URL}/GetCloseTradeAll?Manager_Index=${managerIndex}&MT5Accont=${mt5Account}&StartTime=${encodeURIComponent(startTime)}&EndTime=${encodeURIComponent(endTime)}`;
         }
 
         const response = await axios.get(url, {
@@ -225,14 +226,14 @@ exports.getUserTrades = async (req, res) => {
                 // Fetch open trades with proper error handling
                 const openTrades = await fetchExternalTradeData(
                     account.mt5Account,
-                    account.managerIndex || '1',
+                    account.managerIndex || '3',
                     'open'
                 );
 
                 // Fetch closed trades with proper error handling
                 const closedTrades = await fetchExternalTradeData(
                     account.mt5Account,
-                    account.managerIndex || '1',
+                    account.managerIndex || '3',
                     'closed'
                 );
 

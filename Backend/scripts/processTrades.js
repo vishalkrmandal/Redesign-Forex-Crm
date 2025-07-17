@@ -26,7 +26,7 @@ const main = async () => {
         // Set default values
         const endTime = args[1] || new Date().toISOString();
         const startTime = args[0] || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const managerIndex = args[2] || '1';
+        const managerIndex = args[2] || process.env.Manager_Index || '3';
 
         console.log('🚀 Starting manual trade processing...');
         console.log(`📅 Start Time: ${startTime}`);

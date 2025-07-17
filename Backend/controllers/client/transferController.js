@@ -2,10 +2,11 @@
 const Transfer = require('../../models/client/Transfer');
 const Account = require('../../models/client/Account');
 const axios = require('axios');
+require('dotenv').config();
 
 // MT5 API Configuration
-const MT5_API_BASE_URL = 'https://api.infoapi.biz/api/mt5';
-const MANAGER_INDEX = 1; // You may want to move this to config
+const MT5_API_BASE_URL = process.env.MT5_API_URL;
+const MANAGER_INDEX = process.env.Manager_Index || 3;
 
 // Helper function to make MT5 withdrawal
 const makeWithdrawal = async (mt5Account, amount, comment = 'Transfer withdrawal') => {

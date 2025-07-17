@@ -7,17 +7,18 @@ const IBAdminConfiguration = require('../models/admin/IBAdminConfiguration');
 const IBClosedTrade = require('../models/IBClosedTrade');
 const IBCommission = require('../models/IBCommission');
 const Group = require('../models/Group');
+require('dotenv').config();
 
 // Helper function to fetch trades from external API
 const fetchClosedTrades = async (managerIndex, startTime, endTime) => {
     try {
-        const response = await axios.get(`https://api.infoapi.biz/api/mt5/GetCloseTradeAllUsers`, {
+        const response = await axios.get(`${process.env.MT5_API_URL}/GetCloseTradeAllUsers`, {
             params: {
                 Manager_Index: managerIndex,
                 StartTime: startTime,
                 EndTime: endTime
             },
-            timeout: 30000 // 30 seconds timeout
+            timeout: 30000
         });
         return response.data;
     } catch (error) {
