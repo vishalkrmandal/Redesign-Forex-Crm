@@ -1,11 +1,12 @@
 // Frontend\src\pages\client\account\AccountList.tsx
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, RefreshCw, Lock } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Lock, EyeOff, Eye } from "lucide-react";
 import axios, { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 // Interfaces
 interface Account {
@@ -52,6 +53,12 @@ interface PasswordDialogState {
   confirmMasterPwd: string;
   isChangingInvestor: boolean;
   isChangingMaster: boolean;
+  showNewInvestorPwd: boolean;
+  showConfirmInvestorPwd: boolean;
+  showNewMasterPwd: boolean;
+  showConfirmMasterPwd: boolean;
+  investorPwdErrors: string[];
+  masterPwdErrors: string[];
 }
 
 export default function AccountList() {
@@ -80,7 +87,13 @@ export default function AccountList() {
     newMasterPwd: "",
     confirmMasterPwd: "",
     isChangingInvestor: false,
-    isChangingMaster: false
+    isChangingMaster: false,
+    showNewInvestorPwd: false,
+    showConfirmInvestorPwd: false,
+    showNewMasterPwd: false,
+    showConfirmMasterPwd: false,
+    investorPwdErrors: [],
+    masterPwdErrors: []
   });
 
   const ACCOUNTS_PER_PAGE = 10;
@@ -189,6 +202,36 @@ export default function AccountList() {
     return accounts.slice(startIndex, endIndex);
   };
 
+  // Add this function after formatCurrency function
+  const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    if (password.length < 8) {
+      errors.push("Password must be at least 8 characters long");
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      errors.push("Password must include at least one uppercase letter");
+    }
+
+    if (!/[a-z]/.test(password)) {
+      errors.push("Password must include at least one lowercase letter");
+    }
+
+    if (!/[0-9]/.test(password)) {
+      errors.push("Password must include at least one number");
+    }
+
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>?]/.test(password)) {
+      errors.push("Password must include at least one special character");
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
   // Password dialog handlers
   const openPasswordDialog = (account: Account) => {
     setPasswordDialog({
@@ -203,7 +246,13 @@ export default function AccountList() {
       newMasterPwd: "",
       confirmMasterPwd: "",
       isChangingInvestor: false,
-      isChangingMaster: false
+      isChangingMaster: false,
+      showNewInvestorPwd: false,
+      showConfirmInvestorPwd: false,
+      showNewMasterPwd: false,
+      showConfirmMasterPwd: false,
+      investorPwdErrors: [],
+      masterPwdErrors: []
     });
   };
 
@@ -216,7 +265,13 @@ export default function AccountList() {
       newMasterPwd: "",
       confirmMasterPwd: "",
       isChangingInvestor: false,
-      isChangingMaster: false
+      isChangingMaster: false,
+      showNewInvestorPwd: false,
+      showConfirmInvestorPwd: false,
+      showNewMasterPwd: false,
+      showConfirmMasterPwd: false,
+      investorPwdErrors: [],
+      masterPwdErrors: []
     });
   };
 
@@ -248,28 +303,42 @@ export default function AccountList() {
       // Validate investor password change
       if (passwordDialog.isChangingInvestor) {
         if (!passwordDialog.newInvestorPwd) {
-          alert("New investor password cannot be empty");
+          toast.error("New investor password cannot be empty");
           hasErrors = true;
         } else if (passwordDialog.newInvestorPwd !== passwordDialog.confirmInvestorPwd) {
-          alert("Investor passwords do not match");
+          toast.error("Investor passwords do not match");
           hasErrors = true;
         } else {
-          payload.investor_pwd = passwordDialog.newInvestorPwd;
-          hasChanges = true;
+          // Validate password strength
+          const validation = validatePassword(passwordDialog.newInvestorPwd);
+          if (!validation.isValid) {
+            toast.error(validation.errors[0]); // Show first error
+            hasErrors = true;
+          } else {
+            payload.investor_pwd = passwordDialog.newInvestorPwd;
+            hasChanges = true;
+          }
         }
       }
 
       // Validate master password change
       if (passwordDialog.isChangingMaster && !hasErrors) {
         if (!passwordDialog.newMasterPwd) {
-          alert("New master password cannot be empty");
+          toast.error("New master password cannot be empty");
           hasErrors = true;
         } else if (passwordDialog.newMasterPwd !== passwordDialog.confirmMasterPwd) {
-          alert("Master passwords do not match");
+          toast.error("Master passwords do not match");
           hasErrors = true;
         } else {
-          payload.master_pwd = passwordDialog.newMasterPwd;
-          hasChanges = true;
+          // Validate password strength
+          const validation = validatePassword(passwordDialog.newMasterPwd);
+          if (!validation.isValid) {
+            toast.error(validation.errors[0]); // Show first error
+            hasErrors = true;
+          } else {
+            payload.master_pwd = passwordDialog.newMasterPwd;
+            hasChanges = true;
+          }
         }
       }
 
@@ -285,13 +354,13 @@ export default function AccountList() {
           }
         );
 
-        alert("Password(s) updated successfully");
+        toast.success("Password(s) updated successfully");
         closePasswordDialog();
         fetchAccounts(); // Refresh accounts to get updated data
       }
     } catch (err) {
       console.error("Error updating passwords:", err);
-      alert("Failed to update password(s). Please try again.");
+      toast.error("Failed to update password(s). Please try again.");
     }
   };
 
@@ -527,7 +596,11 @@ export default function AccountList() {
               {/* Investor Password Section */}
               <div className="rounded-md border p-3 ">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Investor Password</h4>
+                  <div className="flex items-center space-x-2">
+                    <h4 className="text-sm font-medium">Investor Password:</h4>
+                    <span className="text-sm">{passwordDialog.investor_pwd}</span>
+                  </div>
+
                   <button
                     className="text-xs text-blue-600 hover:text-blue-800"
                     onClick={toggleInvestorChange}
@@ -538,24 +611,99 @@ export default function AccountList() {
 
                 {passwordDialog.isChangingInvestor ? (
                   <div className="mt-2 space-y-2 bg-card">
-                    <div>
+                    <div className="relative">
                       <input
-                        type="password"
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        placeholder={passwordDialog.investor_pwd}
+                        type={passwordDialog.showNewInvestorPwd ? "text" : "password"}
+                        className={`w-full rounded-md border px-3 py-2 pr-10 text-sm ${passwordDialog.newInvestorPwd && passwordDialog.investorPwdErrors.length > 0
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-input'
+                          }`}
+                        placeholder="New investor password"
                         value={passwordDialog.newInvestorPwd}
-                        onChange={(e) => setPasswordDialog({ ...passwordDialog, newInvestorPwd: e.target.value })}
+                        onChange={(e) => {
+                          const validation = validatePassword(e.target.value);
+                          setPasswordDialog({
+                            ...passwordDialog,
+                            newInvestorPwd: e.target.value,
+                            investorPwdErrors: e.target.value ? validation.errors : []
+                          });
+                        }}
                       />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        onClick={() => setPasswordDialog({ ...passwordDialog, showNewInvestorPwd: !passwordDialog.showNewInvestorPwd })}
+                      >
+                        {passwordDialog.showNewInvestorPwd ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
-                    <div>
+
+                    {/* Password requirements */}
+                    {passwordDialog.newInvestorPwd && (
+                      <div className="text-xs space-y-1">
+                        <div className={`flex items-center space-x-1 ${passwordDialog.newInvestorPwd.length >= 8 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          <span>{passwordDialog.newInvestorPwd.length >= 8 ? '✓' : '✗'}</span>
+                          <span>At least 8 characters</span>
+                        </div>
+                        <div className={`flex items-center space-x-1 ${/[A-Z]/.test(passwordDialog.newInvestorPwd) ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          <span>{/[A-Z]/.test(passwordDialog.newInvestorPwd) ? '✓' : '✗'}</span>
+                          <span>One uppercase letter</span>
+                        </div>
+                        <div className={`flex items-center space-x-1 ${/[a-z]/.test(passwordDialog.newInvestorPwd) ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          <span>{/[a-z]/.test(passwordDialog.newInvestorPwd) ? '✓' : '✗'}</span>
+                          <span>One lowercase letter</span>
+                        </div>
+                        <div className={`flex items-center space-x-1 ${/[0-9]/.test(passwordDialog.newInvestorPwd) ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          <span>{/[0-9]/.test(passwordDialog.newInvestorPwd) ? '✓' : '✗'}</span>
+                          <span>One number</span>
+                        </div>
+                        <div className={`flex items-center space-x-1 ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>?]/.test(passwordDialog.newInvestorPwd) ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          <span>{/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>?]/.test(passwordDialog.newInvestorPwd) ? '✓' : '✗'}</span>
+                          <span>One special character</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="relative">
                       <input
-                        type="password"
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        type={passwordDialog.showConfirmInvestorPwd ? "text" : "password"}
+                        className={`w-full rounded-md border px-3 py-2 pr-10 text-sm ${passwordDialog.confirmInvestorPwd && passwordDialog.newInvestorPwd !== passwordDialog.confirmInvestorPwd
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-input'
+                          }`}
                         placeholder="Confirm new investor password"
                         value={passwordDialog.confirmInvestorPwd}
                         onChange={(e) => setPasswordDialog({ ...passwordDialog, confirmInvestorPwd: e.target.value })}
                       />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        onClick={() => setPasswordDialog({ ...passwordDialog, showConfirmInvestorPwd: !passwordDialog.showConfirmInvestorPwd })}
+                      >
+                        {passwordDialog.showConfirmInvestorPwd ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
+
+                    {/* Password match indicator */}
+                    {passwordDialog.confirmInvestorPwd && (
+                      <div className={`text-xs ${passwordDialog.newInvestorPwd === passwordDialog.confirmInvestorPwd ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                        {passwordDialog.newInvestorPwd === passwordDialog.confirmInvestorPwd ? '✓ Passwords match' : '✗ Passwords do not match'}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="mt-2">
@@ -572,7 +720,10 @@ export default function AccountList() {
               {/* Master Password Section */}
               <div className="rounded-md border p-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Master Password</h4>
+                  <div className="flex items-center space-x-2">
+                    <h4 className="text-sm font-medium">Master Password:</h4>
+                    <span className="text-sm">{passwordDialog.master_pwd}</span>
+                  </div>
                   <button
                     className="text-xs text-blue-600 hover:text-blue-800"
                     onClick={toggleMasterChange}
@@ -583,24 +734,99 @@ export default function AccountList() {
 
                 {passwordDialog.isChangingMaster ? (
                   <div className="mt-2 space-y-2">
-                    <div>
+                    <div className="relative">
                       <input
-                        type="password"
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        placeholder={passwordDialog.master_pwd}
+                        type={passwordDialog.showNewMasterPwd ? "text" : "password"}
+                        className={`w-full rounded-md border px-3 py-2 pr-10 text-sm ${passwordDialog.newMasterPwd && passwordDialog.masterPwdErrors.length > 0
+                            ? 'border-red-500 focus:border-red-500'
+                            : 'border-input'
+                          }`}
+                        placeholder="New master password"
                         value={passwordDialog.newMasterPwd}
-                        onChange={(e) => setPasswordDialog({ ...passwordDialog, newMasterPwd: e.target.value })}
+                        onChange={(e) => {
+                          const validation = validatePassword(e.target.value);
+                          setPasswordDialog({
+                            ...passwordDialog,
+                            newMasterPwd: e.target.value,
+                            masterPwdErrors: e.target.value ? validation.errors : []
+                          });
+                        }}
                       />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        onClick={() => setPasswordDialog({ ...passwordDialog, showNewMasterPwd: !passwordDialog.showNewMasterPwd })}
+                      >
+                        {passwordDialog.showNewMasterPwd ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
-                    <div>
+
+                    {/* Password requirements */}
+                    {passwordDialog.newMasterPwd && (
+                      <div className="text-xs space-y-1">
+                        <div className={`flex items-center space-x-1 ${passwordDialog.newMasterPwd.length >= 8 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          <span>{passwordDialog.newMasterPwd.length >= 8 ? '✓' : '✗'}</span>
+                          <span>At least 8 characters</span>
+                        </div>
+                        <div className={`flex items-center space-x-1 ${/[A-Z]/.test(passwordDialog.newMasterPwd) ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          <span>{/[A-Z]/.test(passwordDialog.newMasterPwd) ? '✓' : '✗'}</span>
+                          <span>One uppercase letter</span>
+                        </div>
+                        <div className={`flex items-center space-x-1 ${/[a-z]/.test(passwordDialog.newMasterPwd) ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          <span>{/[a-z]/.test(passwordDialog.newMasterPwd) ? '✓' : '✗'}</span>
+                          <span>One lowercase letter</span>
+                        </div>
+                        <div className={`flex items-center space-x-1 ${/[0-9]/.test(passwordDialog.newMasterPwd) ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          <span>{/[0-9]/.test(passwordDialog.newMasterPwd) ? '✓' : '✗'}</span>
+                          <span>One number</span>
+                        </div>
+                        <div className={`flex items-center space-x-1 ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>?]/.test(passwordDialog.newMasterPwd) ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          <span>{/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>?]/.test(passwordDialog.newMasterPwd) ? '✓' : '✗'}</span>
+                          <span>One special character</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="relative">
                       <input
-                        type="password"
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        type={passwordDialog.showConfirmMasterPwd ? "text" : "password"}
+                        className={`w-full rounded-md border px-3 py-2 pr-10 text-sm ${passwordDialog.confirmMasterPwd && passwordDialog.newMasterPwd !== passwordDialog.confirmMasterPwd
+                            ? 'border-red-500 focus:border-red-500'
+                            : 'border-input'
+                          }`}
                         placeholder="Confirm new master password"
                         value={passwordDialog.confirmMasterPwd}
                         onChange={(e) => setPasswordDialog({ ...passwordDialog, confirmMasterPwd: e.target.value })}
                       />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        onClick={() => setPasswordDialog({ ...passwordDialog, showConfirmMasterPwd: !passwordDialog.showConfirmMasterPwd })}
+                      >
+                        {passwordDialog.showConfirmMasterPwd ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
+
+                    {/* Password match indicator */}
+                    {passwordDialog.confirmMasterPwd && (
+                      <div className={`text-xs ${passwordDialog.newMasterPwd === passwordDialog.confirmMasterPwd ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                        {passwordDialog.newMasterPwd === passwordDialog.confirmMasterPwd ? '✓ Passwords match' : '✗ Passwords do not match'}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="mt-2">
