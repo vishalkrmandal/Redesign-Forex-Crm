@@ -239,7 +239,7 @@ class NotificationService {
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>🔔 Test CRM Notification</h1>
+                        <h1>🔔 Zforexlive CRM Notification</h1>
                         <p>Important update for your account</p>
                     </div>
                     <div class="content">
@@ -247,7 +247,7 @@ class NotificationService {
                         <h2>Hi ${userName}!</h2>
                         ${content}
                         <div class="footer">
-                            <p>This is an automated notification from Test CRM.</p>
+                            <p>This is an automated notification from Zforexlive CRM.</p>
                             <p>If you have any questions, please contact our support team.</p>
                         </div>
                     </div>
@@ -292,6 +292,25 @@ class NotificationService {
                         <p><strong>Type:</strong> ${data.updateType || 'N/A'}</p>
                         <p><strong>Message:</strong> ${data.messagePreview || 'N/A'}</p>
                         <p><strong>Status:</strong> ${data.status || 'N/A'}</p>
+                    </div>
+                `);
+
+            // Add this new case after the 'ticket_update' case in the getEmailTemplate function
+            case 'password_changed':
+                const securityColor = '#dc3545'; // Red for security alerts
+                return baseTemplate(`
+                    <p>${message}</p>
+                    <div class="details">
+                        <h3>🔐 Security Update</h3>
+                        <p><strong>MT5 Account:</strong> ${data.mt5Account || 'N/A'}</p>
+                        <p><strong>Account Type:</strong> ${data.accountType || 'N/A'}</p>
+                        <p><strong>Changed Passwords:</strong> <span style="color: ${securityColor}; font-weight: bold;">${data.changedPasswords ? data.changedPasswords.join(', ') : 'N/A'}</span></p>
+                        <p><strong>Date:</strong> ${data.changeDate || 'N/A'}</p>
+                        <p><strong>Time:</strong> ${data.changeTime || 'N/A'}</p>
+                    </div>
+                    <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <h4 style="color: #856404; margin: 0 0 10px 0;">🔒 Security Notice</h4>
+                        <p style="margin: 0; color: #856404;">If you did not make this change, please contact our support team immediately.</p>
                     </div>
                 `);
 

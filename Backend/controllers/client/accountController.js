@@ -207,3 +207,135 @@ exports.getAccount = async (req, res) => {
         });
     }
 };
+
+// Add this new function after your existing functions
+// @desc    Update account passwords
+// @route   PUT /api/accounts/:accountId/passwords
+// @access  Private
+exports.updateAccountPasswords = async (req, res) => {
+    try {
+        const { accountId } = req.params;
+        const { investor_pwd, master_pwd } = req.body;
+
+        // Find the account
+        const account = await Account.findOne({
+            _id: accountId,
+            user: req.user.id
+        });
+
+        if (!account) {
+            return res.status(404).json({
+                success: false,
+                message: 'Account not found'
+            });
+        }
+
+        const updateData = {};
+        let hasUpdates = false;
+
+        // Update investor password if provided
+        if (investor_pwd) {
+            try {
+                const investorResponse = await axios.get(
+                    `${process.env.MT5_API_URL}/ChangeInvesterPassword`,
+                    {
+                        params: {
+                            Manager_Index: process.env.Manager_Index || "3",
+                            Account: account.mt5Account,
+                            password: investor_pwd
+                        }
+                    }
+                );
+
+                if (investorResponse.data.status === 'success') {
+                    updateData.investor_pwd = investor_pwd;
+                    hasUpdates = true;
+                } else {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Failed to update investor password: ${investorResponse.data.message || 'Unknown error'}`
+                    });
+                }
+            } catch (apiError) {
+                console.error('Error updating investor password:', apiError);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Error updating investor password in external system',
+                    error: apiError.response?.data?.message || apiError.message
+                });
+            }
+        }
+
+        // Update master password if provided
+        if (master_pwd) {
+            try {
+                const masterResponse = await axios.get(
+                    `${process.env.MT5_API_URL}/ChangeMasterPassword`,
+                    {
+                        params: {
+                            Manager_Index: process.env.Manager_Index || "3",
+                            Account: account.mt5Account,
+                            password: master_pwd
+                        }
+                    }
+                );
+
+                if (masterResponse.data.status === 'success') {
+                    updateData.master_pwd = master_pwd;
+                    hasUpdates = true;
+                } else {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Failed to update master password: ${masterResponse.data.message || 'Unknown error'}`
+                    });
+                }
+            } catch (apiError) {
+                console.error('Error updating master password:', apiError);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Error updating master password in external system',
+                    error: apiError.response?.data?.message || apiError.message
+                });
+            }
+        }
+
+        // Update database if any passwords were successfully changed
+        if (hasUpdates) {
+            const updatedAccount = await Account.findByIdAndUpdate(
+                accountId,
+                updateData,
+                { new: true }
+            );
+
+            // Populate user data for notifications
+            await updatedAccount.populate('user', 'firstname lastname email');
+
+            // Trigger notifications for password change
+            if (req.notificationTriggers) {
+                await req.notificationTriggers.handlePasswordChanged({
+                    ...updatedAccount.toObject(),
+                    user: req.user.id,
+                    changedPasswords: Object.keys(updateData)
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                data: updatedAccount,
+                message: 'Password(s) updated successfully'
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: 'No passwords were updated'
+            });
+        }
+    } catch (error) {
+        console.error('Error updating account passwords:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+};

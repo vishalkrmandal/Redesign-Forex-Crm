@@ -4,11 +4,14 @@ const { protect, authorize } = require('../middlewares/auth');
 const {
     createAccount,
     getAccounts,
-    getAccount
+    getAccount,
+    updateAccountPasswords
 } = require('../controllers/client/accountController');
 
 router.post('/create', protect, authorize('client'), createAccount);
 router.get('/', protect, getAccounts);
 router.get('/:accountId/refresh', protect, getAccount);
+// Add this line after your existing routes
+router.put('/:accountId/passwords', protect, authorize('client'), updateAccountPasswords);
 
 module.exports = router;

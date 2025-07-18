@@ -10,7 +10,7 @@ class NotificationTriggers {
     async handleAccountCreated(accountData) {
         try {
             const { user, mt5Account, accountType, leverage } = accountData;
-
+            console.log('Handling account created notification for user:', user);
             // Notify the client
             await this.notificationService.createNotification({
                 recipients: user,
@@ -401,6 +401,82 @@ class NotificationTriggers {
             }
         } catch (error) {
             console.error('Error handling ticket message notification:', error);
+        }
+    }
+
+    // 10. Password Changed Notifications
+    async handlePasswordChanged(accountData) {
+        try {
+            const { user, mt5Account, changedPasswords, accountType } = accountData;
+
+            // Get user details
+            const User = require('../models/User');
+            const userDetails = await User.findById(user).select('firstname lastname email');
+
+            if (!userDetails) {
+                console.error('User not found for password change notification');
+                return;
+            }
+
+            // Determine which passwords were changed
+            const passwordTypes = [];
+            if (changedPasswords.includes('investor_pwd')) {
+                passwordTypes.push('Investor Password');
+            }
+            if (changedPasswords.includes('master_pwd')) {
+                passwordTypes.push('Master Password');
+            }
+
+            const passwordText = passwordTypes.length > 1
+                ? 'passwords have'
+                : 'password has';
+
+            const passwordList = passwordTypes.join(' and ');
+
+            // Notify the client
+            await this.notificationService.createNotification({
+                recipients: user,
+                title: '🔐 Account Password Updated',
+                message: `Your ${passwordList} for MT5 account ${mt5Account} ${passwordText} been successfully updated.`,
+                type: 'password_changed',
+                priority: 'high',
+                data: {
+                    mt5Account,
+                    accountType,
+                    changedPasswords: passwordTypes,
+                    changeDate: new Date().toLocaleDateString(),
+                    changeTime: new Date().toLocaleTimeString()
+                },
+                relatedModel: 'Account',
+                relatedId: accountData._id
+            });
+
+            // Notify all admins for security purposes
+            const adminUsers = await this.notificationService.getAdminUsers();
+            console.log('Admin users for password change notification:', adminUsers);
+            if (adminUsers.length > 0) {
+                await this.notificationService.createNotification({
+                    recipients: adminUsers.map(admin => admin._id),
+                    title: '🔐 Client Password Changed',
+                    message: `Client ${userDetails.firstname} ${userDetails.lastname} has updated their ${passwordList} for MT5 account ${mt5Account}.`,
+                    type: 'password_changed',
+                    priority: 'medium',
+                    data: {
+                        mt5Account,
+                        accountType,
+                        changedPasswords: passwordTypes,
+                        clientId: user,
+                        clientName: `${userDetails.firstname} ${userDetails.lastname}`,
+                        clientEmail: userDetails.email,
+                        changeDate: new Date().toLocaleDateString(),
+                        changeTime: new Date().toLocaleTimeString()
+                    },
+                    relatedModel: 'Account',
+                    relatedId: accountData._id
+                });
+            }
+        } catch (error) {
+            console.error('Error handling password change notification:', error);
         }
     }
 }

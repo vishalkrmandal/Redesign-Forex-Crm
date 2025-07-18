@@ -25,7 +25,8 @@ const NotificationSchema = new mongoose.Schema({
             'new_referral',
             'ticket_update',
             'profile_update',
-            'new_signup'
+            'new_signup',
+            'password_changed'
         ],
         required: true
     },
@@ -54,7 +55,7 @@ const NotificationSchema = new mongoose.Schema({
     },
     relatedModel: {
         type: String,
-        enum: ['Account', 'Deposit', 'Withdrawal', 'Transfer', 'Ticket', 'Message', 'Profile', 'IBClientConfiguration']
+        enum: ['Account', 'Deposit', 'Withdrawal', 'Transfer', 'Ticket', 'Message', 'Profile', 'IBClientConfiguration', 'User']
     },
     relatedId: {
         type: mongoose.Schema.Types.ObjectId
