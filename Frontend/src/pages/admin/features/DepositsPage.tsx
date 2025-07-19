@@ -33,7 +33,7 @@ import { format } from "date-fns"
 import axios from "axios";
 import { toast } from "sonner"
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 
 
@@ -1284,7 +1284,7 @@ const DepositsPage = () => {
                                         <div className="w-full h-full">
                                             {selectedDeposit.document.match(/\.(jpg|jpeg|png|gif)$/i) ? (
                                                 <img
-                                                    src={`http://localhost:5000${selectedDeposit.document}`}
+                                                    src={`${API_BASE_URL}${selectedDeposit.document}`}
                                                     alt="Document preview"
                                                     className="w-full h-full object-contain"
                                                 />
