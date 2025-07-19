@@ -435,6 +435,38 @@ export default function PaymentMethod() {
         );
     };
 
+ const QRCodeOnlySection = () => (
+        <div className="space-y-2">
+            <Label>QR Code</Label>
+            <div className="flex items-center space-x-2">
+                <Input
+                    id="qr-file-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif"
+                    onChange={handleQRFileChange}
+                />
+                {qrFile && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={removeQRFile}
+                        title="Remove file"
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
+            </div>
+            {qrPreview && (
+                <div className="mt-2 relative">
+                    <img
+                        src={qrPreview}
+                        alt="QR Code Preview"
+                        className="max-w-full h-auto max-h-48 object-contain border rounded"
+                    />
+                </div>
+            )}
+        </div>
+    );
 
     return (
         <>
@@ -641,37 +673,7 @@ export default function PaymentMethod() {
                                     {/* QR Code and Payment Link Section */}
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>QR Code</Label>
-                                                <div className="flex items-center space-x-2">
-                                                    <Input
-                                                        id="qr-file-input"
-                                                        type="file"
-                                                        accept="image/jpeg,image/png,image/gif"
-                                                        onChange={handleQRFileChange}
-                                                    />
-                                                    {qrFile && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={removeQRFile}
-                                                            title="Remove file"
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-
-                                                {qrPreview && (
-                                                    <div className="mt-2 relative">
-                                                        <img
-                                                            src={qrPreview}
-                                                            alt="QR Code Preview"
-                                                            className="max-w-full h-auto max-h-48 object-contain border rounded"
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <QRCodeOnlySection />
                                             <div className="space-y-2">
                                                 <Label>Payment Link</Label>
                                                 <Input
@@ -725,6 +727,8 @@ export default function PaymentMethod() {
                                         />
                                     </div>
 
+                                    <QRCodeOnlySection />
+
                                     <div className="flex items-center space-x-2">
                                         <Checkbox
                                             id="wallet-active"
@@ -764,6 +768,8 @@ export default function PaymentMethod() {
                                             placeholder="Enter payment details"
                                         />
                                     </div>
+
+                                    <QRCodeOnlySection />
 
                                     <div className="flex items-center space-x-2">
                                         <Checkbox

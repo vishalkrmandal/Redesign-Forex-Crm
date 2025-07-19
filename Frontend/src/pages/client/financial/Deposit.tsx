@@ -63,7 +63,7 @@ export default function Deposit() {
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState("");
   const [amount, setAmount] = useState("");
-  const [notes, setNotes] = useState("");
+  const [transactionId, settransactionId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState({
     accounts: false,
@@ -166,7 +166,7 @@ export default function Deposit() {
     setSelectedMethod(null);
     setSelectedMethodDetails(null);
     setAmount("");
-    setNotes("");
+    settransactionId("");
     setProofFile(null);
     setProofPreview(null);
     setStep(1);
@@ -286,8 +286,8 @@ export default function Deposit() {
         formData.append('proofOfPayment', proofFile);
       }
 
-      if (notes) {
-        formData.append('notes', notes);
+      if (transactionId) {
+        formData.append('transactionId', transactionId);
       }
 
       await axios.post(`${API_BASE_URL}/api/clientdeposits`, formData, {
@@ -404,24 +404,56 @@ export default function Deposit() {
 
                   {Object.keys(paymentMethods)
                     .filter(key => key !== 'Bank Account' && key !== 'Crypto Wallet')
-                    .map(type => (
-                      paymentMethods[type] && paymentMethods[type].length > 0 && (
-                        <div
-                          key={type}
-                          className="flex cursor-pointer items-center rounded-lg border p-4 hover:border-primary"
-                          onClick={() => selectPaymentType(type)}
-                        >
-                          <div className="mr-4 rounded-full bg-primary/10 p-2 text-primary">
-                            <Wallet className="h-6 w-6" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-medium">{type}</h3>
-                            <p className="text-sm text-muted-foreground">Deposit using {type.toLowerCase()}</p>
-                          </div>
-                          <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                    .map(type =>
+                      paymentMethods[type] && paymentMethods[type].length > 0 ? (
+                        <div key={type} className="space-y-3">
+                          <h3 className="font-medium">{type}</h3>
+                          {paymentMethods[type].map(method => (
+                            <div
+                              key={method._id}
+                              className="p-4 border rounded-lg"
+                            >
+                              <h4 className="font-medium">{method.accountHolderName || type}</h4>
+                              {/* Add QR Code display for other payment types */}
+                              {method.qrCode && (
+                                <div className="mt-4 space-y-2">
+                                  <Label className="text-sm text-muted-foreground">QR Code</Label>
+                                  <div className="flex flex-col items-start">
+                                    <img
+                                      src={`${API_BASE_URL.replace('/api', '')}${method.qrCode}`}
+                                      alt="Payment QR Code"
+                                      className="object-contain h-auto max-h-32"
+                                    />
+                                    <div className="mt-2">
+                                      <a
+                                        href={`${API_BASE_URL.replace('/api', '')}${method.qrCode}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline text-sm flex items-center"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                          <polyline points="15 3 21 3 21 9"></polyline>
+                                          <line x1="10" y1="14" x2="21" y2="3"></line>
+                                        </svg>
+                                        View full image
+                                      </a>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              <Button
+                                className="mt-4"
+                                onClick={() => selectMethod(method)}
+                              >
+                                Select this method
+                              </Button>
+                            </div>
+                          ))}
                         </div>
-                      )
-                    ))}
+                      ) : null
+                    )
+                  }
                 </div>
               )}
             </motion.div>
@@ -469,7 +501,7 @@ export default function Deposit() {
 
                 {selectedPaymentType === 'E-Wallet' && paymentMethods['Crypto Wallet']?.length > 0 && (
                   <Tabs defaultValue={paymentMethods['Crypto Wallet'][0]._id}>
-                    <TabsList className="grid grid-cols-3 mb-4">
+                    <TabsList className="flex flex-nowrap mb-4 justify-between">
                       {paymentMethods['Crypto Wallet'].map(wallet => (
                         <TabsTrigger
                           key={wallet._id}
@@ -488,6 +520,36 @@ export default function Deposit() {
                           <p className="text-sm text-muted-foreground mt-2">
                             Wallet Address: {wallet.walletAddress}
                           </p>
+
+                          {/* Add QR Code display for wallet */}
+                          {wallet.qrCode && (
+                            <div className="mt-4 space-y-2">
+                              <Label className="text-sm text-muted-foreground">QR Code</Label>
+                              <div className="flex flex-col items-start">
+                                <img
+                                  src={`${API_BASE_URL.replace('/api', '')}${wallet.qrCode}`}
+                                  alt="Wallet QR Code"
+                                  className="object-contain h-auto max-h-32"
+                                />
+                                <div className="mt-2">
+                                  <a
+                                    href={`${API_BASE_URL.replace('/api', '')}${wallet.qrCode}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline text-sm flex items-center"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                      <polyline points="15 3 21 3 21 9"></polyline>
+                                      <line x1="10" y1="14" x2="21" y2="3"></line>
+                                    </svg>
+                                    View full image
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           <Button
                             className="mt-4"
                             onClick={() => selectMethod(wallet)}
@@ -674,12 +736,12 @@ export default function Deposit() {
               </div>
 
               <div>
-                <Label htmlFor="notes">Additional Notes (Optional)</Label>
+                <Label htmlFor="transactionId">Transaction ID</Label>
                 <Input
-                  id="notes"
-                  placeholder="Any additional information about your deposit"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  id="transactionId"
+                  placeholder="Enter your transaction ID"
+                  value={transactionId}
+                  onChange={(e) => settransactionId(e.target.value)}
                 />
               </div>
 
