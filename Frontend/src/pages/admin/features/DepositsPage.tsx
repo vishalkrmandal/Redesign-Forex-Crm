@@ -4,7 +4,16 @@
 
 import { useState, useEffect } from "react"
 import {
+<<<<<<< HEAD
     Search, Filter, Download, ChevronDown, X, MoreHorizontal, FileText, ArrowUpDown, Calendar
+=======
+    Search,
+    Filter,
+    // Download, 
+    ChevronDown,
+    X, MoreHorizontal, FileText, ArrowUpDown,
+    // Calendar
+>>>>>>> d2315f3 (admin deposit approve resolve)
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -96,6 +105,9 @@ const DepositsPage = () => {
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [totalItems, setTotalItems] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
+    // Add these new state variables with your existing states
+    const [approveLoading, setApproveLoading] = useState(false)
+    const [rejectLoading, setRejectLoading] = useState(false)
 
 
     // Get token from localStorage
@@ -390,14 +402,20 @@ const DepositsPage = () => {
 
     // Approve deposit
     const handleApprove = async () => {
+        let loadingToast: any;
         try {
             if (!selectedDeposit) {
                 toast.error("No deposit selected for approval.");
                 return;
             }
 
-            // Add loading state
-            const loadingToast = toast.loading("Processing approval...");
+            setApproveLoading(true);
+
+            // Close dialog immediately after click
+            setApproveOpen(false);
+            setSelectedDeposit(null);
+
+            loadingToast = toast.loading("Processing approval...");
 
             const response = await axios.post(`${API_BASE_URL}/api/admindeposits/${selectedDeposit.id}/approve`, {
                 bonus,
@@ -418,20 +436,20 @@ const DepositsPage = () => {
                 )
             );
 
-            // Close the dialog and show success message
-            setApproveOpen(false);
-            // Clear the selected deposit
-            setSelectedDeposit(null);
             toast.dismiss(loadingToast);
             toast.success("Deposit approved successfully");
         } catch (error) {
+            if (loadingToast) toast.dismiss(loadingToast);
             console.error('Error approving deposit:', error);
             toast.error("Failed to approve deposit");
+        } finally {
+            setApproveLoading(false);
         }
     };
 
     // Reject deposit
     const handleReject = async () => {
+        let loadingToast: any;
         try {
             if (!selectedDeposit) {
                 console.error("No deposit selected for rejection.");
@@ -443,7 +461,17 @@ const DepositsPage = () => {
                 return;
             }
 
+<<<<<<< HEAD
             const loadingToast = toast.loading("Processing rejection...");
+=======
+            setRejectLoading(true);
+
+            // Close dialog immediately after click
+            setRejectOpen(false);
+            setSelectedDeposit(null);
+
+            loadingToast = toast.loading("Processing rejection...");
+>>>>>>> d2315f3 (admin deposit approve resolve)
 
             await axios.post(`${API_BASE_URL}/api/admindeposits/${selectedDeposit.id}/reject`, {
                 remarks: rejectRemarks
@@ -461,14 +489,20 @@ const DepositsPage = () => {
                 )
             );
 
+<<<<<<< HEAD
             setRejectOpen(false);
             // Clear the selected deposit
             setSelectedDeposit(null);
+=======
+>>>>>>> d2315f3 (admin deposit approve resolve)
             toast.dismiss(loadingToast);
             toast.success("Deposit rejected successfully.");
         } catch (error) {
+            if (loadingToast) toast.dismiss(loadingToast);
             console.error('Error rejecting deposit:', error);
             toast.error("Failed to reject deposit. Please try again.");
+        } finally {
+            setRejectLoading(false);
         }
     };
 
@@ -1386,8 +1420,10 @@ const DepositsPage = () => {
                     )}
 
                     <div className="flex justify-end gap-2 mt-6">
-                        <Button variant="outline" onClick={() => setApproveOpen(false)}>Cancel</Button>
-                        <Button onClick={handleApprove}>Approve</Button>
+                        <Button variant="outline" onClick={() => setApproveOpen(false)} disabled={approveLoading}>Cancel</Button>
+                        <Button onClick={handleApprove} disabled={approveLoading}>
+                            {approveLoading ? "Processing..." : "Approve"}
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -1440,8 +1476,10 @@ const DepositsPage = () => {
                     )}
 
                     <div className="flex justify-end gap-2 mt-6">
-                        <Button variant="outline" onClick={() => setRejectOpen(false)}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleReject} disabled={!rejectRemarks.trim()}>Reject</Button>
+                        <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={rejectLoading}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleReject} disabled={!rejectRemarks.trim() || rejectLoading}>
+                            {rejectLoading ? "Processing..." : "Reject"}
+                        </Button>
                     </div>
                 </div>
             </div>
