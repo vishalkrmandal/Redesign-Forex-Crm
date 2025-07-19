@@ -461,7 +461,7 @@ export default function PaymentMethod() {
                     <img
                         src={qrPreview}
                         alt="QR Code Preview"
-                        className="max-w-full h-auto max-h-48 object-contain border rounded"
+                        className="max-w-36 h-auto max-h-32 object-contain border rounded"
                     />
                 </div>
             )}
