@@ -501,12 +501,13 @@ export default function Deposit() {
 
                 {selectedPaymentType === 'E-Wallet' && paymentMethods['Crypto Wallet']?.length > 0 && (
                   <Tabs defaultValue={paymentMethods['Crypto Wallet'][0]._id}>
-                    <TabsList className="flex flex-nowrap mb-4 justify-between">
+                    <TabsList className="flex flex-nowrap mb-4 px-4 justify-between">
                       {paymentMethods['Crypto Wallet'].map(wallet => (
                         <TabsTrigger
                           key={wallet._id}
                           value={wallet._id}
                           onClick={() => selectMethod(wallet)}
+                          className="data-[state=active]:bg-card px-4"
                         >
                           {wallet.walletName}
                         </TabsTrigger>
