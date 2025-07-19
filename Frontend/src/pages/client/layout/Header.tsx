@@ -20,6 +20,7 @@ import {
   Clock,
   ChevronDown,
   X,
+  Mail,
 } from "lucide-react"
 // import NotificationDropdown from "@/components/notifications/NotificationDropdown"
 
@@ -226,6 +227,31 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
             <Search className="h-5 w-5 " />
           </button>
 
+
+          {/* User Data Display - Desktop */}
+          {!isMobile && (
+            <div className="hidden md:block">
+              <div className="transparent rounded-lg">
+                <div className="flex flex-col space-y-0.5">
+                  {/* Name */}
+                  <div className="flex items-center space-x-2">
+                    <User className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium text-gray-700 text-xs">
+                     {userData.firstname.charAt(0).toUpperCase() + userData.firstname.slice(1)} {userData.lastname.charAt(0).toUpperCase() + userData.lastname.slice(1)}
+                    </span>
+                  </div>
+
+                  {/* Email */}
+                  <div className="flex items-center space-x-2">
+                    <Mail className="h-4 w-4 text-blue-600" />
+                    <span className="text-gray-600 text-xs">{userData.email}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
@@ -299,7 +325,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-foreground truncate">
-                      {userData.firstname} {userData.lastname}
+                     {userData.firstname.charAt(0).toUpperCase() + userData.firstname.slice(1)} {userData.lastname.charAt(0).toUpperCase() + userData.lastname.slice(1)}
                     </h3>
                     <p className="text-sm text-muted-foreground truncate">{userData.email}</p>
                     {activeRole && (
