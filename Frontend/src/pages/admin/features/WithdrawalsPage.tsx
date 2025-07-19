@@ -1233,7 +1233,6 @@ const WithdrawalsPage = () => {
                     </div>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setRejectRemarks("")}>Cancel</AlertDialogCancel>
-                        // For the Reject Dialog
                         <AlertDialogAction
                             onClick={() => selectedWithdrawal && handleReject(selectedWithdrawal._id)}
                             disabled={!rejectRemarks.trim() || isRejecting}
