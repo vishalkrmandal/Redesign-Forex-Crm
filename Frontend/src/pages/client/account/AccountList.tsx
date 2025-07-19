@@ -1,7 +1,7 @@
 // Frontend\src\pages\client\account\AccountList.tsx
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, RefreshCw, Lock, EyeOff, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Lock, EyeOff, Eye, Copy } from "lucide-react";
 import axios, { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -598,7 +598,6 @@ export default function AccountList() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <h4 className="text-sm font-medium">Investor Password:</h4>
-                    <span className="text-sm">{passwordDialog.investor_pwd}</span>
                   </div>
 
                   <button
@@ -706,13 +705,26 @@ export default function AccountList() {
                     )}
                   </div>
                 ) : (
-                  <div className="mt-2">
-                    <input
-                      type="password"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={passwordDialog.investor_pwd}
-                      disabled
-                    />
+                <div className="mt-2">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm"
+                        value={passwordDialog.investor_pwd}
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        onClick={() => {
+                          navigator.clipboard.writeText(passwordDialog.investor_pwd);
+                          toast.success("Investor password copied to clipboard");
+                        }}
+                        title="Copy password"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -722,7 +734,6 @@ export default function AccountList() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <h4 className="text-sm font-medium">Master Password:</h4>
-                    <span className="text-sm">{passwordDialog.master_pwd}</span>
                   </div>
                   <button
                     className="text-xs text-blue-600 hover:text-blue-800"
@@ -830,12 +841,25 @@ export default function AccountList() {
                   </div>
                 ) : (
                   <div className="mt-2">
-                    <input
-                      type="password"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={passwordDialog.master_pwd}
-                      disabled
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm"
+                        value={passwordDialog.master_pwd}
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        onClick={() => {
+                          navigator.clipboard.writeText(passwordDialog.master_pwd);
+                          toast.success("Master password copied to clipboard");
+                        }}
+                        title="Copy password"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
