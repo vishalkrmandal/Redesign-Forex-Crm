@@ -8,6 +8,7 @@ const { promisify } = require('util');
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const Account = require('../../models/client/Account');
+const IBClientConfiguration = require('../../models/client/IBClientConfiguration');
 require('dotenv').config();
 
 // @desc    Get all clients
@@ -16,10 +17,13 @@ require('dotenv').config();
 exports.getAllClients = async (req, res) => {
     try {
         // Get clients with their profiles
-        const users = await User.find({ role: { $in: ['client', 'agent'] } }).select('-passwordResetToken -passwordResetExpires -emailVerificationToken -emailVerificationExpires');
+        const users = await User.find({ role: { $in: ['client'] } }).select('-passwordResetToken -passwordResetExpires -emailVerificationToken -emailVerificationExpires');
 
         // Get all profiles
         const profiles = await Profile.find();
+
+        // Get all IB configurations
+        const ibConfigurations = await IBClientConfiguration.find();
 
         // Map profiles to users
         const clients = users.map(user => {
@@ -40,7 +44,15 @@ exports.getAllClients = async (req, res) => {
                 kycVerified: profile ? profile.kycVerified : false,
                 kycStatus: profile ? profile.kycStatus : 'unverified',
                 kycRejectReason: profile ? profile.kycRejectReason : null,
-                ibPartner: profile ? profile.ibPartner : 'None',
+                ibPartner: (() => {
+                    const ibConfig = ibConfigurations.find(config => config.userId.toString() === user._id.toString());
+                    if (ibConfig && ibConfig.referralCode) {
+                        return 'active';
+                    } else if (ibConfig) {
+                        return 'inactive';
+                    }
+                    return 'None';
+                })(),
                 accountNumber: profile ? (profile.walletDetails?.accountNumber || '') : '',
                 educationLevel: profile ? profile.educationLevel : '',
                 otherEducation: profile ? profile.otherEducation : '',
@@ -83,6 +95,9 @@ exports.getClientDetails = async (req, res) => {
         // Get client profile
         const profile = await Profile.findOne({ user: req.params.id });
 
+        // Get IB configuration
+        const ibConfig = await IBClientConfiguration.findOne({ userId: req.params.id });
+
         const client = {
             id: user._id,
             firstname: user.firstname,
@@ -96,7 +111,14 @@ exports.getClientDetails = async (req, res) => {
             kycVerified: profile ? profile.kycVerified : false,
             kycStatus: profile ? profile.kycStatus : 'unverified',
             kycRejectReason: profile ? profile.kycRejectReason : null,
-            ibPartner: profile ? profile.ibPartner : 'None',
+            ibPartner: (() => {
+                if (ibConfig && ibConfig.referralCode) {
+                    return 'active';
+                } else if (ibConfig) {
+                    return 'inactive';
+                }
+                return 'None';
+            })(),
             educationLevel: profile ? profile.educationLevel : '',
             otherEducation: profile ? profile.otherEducation : '',
             idDocument: profile ? profile.idDocument : '',

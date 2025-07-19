@@ -210,6 +210,7 @@ exports.getDeposits = async (req, res) => {
                 },
                 approvedOn: "$approvedDate",
                 rejectedOn: "$rejectedDate",
+                transactionId: "$transactionId",
                 status: "$status",
                 remarks: { $ifNull: ["$remarks", "$notes"] },
                 proofOfPayment: 1,
