@@ -228,8 +228,8 @@ class NotificationService {
                 <title>${title}</title>
                 <style>
                     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .container { max-width: 650px; margin: 0 auto; padding: 5px; }
+                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 5px; text-align: center; border-radius: 10px 10px 0 0; }
                     .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
                     .notification-badge { background: #28a745; color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; display: inline-block; margin-bottom: 20px; }
                     .details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
@@ -266,7 +266,9 @@ class NotificationService {
                         <p><strong>MT5 Account:</strong> ${data.mt5Account || 'N/A'}</p>
                         <p><strong>Account Type:</strong> ${data.accountType || 'N/A'}</p>
                         <p><strong>Leverage:</strong> ${data.leverage || 'N/A'}</p>
-                        <p><strong>Platform:</strong> MetaTrader 5</p>
+                        <p><strong>Platform:</strong> ${data.platform || 'N/A'}</p>
+                        <p><strong>Investor Password:</strong> ${data.investorPassword || 'N/A'}</p>
+                        <p><strong>Master Password:</strong> ${data.masterPassword || 'N/A'}</p>
                     </div>
                 `);
 

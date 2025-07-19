@@ -44,7 +44,7 @@ const DepositSchema = new mongoose.Schema({
         enum: ['Pending', 'Approved', 'Rejected'],
         default: 'Pending'
     },
-    notes: {
+    transactionId: {
         type: String,
     },
     requestedDate: {

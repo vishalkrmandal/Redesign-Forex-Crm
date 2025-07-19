@@ -56,7 +56,7 @@ exports.createDeposit = async (req, res, next) => {
         }
 
         // Extract deposit data from request body
-        const { accountId, amount, paymentMethodId, paymentType, notes } = req.body;
+        const { accountId, amount, paymentMethodId, paymentType, transactionId } = req.body;
 
         // Validate amount
         if (amount < 0) {
@@ -108,7 +108,7 @@ exports.createDeposit = async (req, res, next) => {
             paymentMethod: paymentMethodId,
             paymentType,
             proofOfPayment: `/${req.file.path.replace(/\\/g, '/')}`,
-            notes
+            transactionId
         });
 
         await deposit.save();
