@@ -1490,7 +1490,7 @@ const DepositsPage = () => {
                                             {/* Use proper error handling for image loading */}
                                             {selectedDeposit.proofOfPayment.match(/\.(jpg|jpeg|png|gif)$/i) ? (
                                                 <img
-                                                    src={`http://localhost:5000${selectedDeposit.proofOfPayment}`}
+                                                    src={`${API_BASE_URL}${selectedDeposit.proofOfPayment}`}
                                                     alt="Document preview"
                                                     className="max-w-full"
                                                     onError={(e) => {
@@ -1500,7 +1500,7 @@ const DepositsPage = () => {
                                                 />
                                             ) : selectedDeposit.proofOfPayment.match(/\.(pdf)$/i) ? (
                                                 <iframe
-                                                    src={`http://localhost:5000${selectedDeposit.proofOfPayment}`}
+                                                    src={`${API_BASE_URL}${selectedDeposit.proofOfPayment}`}
                                                     title="PDF Document"
                                                     width="100%"
                                                     height="500px"
