@@ -4,16 +4,12 @@
 
 import { useState, useEffect } from "react"
 import {
-<<<<<<< HEAD
-    Search, Filter, Download, ChevronDown, X, MoreHorizontal, FileText, ArrowUpDown, Calendar
-=======
     Search,
     Filter,
-    // Download, 
     ChevronDown,
     X, MoreHorizontal, FileText, ArrowUpDown,
-    // Calendar
->>>>>>> d2315f3 (admin deposit approve resolve)
+    Calendar,
+    Download,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -461,9 +457,6 @@ const DepositsPage = () => {
                 return;
             }
 
-<<<<<<< HEAD
-            const loadingToast = toast.loading("Processing rejection...");
-=======
             setRejectLoading(true);
 
             // Close dialog immediately after click
@@ -471,7 +464,6 @@ const DepositsPage = () => {
             setSelectedDeposit(null);
 
             loadingToast = toast.loading("Processing rejection...");
->>>>>>> d2315f3 (admin deposit approve resolve)
 
             await axios.post(`${API_BASE_URL}/api/admindeposits/${selectedDeposit.id}/reject`, {
                 remarks: rejectRemarks
@@ -489,12 +481,10 @@ const DepositsPage = () => {
                 )
             );
 
-<<<<<<< HEAD
             setRejectOpen(false);
             // Clear the selected deposit
             setSelectedDeposit(null);
-=======
->>>>>>> d2315f3 (admin deposit approve resolve)
+
             toast.dismiss(loadingToast);
             toast.success("Deposit rejected successfully.");
         } catch (error) {
