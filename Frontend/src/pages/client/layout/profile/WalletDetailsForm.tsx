@@ -96,7 +96,7 @@ const WalletDetailsForm: React.FC<WalletDetailsFormProps> = ({ initialData, setP
                 </div>
 
                 {/* Account Number */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                     <Label htmlFor="accountNumber">Account Number</Label>
                     <Input
                         id="accountNumber"
@@ -105,7 +105,7 @@ const WalletDetailsForm: React.FC<WalletDetailsFormProps> = ({ initialData, setP
                         onChange={handleChange}
                         placeholder="Enter account number"
                     />
-                </div>
+                </div> */}
 
                 {/* TRX Wallet Address */}
                 <div className="space-y-2">

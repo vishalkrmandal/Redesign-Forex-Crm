@@ -523,7 +523,7 @@ export default function Deposit() {
                           </p>
 
                           {/* Add QR Code display for wallet */}
-                          {wallet.qrCode && (
+                          {/* {wallet.qrCode && (
                             <div className="mt-4 space-y-2">
                               <Label className="text-sm text-muted-foreground">QR Code</Label>
                               <div className="flex flex-col items-start">
@@ -549,7 +549,7 @@ export default function Deposit() {
                                 </div>
                               </div>
                             </div>
-                          )}
+                          )} */}
 
                           <Button
                             className="mt-4"
@@ -588,14 +588,22 @@ export default function Deposit() {
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 items-start">
                   <div>
                     <Label className="text-sm text-muted-foreground">Payment Type</Label>
                     <p>{selectedMethodDetails?.type}</p>
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">Active/Status</Label>
-                    <p>{selectedMethodDetails?.active ? 'Account is Active' : 'Account is Inactive'}</p>
+                    <div className="flex items-center">
+                      <p className="text-sm">Account is</p>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${selectedMethodDetails?.active
+                        ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400'
+                        : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400'
+                        }`}>
+                        {selectedMethodDetails?.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -627,28 +635,49 @@ export default function Deposit() {
                 {selectedMethodDetails?.type === 'Crypto Wallet' && (
                   <>
                     <div className="grid grid-cols-2 gap-4">
+
                       <div>
                         <Label className="text-sm text-muted-foreground">Wallet Address</Label>
-                        <p className="break-all">{selectedMethodDetails.walletAddress}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="break-all flex-1 text-sm font-mono text-gray-800 dark:text-gray-200">
+                            {selectedMethodDetails.walletAddress}
+                          </p>
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          title="Copy Wallet Address"
+                          className="bg-blue-700 text-white hover:bg-blue-600"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedMethodDetails.walletAddress || '');
+                            toast.success('Wallet address copied to clipboard');
+                          }}
+                        >
+                          Copy
+                        </Button>
                       </div>
                       <div>
                         <Label className="text-sm text-muted-foreground">Wallet Name</Label>
                         <p>{selectedMethodDetails.walletName}</p>
                       </div>
+
                     </div>
                   </>
                 )}
 
                 {selectedMethodDetails?.qrCode && (
-                  <div className="space-y-2">
-                    <Label className="text-sm text-muted-foreground">QR Code</Label>
-                    <div className="flex flex-col items-start">
-                      <img
-                        src={`${API_BASE_URL.replace('/api', '')}${selectedMethodDetails.qrCode}`}
-                        alt="QR Code"
-                        className="object-contain h-auto max-h-48"
-                      />
-                      <div className="mt-2">
+                  <div className="col-span-2 space-y-4 mt-6">
+                    <Label className="text-sm text-muted-foreground text-center block">QR Code</Label>
+                    <div className="flex flex-col items-center">
+                      <div className="w-60 max-w-md">
+                        <img
+                          src={`${API_BASE_URL.replace('/api', '')}${selectedMethodDetails.qrCode}`}
+                          alt="QR Code"
+                          className="w-60 h-auto object-contain"
+                        />
+                      </div>
+                      <div className="mt-4">
                         <a
                           href={`${API_BASE_URL.replace('/api', '')}${selectedMethodDetails.qrCode}`}
                           target="_blank"
