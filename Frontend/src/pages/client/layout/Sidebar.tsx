@@ -242,9 +242,9 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
           {menuItems.map((item) => (
             <div key={item.title}>
               {/* Menu Title - Unclickable and smaller font */}
-              <div className={`-my-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider transition-all duration-500 ease-in-out overflow-hidden ${shouldShowExpanded ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'}`}>
+              {/* <div className={`-my-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider transition-all duration-500 ease-in-out overflow-hidden ${shouldShowExpanded ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'}`}>
                 {item.title}
-              </div>
+              </div> */}
 
               {/* Menu Items */}
               {item.submenu ? (
