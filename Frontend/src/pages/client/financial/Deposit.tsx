@@ -246,6 +246,11 @@ export default function Deposit() {
       return false;
     }
 
+    if (!transactionId || transactionId.trim() === "") {
+      toast.error("Please enter transaction ID");
+      return false;
+    }
+
     if (!proofFile) {
       toast.error("Please upload proof of payment");
       return false;
@@ -766,12 +771,13 @@ export default function Deposit() {
               </div>
 
               <div>
-                <Label htmlFor="transactionId">Transaction ID</Label>
+                <Label htmlFor="transactionId">Transaction ID *</Label>
                 <Input
                   id="transactionId"
                   placeholder="Enter your transaction ID"
                   value={transactionId}
                   onChange={(e) => settransactionId(e.target.value)}
+                  required
                 />
               </div>
 
@@ -825,6 +831,7 @@ export default function Deposit() {
                   isSubmitting ||
                   !selectedAccount ||
                   !amount ||
+                  !transactionId ||
                   !selectedMethod ||
                   !proofFile
                 }
