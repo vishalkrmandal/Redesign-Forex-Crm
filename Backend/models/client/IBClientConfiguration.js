@@ -10,8 +10,9 @@ const IBClientConfigurationSchema = new mongoose.Schema({
     },
     referralCode: {
         type: String,
-        unique: true,
-        sparse: true // Allows null values while maintaining uniqueness for non-null values
+        default: null
+        // unique: true,
+        // sparse: true // Allows null values while maintaining uniqueness for non-null values
     },
     referredBy: {
         type: String,
