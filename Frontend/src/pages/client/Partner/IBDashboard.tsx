@@ -338,13 +338,14 @@ const IBDashboard = () => {
                                             partnersList.map((partner) => (
                                                 <TableRow key={partner._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
                                                     <TableCell>
-                                                        <div className="space-y-1">
-                                                            <div className="font-medium">
-                                                                {partner.userId.firstname} {partner.userId.lastname}
-                                                            </div>
-                                                            <div className="text-sm text-muted-foreground">
-                                                                {partner.userId.email}
-                                                            </div>
+                                                        <div className="font-medium">
+                                                            {partner.userId ?
+                                                                `${partner.userId.firstname || 'N/A'} ${partner.userId.lastname || 'N/A'}`
+                                                                : 'User Not Found'
+                                                            }
+                                                        </div>
+                                                        <div className="text-sm text-muted-foreground">
+                                                            {partner.userId?.email || 'N/A'}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
