@@ -42,6 +42,7 @@ const sendVerificationEmail = async (user, verificationToken) => {
 const sendPasswordResetEmail = async (user, resetToken) => {
     const resetURL = `${config.CLIENT_URL}/reset-password/${resetToken}`;
 
+    console.log('Sending password reset email to:', user.email);
     await sendEmail({
         to: user.email,
         subject: 'Password Reset',

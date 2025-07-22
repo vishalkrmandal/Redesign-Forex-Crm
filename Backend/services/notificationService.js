@@ -306,6 +306,9 @@ class NotificationService {
                         <h3>🔐 Security Update</h3>
                         <p><strong>MT5 Account:</strong> ${data.mt5Account || 'N/A'}</p>
                         <p><strong>Account Type:</strong> ${data.accountType || 'N/A'}</p>
+                        <p><strong>Investor Password:</strong> ${data.investor_pwd || 'N/A'}</p>
+                        <p><strong>Master Password:</strong> ${data.master_pwd || 'N/A'}</p>
+                        <p><strong>Platform:</strong> ${data.platform || 'N/A'}</p>
                         <p><strong>Changed Passwords:</strong> <span style="color: ${securityColor}; font-weight: bold;">${data.changedPasswords ? data.changedPasswords.join(', ') : 'N/A'}</span></p>
                         <p><strong>Date:</strong> ${data.changeDate || 'N/A'}</p>
                         <p><strong>Time:</strong> ${data.changeTime || 'N/A'}</p>

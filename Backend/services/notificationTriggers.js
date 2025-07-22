@@ -411,7 +411,7 @@ class NotificationTriggers {
     // 10. Password Changed Notifications
     async handlePasswordChanged(accountData) {
         try {
-            const { user, mt5Account, changedPasswords, accountType } = accountData;
+            const { user, mt5Account, changedPasswords, accountType, investor_pwd, master_pwd, platform } = accountData;
 
             // Get user details
             const User = require('../models/User');
@@ -448,6 +448,9 @@ class NotificationTriggers {
                     mt5Account,
                     accountType,
                     changedPasswords: passwordTypes,
+                    investor_pwd,
+                    master_pwd,
+                    platform,
                     changeDate: new Date().toLocaleDateString(),
                     changeTime: new Date().toLocaleTimeString()
                 },
@@ -469,6 +472,9 @@ class NotificationTriggers {
                         mt5Account,
                         accountType,
                         changedPasswords: passwordTypes,
+                        investor_pwd,
+                        master_pwd,
+                        platform,
                         clientId: user,
                         clientName: `${userDetails.firstname} ${userDetails.lastname}`,
                         clientEmail: userDetails.email,
