@@ -13,8 +13,6 @@ import TradingPlatforms from './pages/client/Trading/TradingPlatforms';
 import ReferFriend from './pages/client/Refer/ReferFriend';
 import CreatePartnerAccount from './pages/client/Partner/CreatePartnerAccount';
 import IBDashboard from './pages/client/Partner/IBDashboard';
-import IBAccounts from './pages/client/Partner/IBAccounts';
-import AutoRebateReport from './pages/client/Partner/AutoRebateReport';
 import TicketDetail from './pages/client/support/app/client/ticket/TicketDetail';
 import ClientPortal from './pages/client/support/app/client/ClientPortal';
 import ProfilePage from './pages/client/layout/profile/ProfilePage';
@@ -191,15 +189,8 @@ const routes: RouteObject[] = [
               {
                 path: 'ib-commission/:partnerId',
                 element: <TradeCommission />
-              },
-              {
-                path: 'ib-accounts',
-                element: <IBAccounts />
-              },
-              {
-                path: 'auto-rebate-report',
-                element: <AutoRebateReport />
               }
+
             ]
           },
 

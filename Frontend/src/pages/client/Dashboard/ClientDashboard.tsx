@@ -15,6 +15,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 // import CommissionEarningsBarChart from './components/CommissionEarningsBarChart';
 // import OptimizedFinancialAnalytics from './components/OptimizedFinancialAnalytics';
 import OptimizedDailyPerformance from './components/OptimizedDailyPerformance';
+import axios from 'axios';
 
 
 
@@ -46,6 +47,36 @@ const ClientDashboard: React.FC = () => {
   // Add this after your existing state declarations
   // const [partnersData, setPartnersData] = useState<Partner[]>([]);
 
+  // Helper function to trigger account balance update
+  const triggerAccountBalanceUpdate = async () => {
+    try {
+      const token = localStorage.getItem('clientToken');
+      const userData = JSON.parse(localStorage.getItem('clientUser') || '{}');
+      const userId = userData.id;
+
+      console.log('Token:', token ? 'exists' : 'missing');
+      console.log('UserId:', userId);
+
+      if (!token || !userId) return;
+
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/clients/users/${userId}/accounts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Response:', response.data);
+
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log('Error:', error.message);
+      } else {
+        console.log('Error:', error);
+      }
+    }
+  };
+
 
   // Replace your existing fetchDashboardData function with this:
   const fetchDashboardData = async (showRefreshLoader = false, isAutoRefresh = false) => {
@@ -54,6 +85,11 @@ const ClientDashboard: React.FC = () => {
         setRefreshing(true);
       } else if (!isAutoRefresh) {
         setLoading(true);
+      }
+
+      // ADD THIS LINE - only trigger on initial load, not auto-refresh
+      if (!isAutoRefresh) {
+        triggerAccountBalanceUpdate();
       }
 
       const [overviewResponse, transactionsResponse, accountsResponse] = await Promise.all([
