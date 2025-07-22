@@ -90,9 +90,43 @@ export default function Withdrawal() {
     }
   });
 
+  // Helper function to trigger account balance update
+  const triggerAccountBalanceUpdate = async () => {
+    try {
+      const token = localStorage.getItem('clientToken');
+      const userData = JSON.parse(localStorage.getItem('clientUser') || '{}');
+      const userId = userData.id;
+
+      console.log('Token:', token ? 'exists' : 'missing');
+      console.log('UserId:', userId);
+
+      if (!token || !userId) return;
+
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/clients/users/${userId}/accounts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Response:', response.data);
+
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log('Error:', error.message);
+      } else {
+        console.log('Error:', error);
+      }
+    }
+  };
+
   // Fetch user accounts
   useEffect(() => {
     const fetchAccounts = async () => {
+
+      // Trigger account balance update on initial load
+      triggerAccountBalanceUpdate();
+
       setIsLoading(prev => ({ ...prev, accounts: true }));
       try {
         const response = await axios.get(`${API_BASE_URL}/api/accounts`, getAuthHeaders());

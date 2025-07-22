@@ -16,6 +16,37 @@ export default function Transfer() {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+  // Helper function to trigger account balance update
+  const triggerAccountBalanceUpdate = async () => {
+    try {
+      const token = localStorage.getItem('clientToken');
+      const userData = JSON.parse(localStorage.getItem('clientUser') || '{}');
+      const userId = userData.id;
+
+      console.log('Token:', token ? 'exists' : 'missing');
+      console.log('UserId:', userId);
+
+      if (!token || !userId) return;
+
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/clients/users/${userId}/accounts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Response:', response.data);
+
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log('Error:', error.message);
+      } else {
+        console.log('Error:', error);
+      }
+    }
+  };
+
+
   useEffect(() => {
     // Fetch user accounts and recent transfers on component mount
     fetchUserData();
@@ -24,6 +55,9 @@ export default function Transfer() {
   const fetchUserData = async () => {
     try {
       setLoading(true);
+
+      // Trigger account balance update on initial load
+      triggerAccountBalanceUpdate();
 
       // Fetch accounts
       const accountsResponse = await axios.get(
