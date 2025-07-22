@@ -46,7 +46,7 @@ interface IBPartner {
         firstname: string;
         lastname: string;
         email: string;
-    };
+    } | null;
     referralCode: string;
     level: number;
     totalVolume: number;

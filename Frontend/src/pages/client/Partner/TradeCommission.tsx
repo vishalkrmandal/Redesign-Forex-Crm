@@ -60,7 +60,7 @@ interface IBPartner {
         firstname: string;
         lastname: string;
         email: string;
-    };
+    } | null;
     referralCode: string;
     level: number;
     totalVolume: number;
@@ -679,13 +679,21 @@ const TradeCommission = () => {
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-medium">
-                                                                {partner.userId.firstname[0]}{partner.userId.lastname[0]}
+                                                                {partner.userId ?
+                                                                    `${partner.userId.firstname?.[0] || 'N'}${partner.userId.lastname?.[0] || 'A'}`
+                                                                    : 'NA'
+                                                                }
                                                             </div>
                                                             <div>
-                                                                <div className="font-medium">{`${partner.userId.firstname} ${partner.userId.lastname}`}</div>
+                                                                <div className="font-medium">
+                                                                    {partner.userId ?
+                                                                        `${partner.userId.firstname || 'N/A'} ${partner.userId.lastname || 'N/A'}`
+                                                                        : 'User Not Found'
+                                                                    }
+                                                                </div>
                                                                 <div className="text-sm text-muted-foreground flex items-center gap-1">
                                                                     <Mail className="h-3 w-3" />
-                                                                    {partner.userId.email}
+                                                                    {partner.userId?.email || 'N/A'}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -744,7 +752,10 @@ const TradeCommission = () => {
                                                                     <div className="p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-800 dark:to-gray-800 border-t">
                                                                         <h4 className="font-semibold mb-3 flex items-center gap-2">
                                                                             <Eye className="h-4 w-4" />
-                                                                            Trade Details for {partner.userId.firstname} {partner.userId.lastname}
+                                                                            Trade Details for {partner.userId ?
+                                                                                `${partner.userId.firstname?.[0] || 'N'}${partner.userId.lastname?.[0] || 'A'}`
+                                                                                : 'NA'
+                                                                            }
                                                                         </h4>
 
                                                                         {loadingPartnerTrades[partner._id] ? (
@@ -839,15 +850,21 @@ const TradeCommission = () => {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
-                                            {partner.userId.firstname[0]}{partner.userId.lastname[0]}
+                                            {partner.userId ?
+                                                `${partner.userId.firstname || 'N/A'} ${partner.userId.lastname || 'N/A'}`
+                                                : 'User Not Found'
+                                            }
                                         </div>
                                         <div>
                                             <CardTitle className="text-lg">
-                                                {partner.userId.firstname} {partner.userId.lastname}
+                                                {partner.userId ?
+                                                    `${partner.userId.firstname || 'N/A'} ${partner.userId.lastname || 'N/A'}`
+                                                    : 'User Not Found'
+                                                }
                                             </CardTitle>
                                             <p className="text-sm text-muted-foreground flex items-center gap-2">
                                                 <Mail className="h-3 w-3" />
-                                                {partner.userId.email}
+                                                {partner.userId?.email || 'N/A'}
                                                 <span className="mx-2">•</span>
                                                 <Globe className="h-3 w-3" />
                                                 {partner.country}
