@@ -34,7 +34,7 @@ interface Partner {
         firstname: string;
         lastname: string;
         email: string;
-    };
+    } | null;
     referralCode: string;
     level: number;
     totalTrades: number;
@@ -253,7 +253,10 @@ const PartnerSummary = () => {
                                             <TableCell className="font-medium">
                                                 <div>
                                                     <div className="font-semibold">
-                                                        {partner.userId.firstname} {partner.userId.lastname}
+                                                        {partner.userId ?
+                                                            `${partner.userId.firstname || 'N/A'} ${partner.userId.lastname || 'N/A'}`
+                                                            : 'User Not Found'
+                                                        }
                                                     </div>
                                                     <div className="text-sm text-muted-foreground font-mono">
                                                         {partner.referralCode}
@@ -261,7 +264,7 @@ const PartnerSummary = () => {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-sm">
-                                                {partner.userId.email}
+                                                {partner.userId?.email || 'N/A'}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge
@@ -292,7 +295,9 @@ const PartnerSummary = () => {
                                                         variant="outline"
                                                         onClick={() => handleViewDetails(
                                                             partner._id,
-                                                            `${partner.userId.firstname} ${partner.userId.lastname}`
+                                                            partner.userId ?
+                                                                `${partner.userId.firstname || 'N/A'} ${partner.userId.lastname || 'N/A'}`
+                                                                : 'User Not Found'
                                                         )}
                                                         className="gap-1"
                                                     >
