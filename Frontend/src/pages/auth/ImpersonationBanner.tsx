@@ -31,7 +31,10 @@ const ImpersonationBanner: React.FC = () => {
                 </span>
             </div>
             <button
-                onClick={() => endImpersonation(navigate)}
+                onClick={() => {
+                    endImpersonation(navigate);
+                    window.close();
+                }}
                 className="bg-white text-amber-500 px-3 py-1 rounded-md hover:bg-amber-50 transition-colors flex items-center"
             >
                 <span className="mr-1">Exit Client View</span>
