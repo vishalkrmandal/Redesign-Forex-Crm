@@ -179,7 +179,7 @@ exports.signup = async (req, res, next) => {
 
         // Generate verification token
         const verificationToken = user.generateEmailVerificationToken();
-        
+
 
         // Send verification email
         await sendVerificationEmail(user, verificationToken);
@@ -472,6 +472,92 @@ exports.impersonateClient = async (req, res, next) => {
         res.status(500).json({
             success: false,
             message: 'An error occurred during client impersonation.'
+        });
+    }
+};
+
+// @desc    Check email verification status
+// @route   POST /api/auth/check-verification-status
+// @access  Public
+exports.checkVerificationStatus = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email is required'
+            });
+        }
+
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            isVerified: user.isEmailVerified
+        });
+    } catch (error) {
+        console.error('Check verification status error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while checking verification status.'
+        });
+    }
+};
+
+// @desc    Resend verification email
+// @route   POST /api/auth/resend-verification
+// @access  Public
+exports.resendVerificationEmail = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email is required'
+            });
+        }
+
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        if (user.isEmailVerified) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email is already verified'
+            });
+        }
+
+        // Generate new verification token
+        const verificationToken = user.generateEmailVerificationToken();
+        await user.save();
+
+        // Send verification email
+        await sendVerificationEmail(user, verificationToken);
+
+        res.status(200).json({
+            success: true,
+            message: 'Verification email sent successfully'
+        });
+    } catch (error) {
+        console.error('Resend verification email error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while sending verification email.'
         });
     }
 };

@@ -12,6 +12,9 @@ const sendEmail = async (options) => {
         auth: {
             user: config.SMTP_USER,
             pass: config.SMTP_PASS
+        },
+        tls: {
+            rejectUnauthorized: false
         }
     });
 
@@ -32,7 +35,7 @@ const sendVerificationEmail = async (user, verificationToken) => {
 
     await sendEmail({
         to: user.email,
-        subject: 'Email Verification',
+        subject: '🔐 Verify Your Email Address - zforexlive',
         html: verificationEmailTemplate(user.firstname, verificationURL)
     });
 };
@@ -45,7 +48,7 @@ const sendPasswordResetEmail = async (user, resetToken) => {
     console.log('Sending password reset email to:', user.email);
     await sendEmail({
         to: user.email,
-        subject: 'Password Reset',
+        subject: '🔒 Password Reset - zforexlive',
         html: passwordResetTemplate(user.firstname, resetURL)
     });
 };
