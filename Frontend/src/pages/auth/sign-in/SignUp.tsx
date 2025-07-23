@@ -50,6 +50,12 @@ export default function SignUp({ validReferral }: SignUpProps) {
     const [countryName, setCountryName] = useState<string>("");
     const [stateName, setStateName] = useState<string>("");
 
+    const [showResendOption, setShowResendOption] = useState(false);
+    const [resendTimer, setResendTimer] = useState(0);
+    const [isResendingEmail, setIsResendingEmail] = useState(false);
+    const [registrationSuccess, setRegistrationSuccess] = useState(false);
+    const [userEmail, setUserEmail] = useState("");
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -88,14 +94,31 @@ export default function SignUp({ validReferral }: SignUpProps) {
             const data = await response.json();
 
             if (data.success) {
+                setUserEmail(values.email);
+                setRegistrationSuccess(true);
+                setShowResendOption(false);
+                setResendTimer(60); // Start 1-minute timer
+
                 toast.success("Registration successful! Please check your email to verify your account.", {
                     duration: 5000
                 });
 
+                // Start the resend timer
+                const timer = setInterval(() => {
+                    setResendTimer((prev) => {
+                        if (prev <= 1) {
+                            setShowResendOption(true);
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+
+                // Start checking for email verification
+                startVerificationCheck(values.email);
+
                 form.reset();
-                setTimeout(() => {
-                    navigate('/');
-                }, 2000);
             } else {
                 toast.error(data.message || "Failed to register. Please try again.");
             }
@@ -106,6 +129,91 @@ export default function SignUp({ validReferral }: SignUpProps) {
             setIsSubmitting(false);
         }
     }
+
+    // Function to check verification status
+    const checkVerificationStatus = async (email: string) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/check-verification-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+            });
+
+            const data = await response.json();
+            return data.isVerified;
+        } catch (error) {
+            console.error("Error checking verification status:", error);
+            return false;
+        }
+    };
+
+    // Function to start verification checking
+    const startVerificationCheck = (email: string) => {
+        const checkInterval = setInterval(async () => {
+            const isVerified = await checkVerificationStatus(email);
+
+            if (isVerified) {
+                clearInterval(checkInterval);
+                toast.success("Your email has been verified! Redirecting to login...", {
+                    duration: 3000
+                });
+
+                setTimeout(() => {
+                    navigate('/?verified=true');
+                }, 3000);
+            }
+        }, 5000); // Check every 5 seconds
+
+        // Clear interval after 10 minutes to avoid infinite checking
+        setTimeout(() => {
+            clearInterval(checkInterval);
+        }, 600000);
+    };
+
+    // Function to resend verification email
+    const resendVerificationEmail = async () => {
+        try {
+            setIsResendingEmail(true);
+
+            const response = await fetch(`${API_BASE_URL}/api/auth/resend-verification`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email: userEmail }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                toast.success("Verification email sent successfully!");
+                setShowResendOption(false);
+                setResendTimer(60);
+
+                // Restart timer
+                const timer = setInterval(() => {
+                    setResendTimer((prev) => {
+                        if (prev <= 1) {
+                            setShowResendOption(true);
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+            } else {
+                toast.error(data.message || "Failed to resend email. Please try again.");
+            }
+        } catch (error) {
+            console.error("Resend email error:", error);
+            toast.error("Something went wrong. Please try again.");
+        } finally {
+            setIsResendingEmail(false);
+        }
+    };
+
 
     return (
         <div className="min-h-screen w-full bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-x-hidden">
@@ -401,6 +509,38 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                             "Create Account"
                                         )}
                                     </Button>
+
+                                    {/* Resend Verification Section */}
+                                    {registrationSuccess && (
+                                        <div className="text-center py-4 border-t border-gray-200 dark:border-gray-700">
+                                            <p className="text-muted-foreground text-sm md:text-base mb-2">
+                                                Didn't receive the verification email?
+                                            </p>
+
+                                            {!showResendOption && resendTimer > 0 ? (
+                                                <p className="text-sm text-gray-500">
+                                                    You can resend the email in <span className="font-semibold text-blue-600">{resendTimer}</span> seconds
+                                                </p>
+                                            ) : showResendOption ? (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                                    onClick={resendVerificationEmail}
+                                                    disabled={isResendingEmail}
+                                                >
+                                                    {isResendingEmail ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                                            Sending...
+                                                        </div>
+                                                    ) : (
+                                                        "Resend Verification Email"
+                                                    )}
+                                                </Button>
+                                            ) : null}
+                                        </div>
+                                    )}
 
                                     {/* Sign In Link */}
                                     <div className="text-center pt-4">
