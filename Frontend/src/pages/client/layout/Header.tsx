@@ -237,7 +237,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                   <div className="flex items-center space-x-2">
                     <User className="h-4 w-4 text-blue-600" />
                     <span className="font-medium text-gray-700 text-xs">
-                     {userData.firstname.charAt(0).toUpperCase() + userData.firstname.slice(1)} {userData.lastname.charAt(0).toUpperCase() + userData.lastname.slice(1)}
+                      {userData.firstname.charAt(0).toUpperCase() + userData.firstname.slice(1)} {userData.lastname.charAt(0).toUpperCase() + userData.lastname.slice(1)}
                     </span>
                   </div>
 
@@ -325,7 +325,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-foreground truncate">
-                     {userData.firstname.charAt(0).toUpperCase() + userData.firstname.slice(1)} {userData.lastname.charAt(0).toUpperCase() + userData.lastname.slice(1)}
+                      {userData.firstname.charAt(0).toUpperCase() + userData.firstname.slice(1)} {userData.lastname.charAt(0).toUpperCase() + userData.lastname.slice(1)}
                     </h3>
                     <p className="text-sm text-muted-foreground truncate">{userData.email}</p>
                     {activeRole && (
