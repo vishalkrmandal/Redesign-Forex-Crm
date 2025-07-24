@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Eye, EyeOff, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, LogIn, UserPlus, Shield, Users, Crown } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,12 +25,56 @@ const loginSchema = z.object({
     rememberMe: z.boolean().default(false)
 });
 
-export default function SignInCard() {
+// Role configuration
+const ROLE_CONFIG = {
+    client: {
+        title: 'Client Portal',
+        description: 'Access your trading account',
+        icon: Users,
+        gradient: 'from-blue-500 to-purple-600',
+        textGradient: 'from-blue-600 to-purple-600',
+        path: '/login'
+    },
+    admin: {
+        title: 'Admin Dashboard',
+        description: 'Manage users and system settings',
+        icon: Shield,
+        gradient: 'from-green-500 to-blue-600',
+        textGradient: 'from-green-600 to-blue-600',
+        path: '/login/admin'
+    },
+    superadmin: {
+        title: 'Super Admin',
+        description: 'Full system administration',
+        icon: Crown,
+        gradient: 'from-purple-500 to-pink-600',
+        textGradient: 'from-purple-600 to-pink-600',
+        path: '/login/superadmin'
+    },
+    agent: {
+        title: 'Agent Portal',
+        description: 'Manage your clients and commissions',
+        icon: UserPlus,
+        gradient: 'from-orange-500 to-red-600',
+        textGradient: 'from-orange-600 to-red-600',
+        path: '/login/agent'
+    }
+};
+
+interface SignInCardProps {
+    loginType?: 'client' | 'admin' | 'superadmin' | 'agent';
+}
+
+export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
     const { hasMultipleRoles } = useAuth();
     const navigate = useNavigate();
     const [showPassword, setShowPassword] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [showForgotPassword, setShowForgotPassword] = React.useState(false);
+
+    // Get role configuration
+    const roleConfig = ROLE_CONFIG[loginType];
+    const IconComponent = roleConfig.icon;
 
     const form = useForm<z.infer<typeof loginSchema>>({
         resolver: zodResolver(loginSchema),
@@ -41,19 +85,19 @@ export default function SignInCard() {
         }
     });
 
-    // Check if user already has active sessions - ADD AGENT TOKEN CHECK
+    // Check if user already has active sessions
     React.useEffect(() => {
         const adminToken = localStorage.getItem('adminToken');
         const clientToken = localStorage.getItem('clientToken');
         const superadminToken = localStorage.getItem('superadminToken');
-        const agentToken = localStorage.getItem('agentToken'); // ADD THIS
+        const agentToken = localStorage.getItem('agentToken');
 
         // Priority order: superadmin > admin > agent > client
         if (superadminToken) {
             navigate('/superadmin');
         } else if (adminToken) {
             navigate('/admin');
-        } else if (agentToken) { // ADD THIS
+        } else if (agentToken) {
             navigate('/agent');
         } else if (clientToken) {
             navigate('/client');
@@ -71,7 +115,8 @@ export default function SignInCard() {
                 },
                 body: JSON.stringify({
                     email: values.email,
-                    password: values.password
+                    password: values.password,
+                    loginType: loginType // Send the expected login type
                 }),
             });
 
@@ -79,6 +124,21 @@ export default function SignInCard() {
 
             if (data.success) {
                 const userRole = data.user.role;
+
+                // Validate if user role matches the login interface
+                // NEW: Strict role validation for ALL login types
+                if (userRole !== loginType) {
+                    const correctPath = userRole === 'client' ? '/login' : `/login/${userRole}`;
+                    toast.error(`This login interface is for ${loginType}s only. Your account role is ${userRole}. Please use ${correctPath}`);
+
+                    // Optional: Auto-redirect to correct login page after 2 seconds
+                    setTimeout(() => {
+                        navigate(correctPath);
+                    }, 2000);
+
+                    setIsSubmitting(false);
+                    return;
+                }
 
                 // Store token and user info in localStorage based on role
                 localStorage.setItem(`${userRole}Token`, data.token);
@@ -90,12 +150,12 @@ export default function SignInCard() {
                     });
 
                     setTimeout(() => {
-                        // FIX: Add proper agent role handling
+                        // Redirect based on user role
                         if (userRole === 'superadmin') {
                             window.location.href = '/superadmin';
-                        } else if (userRole === 'agent') { // ADD THIS
+                        } else if (userRole === 'agent') {
                             window.location.href = '/agent';
-                        } else if (userRole === 'admin') { // ADD THIS
+                        } else if (userRole === 'admin') {
                             window.location.href = '/admin';
                         } else {
                             window.location.href = '/client';
@@ -117,22 +177,49 @@ export default function SignInCard() {
 
     const multipleRoles = hasMultipleRoles();
 
+    // Role switcher component
+    const RoleSwitcher = () => (
+        <div className="mb-6">
+            <div className="flex flex-wrap gap-2 justify-center">
+                {Object.entries(ROLE_CONFIG).map(([role, config]) => {
+                    const isActive = loginType === role;
+
+                    return (
+                        <Button
+                            key={role}
+                            variant={isActive ? "default" : "outline"}
+                            size="sm"
+                            className={`capitalize ${isActive ? `bg-gradient-to-r ${config.gradient} text-white` : ''}`}
+                            onClick={() => navigate(config.path)}
+                        >
+                            <config.icon className="w-3 h-3 mr-1" />
+                            {role}
+                        </Button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+
     return (
         <>
             <Card className="w-full max-w-md shadow-2xl border-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
                 <CardHeader className="text-center space-y-4 pb-8">
-                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
-                        <LogIn className="w-8 h-8 text-white" />
+                    <div className={`mx-auto w-16 h-16 bg-gradient-to-br ${roleConfig.gradient} rounded-full flex items-center justify-center mb-4`}>
+                        <IconComponent className="w-8 h-8 text-white" />
                     </div>
-                    <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        Welcome Back
+                    <CardTitle className={`text-3xl font-bold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent`}>
+                        {roleConfig.title}
                     </CardTitle>
                     <CardDescription className="text-lg text-muted-foreground">
-                        Sign in to your account to continue
+                        {roleConfig.description}
                     </CardDescription>
                 </CardHeader>
 
                 <CardContent className="px-8 pb-8">
+                    {/* Role Switcher */}
+                    <RoleSwitcher />
+
                     {multipleRoles && (
                         <Alert className="mb-6 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
                             <AlertDescription className="text-blue-800 dark:text-blue-200">
@@ -178,7 +265,7 @@ export default function SignInCard() {
                                             <Button
                                                 type="button"
                                                 variant="link"
-                                                className="p-0 h-auto text-sm font-medium text-blue-600 hover:text-blue-700"
+                                                className={`p-0 h-auto text-sm font-medium bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
                                                 onClick={() => setShowForgotPassword(true)}
                                             >
                                                 Forgot password?
@@ -234,7 +321,7 @@ export default function SignInCard() {
 
                             <Button
                                 type="submit"
-                                className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                                className={`w-full h-12 text-lg font-semibold bg-gradient-to-r ${roleConfig.gradient} hover:opacity-90 shadow-lg hover:shadow-xl transition-all duration-300`}
                                 disabled={isSubmitting}
                             >
                                 {isSubmitting ? (
@@ -245,24 +332,27 @@ export default function SignInCard() {
                                 ) : (
                                     <div className="flex items-center gap-2">
                                         <LogIn className="w-4 h-4" />
-                                        Sign In
+                                        Sign In as {loginType.charAt(0).toUpperCase() + loginType.slice(1)}
                                     </div>
                                 )}
                             </Button>
 
-                            <div className="text-center pt-4">
-                                <p className="text-muted-foreground">
-                                    Don't have an account?{" "}
-                                    <Button
-                                        variant="link"
-                                        className="p-0 h-auto font-semibold text-blue-600 hover:text-blue-700"
-                                        onClick={() => navigate('/signup')}
-                                    >
-                                        <UserPlus className="w-4 h-4 mr-1" />
-                                        Create account
-                                    </Button>
-                                </p>
-                            </div>
+                            {/* Only show signup link for client login */}
+                            {loginType === 'client' && (
+                                <div className="text-center pt-4">
+                                    <p className="text-muted-foreground">
+                                        Don't have an account?{" "}
+                                        <Button
+                                            variant="link"
+                                            className={`p-0 h-auto font-semibold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
+                                            onClick={() => navigate('/signup')}
+                                        >
+                                            <UserPlus className="w-4 h-4 mr-1" />
+                                            Create account
+                                        </Button>
+                                    </p>
+                                </div>
+                            )}
                         </form>
                     </Form>
                 </CardContent>

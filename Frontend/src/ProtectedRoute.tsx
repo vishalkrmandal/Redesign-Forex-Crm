@@ -1,5 +1,4 @@
-// Frontend\src\ProtectedRoute.tsx
-
+// Frontend/src/ProtectedRoute.tsx - Updated version
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useEffect, useState } from 'react';
@@ -26,7 +25,7 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
       expectedRole = 'superadmin';
     } else if (allowedRoles.includes('admin') && adminToken) {
       expectedRole = 'admin';
-    } else if (allowedRoles.includes('agent') && agentToken) { // ADD THIS
+    } else if (allowedRoles.includes('agent') && agentToken) {
       expectedRole = 'agent';
     } else if (allowedRoles.includes('client') && clientToken) {
       expectedRole = 'client';
@@ -43,7 +42,11 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
 
   // Don't render anything until we've determined the correct role
   if (!isInitialized) {
-    return <div>Loading...</div>; // Or your loading component
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   // Get user based on current activeRole
@@ -56,8 +59,16 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   const isAuthorized = allowedRoles.includes(userRole);
 
   if (!isAuthenticated) {
-    // Redirect to login if not authenticated for this role 
-    return <Navigate to="/" replace />;
+    // Redirect to appropriate login based on which tokens are available
+    if (superadminToken) {
+      return <Navigate to="/login/superadmin" replace />;
+    } else if (adminToken) {
+      return <Navigate to="/login/admin" replace />;
+    } else if (agentToken) {
+      return <Navigate to="/login/agent" replace />;
+    } else {
+      return <Navigate to="/login" replace />;
+    }
   }
 
   if (!isAuthorized) {
@@ -67,13 +78,14 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
       return <Navigate to="/superadmin/configure" replace />;
     } else if ((adminToken) && (userRole === 'admin')) {
       return <Navigate to="/admin/dashboard" replace />;
-    } else if (agentToken && userRole === 'agent') { // ADD THIS
+    } else if (agentToken && userRole === 'agent') {
       return <Navigate to="/agent/dashboard" replace />;
     } else if (clientToken && userRole === 'client') {
       return <Navigate to="/client/dashboard" replace />;
     } else {
-      // No valid role found, go to login
-      return <Navigate to="/" replace />;
+      // No valid role found, go to appropriate login
+      const loginPath = userRole === 'client' ? '/login' : `/login/${userRole}`;
+      return <Navigate to={loginPath} replace />;
     }
   }
 

@@ -41,7 +41,13 @@ import IBPartnersPage from './pages/admin/Ibpartner/IBPartnersPage';
 import ConfigurationPage from './pages/admin/configure/ConfigurePage';
 import ClientTickets from './pages/admin/support/admin/ticket/ClientTickets';
 import IBWithdrawalManagement from './pages/admin/Ibpartner/IBWithdrawalManagement';
-import SignIn from './pages/auth/sign-in/SignIn';
+
+// Role-based login components
+import ClientLogin from './pages/auth/sign-in/ClientLogin';
+import AdminLogin from './pages/auth/sign-in/AdminLogin';
+import SuperAdminLogin from './pages/auth/sign-in/SuperAdminLogin';
+import AgentLogin from './pages/auth/sign-in/AgentLogin';
+// import SignIn from './pages/auth/sign-in/SignIn';
 import SignUp from './pages/auth/sign-in/SignUp';
 import ReferralRouteHandler from './pages/auth/sign-in/ReferralRouteHandler';
 import ResetPassword from './pages/auth/sign-in/components/ResetPassword';
@@ -56,14 +62,31 @@ import SuperadminConfigurationPage from './pages/superAdmin/configure/ConfigureP
 import AgentLayout from './pages/agent/layout/Layout';
 
 const routes: RouteObject[] = [
+  // Root and default client login routes
   {
     path: '/',
-    element: <SignIn />
+    element: <ClientLogin />
   },
   {
     path: '/login',
-    element: <SignIn />
+    element: <ClientLogin />
   },
+
+  // Role-based login routes
+  {
+    path: '/login/admin',
+    element: <AdminLogin />
+  },
+  {
+    path: '/login/superadmin',
+    element: <SuperAdminLogin />
+  },
+  {
+    path: '/login/agent',
+    element: <AgentLogin />
+  },
+
+  // Auth routes
   {
     path: '/reset-password/:token',
     element: <ResetPassword />
