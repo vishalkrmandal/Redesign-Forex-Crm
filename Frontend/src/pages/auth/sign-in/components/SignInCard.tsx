@@ -84,7 +84,7 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
 
     // Get role configuration
     const roleConfig = ROLE_CONFIG[loginType];
-    const IconComponent = roleConfig.icon;
+    // const IconComponent = roleConfig.icon;
 
     const form = useForm<z.infer<typeof loginSchema>>({
         resolver: zodResolver(loginSchema),
@@ -222,8 +222,14 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
         <>
             <Card className="w-full max-w-md shadow-2xl border-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
                 <CardHeader className="text-center space-y-4 pb-8">
-                    <div className={`mx-auto w-16 h-16 bg-gradient-to-br ${roleConfig.gradient} rounded-full flex items-center justify-center mb-4`}>
-                        <IconComponent className="w-8 h-8 text-white" />
+                    <div
+                        className={`mx-auto rounded-full flex items-center justify-center mb-4`}
+                    >
+                        <img
+                            src="/favicon.png"
+                            alt="Logo"
+                            className="w-24 h-20 "
+                        />
                     </div>
                     <CardTitle className={`text-3xl font-bold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent`}>
                         {roleConfig.title}
