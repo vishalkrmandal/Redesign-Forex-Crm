@@ -65,7 +65,9 @@ const ROLE_CONFIG = {
 const ROLE_VISIBILITY = {
     client: ['client'],                    // Client can only see client login
     agent: ['agent'],                      // Agent can only see agent login  
-    admin: ['client', 'agent', 'admin'],   // Admin can see client, agent, and admin
+    admin: ['client',
+        // 'agent', 
+        'admin'],   // Admin can see client, agent, and admin
     superadmin: ['client', 'agent', 'admin', 'superadmin'] // Superadmin can see all
 };
 
