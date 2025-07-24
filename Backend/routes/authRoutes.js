@@ -10,7 +10,9 @@ const {
     resetPassword,
     impersonateClient,
     checkVerificationStatus,
-    resendVerificationEmail
+    resendVerificationEmail,
+    checkUserRole,
+    logout,
 } = require('../controllers/authController');
 const { protect, authorize } = require('../middlewares/auth');
 
@@ -22,9 +24,12 @@ router.post('/agent/signup', protect, authorize('admin', 'superadmin'), agentSig
 router.get('/verify-email/:token', verifyEmail);
 router.post('/check-verification-status', checkVerificationStatus);
 router.post('/resend-verification', resendVerificationEmail);
-router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 router.post('/admin/impersonate/:clientId', protect, authorize('admin', 'superadmin'), impersonateClient);
+
+router.post('/login', login); // Updated to handle role-based login
+router.post('/check-role', checkUserRole); // New endpoint to check user role
+router.post('/logout', protect, logout); // New logout endpoint
 
 module.exports = router;

@@ -1,4 +1,4 @@
-// backend/controllers/authController.js
+// backend/controllers/authController.js - Complete updated version
 const crypto = require('crypto');
 const User = require('../models/User');
 const IBClientConfiguration = require('../models/client/IBClientConfiguration');
@@ -49,7 +49,6 @@ exports.adminSignup = async (req, res, next) => {
 
         // Generate verification token
         const verificationToken = user.generateEmailVerificationToken();
-
 
         // Send verification email
         await sendVerificationEmail(user, verificationToken);
@@ -180,7 +179,6 @@ exports.signup = async (req, res, next) => {
         // Generate verification token
         const verificationToken = user.generateEmailVerificationToken();
 
-
         // Send verification email
         await sendVerificationEmail(user, verificationToken);
         await user.save();
@@ -263,12 +261,12 @@ exports.verifyEmail = async (req, res, next) => {
     }
 };
 
-// @desc    Login user
+// @desc    Login user with role-based validation
 // @route   POST /api/auth/login
 // @access  Public
 exports.login = async (req, res, next) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, loginType } = req.body;
 
         // Validate email & password
         if (!email || !password) {
@@ -304,8 +302,38 @@ exports.login = async (req, res, next) => {
             });
         }
 
+        // Role-based login validation
+        // NEW: Strict validation for ALL login types including client
+        if (loginType) {
+            if (user.role !== loginType) {
+                const suggestedPath = user.role === 'client' ? '/login' : `/login/${user.role}`;
+                return res.status(403).json({
+                    success: false,
+                    message: `Access denied. This login interface is for ${loginType}s only. Your account role is ${user.role}.`,
+                    userRole: user.role,
+                    expectedRole: loginType,
+                    suggestedLoginPath: suggestedPath
+                });
+            }
+        } else {
+            // If no loginType provided, default to client validation
+            if (user.role !== 'client') {
+                const suggestedPath = `/login/${user.role}`;
+                return res.status(403).json({
+                    success: false,
+                    message: `This is the client login interface. Your account role is ${user.role}. Please use the correct login interface.`,
+                    userRole: user.role,
+                    expectedRole: 'client',
+                    suggestedLoginPath: suggestedPath
+                });
+            }
+        }
+
         // Create token
         const token = generateToken(user._id);
+
+        // Log successful login attempt (optional, for security monitoring)
+        console.log(`Successful login - User: ${user.email}, Role: ${user.role}, LoginType: ${loginType || 'client'}, IP: ${req.ip}`);
 
         res.status(200).json({
             success: true,
@@ -558,6 +586,88 @@ exports.resendVerificationEmail = async (req, res, next) => {
         res.status(500).json({
             success: false,
             message: 'An error occurred while sending verification email.'
+        });
+    }
+};
+
+// @desc    Get user role and suggested login path
+// @route   POST /api/auth/check-role
+// @access  Public
+exports.checkUserRole = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email is required'
+            });
+        }
+
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Determine the correct login page
+        let loginPath = '/login'; // default for client
+        if (user.role === 'admin') {
+            loginPath = '/login/admin';
+        } else if (user.role === 'superadmin') {
+            loginPath = '/login/superadmin';
+        } else if (user.role === 'agent') {
+            loginPath = '/login/agent';
+        }
+
+        res.status(200).json({
+            success: true,
+            role: user.role,
+            loginPath: loginPath,
+            isVerified: user.isEmailVerified
+        });
+    } catch (error) {
+        console.error('Check user role error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while checking user role.'
+        });
+    }
+};
+
+// @desc    Logout user (clear specific role token)
+// @route   POST /api/auth/logout
+// @access  Private
+exports.logout = async (req, res, next) => {
+    try {
+        const { role } = req.body;
+        const userId = req.user.id;
+
+        // Log logout activity
+        console.log(`User logout - ID: ${userId}, Role: ${role}, IP: ${req.ip}`);
+
+        // Optional: Add token to blacklist if you're implementing token blacklisting
+        // const token = req.headers.authorization.split(' ')[1];
+        // await TokenBlacklist.create({ 
+        //     token: token, 
+        //     userId: userId,
+        //     role: role,
+        //     blacklistedAt: new Date()
+        // });
+
+        res.status(200).json({
+            success: true,
+            message: 'Logged out successfully',
+            role: role
+        });
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred during logout.'
         });
     }
 };
