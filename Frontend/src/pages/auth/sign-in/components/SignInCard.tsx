@@ -61,6 +61,14 @@ const ROLE_CONFIG = {
     }
 };
 
+// Role visibility rules
+const ROLE_VISIBILITY = {
+    client: ['client'],                    // Client can only see client login
+    agent: ['agent'],                      // Agent can only see agent login  
+    admin: ['client', 'agent', 'admin'],   // Admin can see client, agent, and admin
+    superadmin: ['client', 'agent', 'admin', 'superadmin'] // Superadmin can see all
+};
+
 interface SignInCardProps {
     loginType?: 'client' | 'admin' | 'superadmin' | 'agent';
 }
@@ -177,29 +185,36 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
 
     const multipleRoles = hasMultipleRoles();
 
-    // Role switcher component
-    const RoleSwitcher = () => (
-        <div className="mb-6">
-            <div className="flex flex-wrap gap-2 justify-center">
-                {Object.entries(ROLE_CONFIG).map(([role, config]) => {
-                    const isActive = loginType === role;
+    // Role switcher component with visibility rules
+    const RoleSwitcher = () => {
+        // Get visible roles based on current login type
+        const visibleRoles = ROLE_VISIBILITY[loginType];
 
-                    return (
-                        <Button
-                            key={role}
-                            variant={isActive ? "default" : "outline"}
-                            size="sm"
-                            className={`capitalize ${isActive ? `bg-gradient-to-r ${config.gradient} text-white` : ''}`}
-                            onClick={() => navigate(config.path)}
-                        >
-                            <config.icon className="w-3 h-3 mr-1" />
-                            {role}
-                        </Button>
-                    );
-                })}
+        return (
+            <div className="mb-6">
+                <div className="flex flex-wrap gap-2 justify-center">
+                    {Object.entries(ROLE_CONFIG)
+                        .filter(([role]) => visibleRoles.includes(role)) // Filter based on visibility
+                        .map(([role, config]) => {
+                            const isActive = loginType === role;
+
+                            return (
+                                <Button
+                                    key={role}
+                                    variant={isActive ? "default" : "outline"}
+                                    size="sm"
+                                    className={`capitalize ${isActive ? `bg-gradient-to-r ${config.gradient} text-white` : ''}`}
+                                    onClick={() => navigate(config.path)}
+                                >
+                                    <config.icon className="w-3 h-3 mr-1" />
+                                    {role}
+                                </Button>
+                            );
+                        })}
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <>
