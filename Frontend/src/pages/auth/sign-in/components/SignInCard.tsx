@@ -1,11 +1,11 @@
-// Frontend/src/pages/auth/sign-in/components/SignInCard.tsx
+// Frontend/src/pages/auth/sign-in/components/SignInCard.tsx - FIXED VERSION
 
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Eye, EyeOff, Mail, Lock, LogIn, UserPlus, Shield, Users, Crown } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, LogIn, UserPlus, Shield, Users, Crown, X, UserCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,12 +63,10 @@ const ROLE_CONFIG = {
 
 // Role visibility rules
 const ROLE_VISIBILITY = {
-    client: ['client'],                    // Client can only see client login
-    agent: ['agent'],                      // Agent can only see agent login  
-    admin: ['client',
-        // 'agent', 
-        'admin'],   // Admin can see client, agent, and admin
-    superadmin: ['client', 'agent', 'admin', 'superadmin'] // Superadmin can see all
+    client: ['client'],
+    agent: ['agent'],
+    admin: ['client', 'admin'],
+    superadmin: ['client', 'agent', 'admin', 'superadmin']
 };
 
 interface SignInCardProps {
@@ -76,15 +74,16 @@ interface SignInCardProps {
 }
 
 export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
-    const { hasMultipleRoles } = useAuth();
+    const { getAllActiveSessions, hasValidSession } = useAuth();
     const navigate = useNavigate();
     const [showPassword, setShowPassword] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [showForgotPassword, setShowForgotPassword] = React.useState(false);
+    const [showExistingSession, setShowExistingSession] = React.useState(false);
 
     // Get role configuration
     const roleConfig = ROLE_CONFIG[loginType];
-    // const IconComponent = roleConfig.icon;
+    const activeSessions = getAllActiveSessions();
 
     const form = useForm<z.infer<typeof loginSchema>>({
         resolver: zodResolver(loginSchema),
@@ -95,24 +94,52 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
         }
     });
 
-    // Check if user already has active sessions
+    // 🔧 FIXED: Only redirect if current login type has active session
     React.useEffect(() => {
-        const adminToken = localStorage.getItem('adminToken');
-        const clientToken = localStorage.getItem('clientToken');
-        const superadminToken = localStorage.getItem('superadminToken');
-        const agentToken = localStorage.getItem('agentToken');
+        // Only check token for the CURRENT login type, not all roles
+        const currentRoleToken = localStorage.getItem(`${loginType}Token`);
+        const currentRoleUser = localStorage.getItem(`${loginType}User`);
 
-        // Priority order: superadmin > admin > agent > client
-        if (superadminToken) {
-            navigate('/superadmin');
-        } else if (adminToken) {
-            navigate('/admin');
-        } else if (agentToken) {
-            navigate('/agent');
-        } else if (clientToken) {
-            navigate('/client');
+        if (currentRoleToken && currentRoleUser) {
+            // Only redirect if we have VALID session for current role
+            try {
+                const user = JSON.parse(currentRoleUser);
+                if (user && user.role === loginType) {
+                    setShowExistingSession(true);
+                }
+            } catch (error) {
+                // Invalid user data, clear it
+                localStorage.removeItem(`${loginType}Token`);
+                localStorage.removeItem(`${loginType}User`);
+            }
         }
-    }, [navigate]);
+    }, [loginType]); // Only depend on loginType, not navigate
+
+    // Handle existing session actions
+    const handleUseExistingSession = () => {
+        const defaultPaths = {
+            client: '/client/dashboard',
+            admin: '/admin/dashboard',
+            agent: '/agent/dashboard',
+            superadmin: '/superadmin/configure'
+        };
+        navigate(defaultPaths[loginType]);
+    };
+
+    const handleLoginAsNewUser = () => {
+        // Clear existing session for this role to allow new login
+        localStorage.removeItem(`${loginType}Token`);
+        localStorage.removeItem(`${loginType}User`);
+        setShowExistingSession(false);
+        toast.info(`Previous ${loginType} session cleared. You can now login as a different user.`);
+    };
+
+    const handleLogoutFromRole = () => {
+        localStorage.removeItem(`${loginType}Token`);
+        localStorage.removeItem(`${loginType}User`);
+        setShowExistingSession(false);
+        toast.success(`Logged out from ${loginType} session`);
+    };
 
     const onSubmit = async (values: z.infer<typeof loginSchema>) => {
         setIsSubmitting(true);
@@ -126,7 +153,7 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
                 body: JSON.stringify({
                     email: values.email,
                     password: values.password,
-                    loginType: loginType // Send the expected login type
+                    loginType: loginType
                 }),
             });
 
@@ -136,12 +163,10 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
                 const userRole = data.user.role;
 
                 // Validate if user role matches the login interface
-                // NEW: Strict role validation for ALL login types
                 if (userRole !== loginType) {
                     const correctPath = userRole === 'client' ? '/login' : `/login/${userRole}`;
                     toast.error(`This login interface is for ${loginType}s only. Your account role is ${userRole}. Please use ${correctPath}`);
 
-                    // Optional: Auto-redirect to correct login page after 2 seconds
                     setTimeout(() => {
                         navigate(correctPath);
                     }, 2000);
@@ -155,20 +180,17 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
                 localStorage.setItem(`${userRole}User`, JSON.stringify(data.user));
 
                 if (data.user.isEmailVerified === true) {
-                    toast.success('Login successful! Redirecting...', {
-                        duration: 2000
-                    });
+                    toast.success('Login successful! Redirecting...', { duration: 2000 });
 
                     setTimeout(() => {
-                        // Redirect based on user role
                         if (userRole === 'superadmin') {
-                            window.location.href = '/superadmin';
+                            window.location.href = '/superadmin/configure';
                         } else if (userRole === 'agent') {
-                            window.location.href = '/agent';
+                            window.location.href = '/agent/dashboard';
                         } else if (userRole === 'admin') {
-                            window.location.href = '/admin';
+                            window.location.href = '/admin/dashboard';
                         } else {
-                            window.location.href = '/client';
+                            window.location.href = '/client/dashboard';
                         }
                     }, 1000);
                 } else {
@@ -185,31 +207,32 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
         }
     };
 
-    const multipleRoles = hasMultipleRoles();
-
     // Role switcher component with visibility rules
     const RoleSwitcher = () => {
-        // Get visible roles based on current login type
         const visibleRoles = ROLE_VISIBILITY[loginType];
 
         return (
             <div className="mb-6">
                 <div className="flex flex-wrap gap-2 justify-center">
                     {Object.entries(ROLE_CONFIG)
-                        .filter(([role]) => visibleRoles.includes(role)) // Filter based on visibility
+                        .filter(([role]) => visibleRoles.includes(role))
                         .map(([role, config]) => {
                             const isActive = loginType === role;
+                            const hasSession = hasValidSession(role);
 
                             return (
                                 <Button
                                     key={role}
                                     variant={isActive ? "default" : "outline"}
                                     size="sm"
-                                    className={`capitalize ${isActive ? `bg-gradient-to-r ${config.gradient} text-white` : ''}`}
+                                    className={`capitalize relative ${isActive ? `bg-gradient-to-r ${config.gradient} text-white` : ''}`}
                                     onClick={() => navigate(config.path)}
                                 >
                                     <config.icon className="w-3 h-3 mr-1" />
                                     {role}
+                                    {hasSession && !isActive && (
+                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                                    )}
                                 </Button>
                             );
                         })}
@@ -218,17 +241,62 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
         );
     };
 
+    // Existing Session Alert
+    const ExistingSessionAlert = () => {
+        if (!showExistingSession) return null;
+
+        const userStr = localStorage.getItem(`${loginType}User`);
+        const user = userStr ? JSON.parse(userStr) : null;
+
+        return (
+            <Alert className="mb-6 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+                <UserCheck className="h-4 w-4 text-blue-600" />
+                <div className="ml-2">
+                    <AlertDescription className="text-blue-800 dark:text-blue-200">
+                        <div className="font-medium mb-2">
+                            You're already logged in as: <strong>{user?.firstname} {user?.lastname}</strong>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                size="sm"
+                                onClick={handleUseExistingSession}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                                Continue as {user?.firstname}
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleLoginAsNewUser}
+                                className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                            >
+                                Login as Different User
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleLogoutFromRole}
+                                className="border-red-600 text-red-600 hover:bg-red-50"
+                            >
+                                <X className="w-3 h-3 mr-1" />
+                                Logout
+                            </Button>
+                        </div>
+                    </AlertDescription>
+                </div>
+            </Alert>
+        );
+    };
+
     return (
         <>
             <Card className="w-full max-w-md shadow-2xl border-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
                 <CardHeader className="text-center space-y-4 pb-8">
-                    <div
-                        className={`mx-auto rounded-full flex items-center justify-center mb-4`}
-                    >
+                    <div className="mx-auto rounded-full flex items-center justify-center mb-4">
                         <img
                             src="/favicon.png"
                             alt="Logo"
-                            className="w-24 h-20 "
+                            className="w-24 h-20"
                         />
                     </div>
                     <CardTitle className={`text-3xl font-bold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent`}>
@@ -243,141 +311,148 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
                     {/* Role Switcher */}
                     <RoleSwitcher />
 
-                    {multipleRoles && (
-                        <Alert className="mb-6 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
-                            <AlertDescription className="text-blue-800 dark:text-blue-200">
-                                You are already logged in with multiple accounts. You can switch between them in your profile.
+                    {/* Existing Session Alert */}
+                    <ExistingSessionAlert />
+
+                    {/* Active Sessions Info - Only show other sessions, not current */}
+                    {activeSessions.filter(session => session !== loginType).length > 0 && (
+                        <Alert className="mb-6 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
+                            <AlertDescription className="text-green-800 dark:text-green-200">
+                                Other active sessions: {activeSessions.filter(session => session !== loginType).join(', ')}
                             </AlertDescription>
                         </Alert>
                     )}
 
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                            <FormField
-                                control={form.control}
-                                name="email"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="flex items-center gap-2">
-                                            <Mail className="w-4 h-4" />
-                                            Email Address
-                                        </FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder="Enter your email"
-                                                type="email"
-                                                className="h-12 bg-background/50"
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="password"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <div className="flex items-center justify-between">
+                    {/* Login Form - Show if no existing session OR user chose to login as different user */}
+                    {!showExistingSession && (
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                                <FormField
+                                    control={form.control}
+                                    name="email"
+                                    render={({ field }) => (
+                                        <FormItem>
                                             <FormLabel className="flex items-center gap-2">
-                                                <Lock className="w-4 h-4" />
-                                                Password
+                                                <Mail className="w-4 h-4" />
+                                                Email Address
                                             </FormLabel>
-                                            <Button
-                                                type="button"
-                                                variant="link"
-                                                className={`p-0 h-auto text-sm font-medium bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
-                                                onClick={() => setShowForgotPassword(true)}
-                                            >
-                                                Forgot password?
-                                            </Button>
-                                        </div>
-                                        <FormControl>
-                                            <div className="relative">
+                                            <FormControl>
                                                 <Input
-                                                    placeholder="Enter your password"
-                                                    type={showPassword ? "text" : "password"}
-                                                    className="h-12 bg-background/50 pr-10"
+                                                    placeholder="Enter your email"
+                                                    type="email"
+                                                    className="h-12 bg-background/50"
                                                     {...field}
                                                 />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="password"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <div className="flex items-center justify-between">
+                                                <FormLabel className="flex items-center gap-2">
+                                                    <Lock className="w-4 h-4" />
+                                                    Password
+                                                </FormLabel>
                                                 <Button
                                                     type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    variant="link"
+                                                    className={`p-0 h-auto text-sm font-medium bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
+                                                    onClick={() => setShowForgotPassword(true)}
                                                 >
-                                                    {showPassword ? (
-                                                        <EyeOff className="h-4 w-4" />
-                                                    ) : (
-                                                        <Eye className="h-4 w-4" />
-                                                    )}
+                                                    Forgot password?
                                                 </Button>
                                             </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <Input
+                                                        placeholder="Enter your password"
+                                                        type={showPassword ? "text" : "password"}
+                                                        className="h-12 bg-background/50 pr-10"
+                                                        {...field}
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                    >
+                                                        {showPassword ? (
+                                                            <EyeOff className="h-4 w-4" />
+                                                        ) : (
+                                                            <Eye className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-                            <FormField
-                                control={form.control}
-                                name="rememberMe"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                        <FormControl>
-                                            <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
-                                        </FormControl>
-                                        <div className="space-y-1 leading-none">
-                                            <FormLabel className="text-sm font-medium">
-                                                Remember me
-                                            </FormLabel>
+                                <FormField
+                                    control={form.control}
+                                    name="rememberMe"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                            <FormControl>
+                                                <Checkbox
+                                                    checked={field.value}
+                                                    onCheckedChange={field.onChange}
+                                                />
+                                            </FormControl>
+                                            <div className="space-y-1 leading-none">
+                                                <FormLabel className="text-sm font-medium">
+                                                    Remember me
+                                                </FormLabel>
+                                            </div>
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <Button
+                                    type="submit"
+                                    className={`w-full h-12 text-lg font-semibold bg-gradient-to-r ${roleConfig.gradient} hover:opacity-90 shadow-lg hover:shadow-xl transition-all duration-300`}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            Signing in...
                                         </div>
-                                    </FormItem>
-                                )}
-                            />
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <LogIn className="w-4 h-4" />
+                                            Sign In as {loginType.charAt(0).toUpperCase() + loginType.slice(1)}
+                                        </div>
+                                    )}
+                                </Button>
 
-                            <Button
-                                type="submit"
-                                className={`w-full h-12 text-lg font-semibold bg-gradient-to-r ${roleConfig.gradient} hover:opacity-90 shadow-lg hover:shadow-xl transition-all duration-300`}
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                        Signing in...
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        <LogIn className="w-4 h-4" />
-                                        Sign In as {loginType.charAt(0).toUpperCase() + loginType.slice(1)}
+                                {/* Only show signup link for client login */}
+                                {loginType === 'client' && (
+                                    <div className="text-center pt-4">
+                                        <p className="text-muted-foreground">
+                                            Don't have an account?{" "}
+                                            <Button
+                                                variant="link"
+                                                className={`p-0 h-auto font-semibold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
+                                                onClick={() => navigate('/signup')}
+                                            >
+                                                <UserPlus className="w-4 h-4 mr-1" />
+                                                Create account
+                                            </Button>
+                                        </p>
                                     </div>
                                 )}
-                            </Button>
-
-                            {/* Only show signup link for client login */}
-                            {loginType === 'client' && (
-                                <div className="text-center pt-4">
-                                    <p className="text-muted-foreground">
-                                        Don't have an account?{" "}
-                                        <Button
-                                            variant="link"
-                                            className={`p-0 h-auto font-semibold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
-                                            onClick={() => navigate('/signup')}
-                                        >
-                                            <UserPlus className="w-4 h-4 mr-1" />
-                                            Create account
-                                        </Button>
-                                    </p>
-                                </div>
-                            )}
-                        </form>
-                    </Form>
+                            </form>
+                        </Form>
+                    )}
                 </CardContent>
             </Card>
 

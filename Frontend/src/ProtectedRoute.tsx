@@ -1,5 +1,6 @@
-// Frontend/src/ProtectedRoute.tsx - Updated version
-import { Navigate, Outlet } from 'react-router-dom';
+// Frontend/src/ProtectedRoute.tsx - Enhanced version for multiple concurrent sessions
+
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useEffect, useState } from 'react';
 
@@ -10,6 +11,7 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   const { activeRole, switchRole } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
+  const location = useLocation();
 
   // Get role-specific tokens
   const adminToken = localStorage.getItem('adminToken');
@@ -17,34 +19,63 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   const superadminToken = localStorage.getItem('superadminToken');
   const agentToken = localStorage.getItem('agentToken');
 
-  useEffect(() => {
-    // Determine which role should be active based on available tokens
-    let expectedRole: string | null = null;
+  // Determine expected role based on current path
+  const getExpectedRoleFromPath = (pathname: string): string | null => {
+    if (pathname.startsWith('/client')) return 'client';
+    if (pathname.startsWith('/admin')) return 'admin';
+    if (pathname.startsWith('/agent')) return 'agent';
+    if (pathname.startsWith('/superadmin')) return 'superadmin';
+    return null;
+  };
 
-    if (allowedRoles.includes('superadmin') && superadminToken) {
-      expectedRole = 'superadmin';
-    } else if (allowedRoles.includes('admin') && adminToken) {
-      expectedRole = 'admin';
-    } else if (allowedRoles.includes('agent') && agentToken) {
-      expectedRole = 'agent';
-    } else if (allowedRoles.includes('client') && clientToken) {
-      expectedRole = 'client';
+  // Check if specific role token exists and is valid
+  const hasValidTokenForRole = (role: string): boolean => {
+    const token = localStorage.getItem(`${role}Token`);
+    const user = localStorage.getItem(`${role}User`);
+    return !!(token && user);
+  };
+
+  useEffect(() => {
+    // Determine expected role based on current path
+    const pathBasedRole = getExpectedRoleFromPath(location.pathname);
+
+    let targetRole: string | null = null;
+
+    if (pathBasedRole) {
+      // If path suggests a specific role, check if we have valid token for it
+      if (hasValidTokenForRole(pathBasedRole) && allowedRoles.includes(pathBasedRole)) {
+        targetRole = pathBasedRole;
+      }
+    } else {
+      // Fallback to priority order if no path-based role detected
+      if (allowedRoles.includes('superadmin') && superadminToken) {
+        targetRole = 'superadmin';
+      } else if (allowedRoles.includes('admin') && adminToken) {
+        targetRole = 'admin';
+      } else if (allowedRoles.includes('agent') && agentToken) {
+        targetRole = 'agent';
+      } else if (allowedRoles.includes('client') && clientToken) {
+        targetRole = 'client';
+      }
     }
 
-    // Only switch role if we have a token but no active role, or wrong active role
-    if (expectedRole && activeRole !== expectedRole) {
-      // Don't navigate on role switch - let the current URL stay
-      switchRole(expectedRole, undefined); // Pass undefined instead of navigate
+    // Only switch role if we have a valid target role and it's different from current
+    if (targetRole && activeRole !== targetRole) {
+      // Don't navigate on role switch - maintain current URL
+      switchRole(targetRole, undefined);
     }
 
     setIsInitialized(true);
-  }, [activeRole, allowedRoles, adminToken, clientToken, superadminToken, agentToken, switchRole]);
+  }, [activeRole, allowedRoles, adminToken, clientToken, superadminToken, agentToken, switchRole, location.pathname]);
 
   // Don't render anything until we've determined the correct role
   if (!isInitialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300 font-medium">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -58,35 +89,52 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   // Check if user role is allowed for this route
   const isAuthorized = allowedRoles.includes(userRole);
 
+  // Enhanced authentication check
   if (!isAuthenticated) {
-    // Redirect to appropriate login based on which tokens are available
-    if (superadminToken) {
-      return <Navigate to="/login/superadmin" replace />;
-    } else if (adminToken) {
-      return <Navigate to="/login/admin" replace />;
-    } else if (agentToken) {
-      return <Navigate to="/login/agent" replace />;
-    } else {
-      return <Navigate to="/login" replace />;
-    }
-  }
+    const pathBasedRole = getExpectedRoleFromPath(location.pathname);
 
-  if (!isAuthorized) {
-    // Redirect based on available roles - use specific dashboard routes
-    // PRIORITY ORDER: superadmin > admin > agent > client
-    if ((superadminToken) && (userRole === 'superadmin')) {
-      return <Navigate to="/superadmin/configure" replace />;
-    } else if ((adminToken) && (userRole === 'admin')) {
-      return <Navigate to="/admin/dashboard" replace />;
-    } else if (agentToken && userRole === 'agent') {
-      return <Navigate to="/agent/dashboard" replace />;
-    } else if (clientToken && userRole === 'client') {
-      return <Navigate to="/client/dashboard" replace />;
-    } else {
-      // No valid role found, go to appropriate login
-      const loginPath = userRole === 'client' ? '/login' : `/login/${userRole}`;
+    if (pathBasedRole) {
+      // Redirect to the appropriate login for the path
+      const loginPath = pathBasedRole === 'client' ? '/login' : `/login/${pathBasedRole}`;
       return <Navigate to={loginPath} replace />;
     }
+
+    // Default fallback
+    return <Navigate to="/login" replace />;
+  }
+
+  // Enhanced authorization check
+  if (!isAuthorized) {
+    const pathBasedRole = getExpectedRoleFromPath(location.pathname);
+
+    // If user is trying to access a specific role path but doesn't have permission
+    if (pathBasedRole && !allowedRoles.includes(userRole)) {
+      // Check if user has token for other roles and redirect appropriately
+      if (hasValidTokenForRole('superadmin') && userRole === 'superadmin') {
+        return <Navigate to="/superadmin/configure" replace />;
+      } else if (hasValidTokenForRole('admin') && userRole === 'admin') {
+        return <Navigate to="/admin/dashboard" replace />;
+      } else if (hasValidTokenForRole('agent') && userRole === 'agent') {
+        return <Navigate to="/agent/dashboard" replace />;
+      } else if (hasValidTokenForRole('client') && userRole === 'client') {
+        return <Navigate to="/client/dashboard" replace />;
+      }
+    }
+
+    // Default role-based redirection
+    if (userRole === 'superadmin' && hasValidTokenForRole('superadmin')) {
+      return <Navigate to="/superadmin/configure" replace />;
+    } else if (userRole === 'admin' && hasValidTokenForRole('admin')) {
+      return <Navigate to="/admin/dashboard" replace />;
+    } else if (userRole === 'agent' && hasValidTokenForRole('agent')) {
+      return <Navigate to="/agent/dashboard" replace />;
+    } else if (userRole === 'client' && hasValidTokenForRole('client')) {
+      return <Navigate to="/client/dashboard" replace />;
+    }
+
+    // Fallback to appropriate login
+    const loginPath = userRole === 'client' ? '/login' : `/login/${userRole}`;
+    return <Navigate to={loginPath} replace />;
   }
 
   // Render the protected route

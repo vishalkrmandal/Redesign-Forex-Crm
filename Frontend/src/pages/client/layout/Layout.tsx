@@ -1,4 +1,4 @@
-// Frontend/src/pages/client/layout/Layout.tsx
+// Frontend/src/pages/client/layout/Layout.tsx - Complete file with SessionIndicator
 
 "use client"
 
@@ -9,12 +9,19 @@ import Sidebar from "./Sidebar"
 import Header from "./Header"
 import { NotificationProvider } from "@/context/NotificationContext"
 import ImpersonationBanner from '@/pages/auth/ImpersonationBanner'
+import SessionIndicator from '@/components/SessionIndicator'
 import { useAuth } from "@/hooks/useAuth"
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
   const location = useLocation()
+
+  const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [hasDragged, setHasDragged] = useState(false)
+
+
   useAuth()
 
   // Preserve scroll position and URL state on reload
@@ -79,6 +86,46 @@ export default function Layout() {
     if (isMobile) {
       setSidebarOpen(false)
     }
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true)
+    setHasDragged(false)
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const offsetX = e.clientX - rect.left
+    const offsetY = e.clientY - rect.top
+
+    // Get reference to the element for direct DOM manipulation
+    const dragElement = e.currentTarget as HTMLElement
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setHasDragged(true)
+
+      // Direct DOM manipulation for smoother dragging
+      const newX = e.clientX - offsetX
+      const newY = e.clientY - offsetY
+
+      dragElement.style.left = `${newX}px`
+      dragElement.style.top = `${newY}px`
+      dragElement.style.transform = 'none'
+
+      // Update state less frequently for performance
+      requestAnimationFrame(() => {
+        setDragPosition({ x: newX, y: newY })
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+
+      setTimeout(() => setHasDragged(false), 50)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
   }
 
   return (
@@ -159,11 +206,30 @@ export default function Layout() {
             {/* Main Content */}
             <main className="flex-1 overflow-auto relative bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-500/20 border-t-2 border-l-2 md:rounded-t-lg md:p-2 shadow-lg">
               <div className="mx-auto p-2 max-w-7xl">
-                {/* <div className="min-h-full bg-white/20 dark:bg-gray-900/20 backdrop-blur-sm rounded-lg shadow-sm "> */}
                 <Outlet />
-                {/* </div> */}
               </div>
             </main>
+
+            {/* Session Indicator - Draggable - Moved outside main */}
+            <div
+              className={`fixed z-[100] cursor-move select-none session-indicator-drag ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+              style={{
+                left: dragPosition.x || 'calc(100% - 200px)',
+                top: dragPosition.y || '80px',
+                transform: dragPosition.x ? 'none' : 'translateX(-100%)'
+              }}
+              onMouseDown={handleMouseDown}
+              onClick={(e) => {
+                if (hasDragged) {
+                  e.stopPropagation()
+                  e.preventDefault()
+                }
+              }}
+            >
+              <div style={{ pointerEvents: hasDragged ? 'none' : 'auto' }}>
+                <SessionIndicator />
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -1,10 +1,10 @@
-// Frontend\src\hooks\useAuth.tsx --> Authentication context and hooks for managing user roles in a React application
+// Frontend/src/hooks/useAuth.tsx - Enhanced for multiple concurrent sessions
+
 import { useState, useEffect, createContext, useContext } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { isImpersonationActive, getImpersonationInfo, endImpersonation as endImpersonationUtil } from '@/utils/impersonation';
 import axios from 'axios';
 
-// Replace process.env with import.meta.env for Vite
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface User {
@@ -12,7 +12,7 @@ interface User {
     firstname: string;
     lastname: string;
     email: string;
-    role: 'superadmin' | 'admin' | 'agent' | 'client'; // Add agent role
+    role: 'superadmin' | 'admin' | 'agent' | 'client';
     isEmailVerified: boolean;
 }
 
@@ -25,19 +25,22 @@ interface AuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
     isImpersonated: boolean;
-    activeRole: 'client' | 'admin' | 'agent' | 'superadmin' | null; // Add agent and allow null
+    activeRole: 'client' | 'admin' | 'agent' | 'superadmin' | null;
     impersonationInfo: any;
     login: (email: string, password: string, navigate: NavigateFunction) => Promise<void>;
     logout: (role?: string, navigate?: NavigateFunction) => void;
     switchRole: (role: string, navigate?: NavigateFunction) => void;
     endImpersonation: (navigate?: NavigateFunction) => void;
     hasMultipleRoles: () => boolean;
-    getToken: (userType: 'client' | 'admin' | 'agent' | 'superadmin') => string | null; // ADD THIS LINE
+    getToken: (userType: 'client' | 'admin' | 'agent' | 'superadmin') => string | null;
+    // Additional methods for concurrent session management
+    getRoleFromPath: (pathname: string) => string | null;
+    hasValidSession: (role: string) => boolean;
+    getAllActiveSessions: () => string[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Create a named function component instead of an anonymous arrow function
 function AuthProviderComponent({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [adminUser, setAdminUser] = useState<User | null>(null);
@@ -50,23 +53,47 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
     const [isImpersonated, setIsImpersonated] = useState(false);
     const [impersonationInfo, setImpersonationInfo] = useState<{ clientName: string; clientEmail: any; adminName: string } | null>(null);
 
-    // Get token based on user type for notifications
+    // Get role from URL path
+    const getRoleFromPath = (pathname: string): string | null => {
+        if (pathname.startsWith('/client')) return 'client';
+        if (pathname.startsWith('/admin')) return 'admin';
+        if (pathname.startsWith('/agent')) return 'agent';
+        if (pathname.startsWith('/superadmin')) return 'superadmin';
+        return null;
+    };
+
+    // Check if a specific role has a valid session
+    const hasValidSession = (role: string): boolean => {
+        const token = localStorage.getItem(`${role}Token`);
+        const user = localStorage.getItem(`${role}User`);
+        return !!(token && user);
+    };
+
+    // Get all active sessions
+    const getAllActiveSessions = (): string[] => {
+        const sessions: string[] = [];
+        ['client', 'admin', 'agent', 'superadmin'].forEach(role => {
+            if (hasValidSession(role)) {
+                sessions.push(role);
+            }
+        });
+        return sessions;
+    };
+
+    // Get token based on user type
     const getToken = (userType: 'client' | 'admin' | 'agent' | 'superadmin'): string | null => {
         if (userType === 'superadmin') {
             return localStorage.getItem('superadminToken');
         } else if (userType === 'admin') {
-            // For admin requests, superadmin can also access (inheritance)
             return localStorage.getItem('adminToken') || localStorage.getItem('superadminToken');
         } else if (userType === 'agent') {
-            // For agent requests, admin and superadmin can also access
             return localStorage.getItem('agentToken') || localStorage.getItem('adminToken') || localStorage.getItem('superadminToken');
         } else {
-            // For client, only client token
             return localStorage.getItem('clientToken');
         }
     };
 
-    // Check if the user is authenticated on initial load
+    // Enhanced initialization
     useEffect(() => {
         const checkAuth = async () => {
             setIsLoading(true);
@@ -78,11 +105,10 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
                 const superadminToken = localStorage.getItem('superadminToken');
                 const agentToken = localStorage.getItem('agentToken');
 
-
                 const adminUserStr = localStorage.getItem('adminUser');
                 const clientUserStr = localStorage.getItem('clientUser');
                 const superadminUserStr = localStorage.getItem('superadminUser');
-                const agentUserStr = localStorage.getItem('agentUser'); // Add this
+                const agentUserStr = localStorage.getItem('agentUser');
 
                 // Set all available user objects
                 if (adminUserStr) setAdminUser(JSON.parse(adminUserStr));
@@ -102,26 +128,32 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
                     return;
                 }
 
-                // Determine which role to activate first (priority order)
-                if (superadminToken && superadminUserStr) {
-                    const userData = JSON.parse(superadminUserStr);
+                // Enhanced role detection based on current URL
+                const currentPath = window.location.pathname;
+                const pathBasedRole = getRoleFromPath(currentPath);
+
+                let targetRole: string | null = null;
+
+                // First, try to use path-based role if valid
+                if (pathBasedRole && hasValidSession(pathBasedRole)) {
+                    targetRole = pathBasedRole;
+                } else {
+                    // Fallback to priority order
+                    if (superadminToken && superadminUserStr) {
+                        targetRole = 'superadmin';
+                    } else if (adminToken && adminUserStr) {
+                        targetRole = 'admin';
+                    } else if (agentToken && agentUserStr) {
+                        targetRole = 'agent';
+                    } else if (clientToken && clientUserStr) {
+                        targetRole = 'client';
+                    }
+                }
+
+                if (targetRole) {
+                    const userData = JSON.parse(localStorage.getItem(`${targetRole}User`) || '{}');
                     setUser(userData);
-                    setActiveRole('superadmin');
-                    setIsAuthenticated(true);
-                } else if (adminToken && adminUserStr) {
-                    const userData = JSON.parse(adminUserStr);
-                    setUser(userData);
-                    setActiveRole('admin');
-                    setIsAuthenticated(true);
-                } else if (agentToken && agentUserStr) { // Add agent priority
-                    const userData = JSON.parse(agentUserStr);
-                    setUser(userData);
-                    setActiveRole('agent');
-                    setIsAuthenticated(true);
-                } else if (clientToken && clientUserStr) {
-                    const userData = JSON.parse(clientUserStr);
-                    setUser(userData);
-                    setActiveRole('client');
+                    setActiveRole(targetRole as 'superadmin' | 'admin' | 'agent' | 'client');
                     setIsAuthenticated(true);
                 }
             } catch (error) {
@@ -137,59 +169,57 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
         checkAuth();
     }, []);
 
-    // Function to check if user is logged in with multiple roles
     const hasMultipleRoles = () => {
-        let roleCount = 0;
-        if (localStorage.getItem('adminToken')) roleCount++;
-        if (localStorage.getItem('clientToken')) roleCount++;
-        if (localStorage.getItem('superadminToken')) roleCount++;
-        if (localStorage.getItem('agentToken')) roleCount++; // Add agent role check
-        return roleCount > 1;
+        return getAllActiveSessions().length > 1;
     };
 
-    // Function to switch between roles if multiple logins exist
+    // Enhanced role switching - supports concurrent sessions
     const switchRole = (role: string, navigate?: NavigateFunction) => {
         if (!['admin', 'client', 'superadmin', 'agent'].includes(role)) {
             console.error('Invalid role specified');
             return;
         }
 
-        const token = localStorage.getItem(`${role}Token`);
-        const userStr = localStorage.getItem(`${role}User`);
-
-        if (!token || !userStr) {
-            console.error(`No ${role} credentials found`);
+        if (!hasValidSession(role)) {
+            console.error(`No valid session found for ${role}`);
             return;
         }
 
-        const userData = JSON.parse(userStr);
+        const userData = JSON.parse(localStorage.getItem(`${role}User`) || '{}');
+        const token = localStorage.getItem(`${role}Token`);
+
         setUser(userData);
         setActiveRole(role as 'superadmin' | 'admin' | 'agent' | 'client');
         setIsAuthenticated(true);
 
-        // Update axios default headers
-        const api = axios.create({
-            baseURL: API_URL,
-        });
+        // Update axios default headers for the current session
+        const api = axios.create({ baseURL: API_URL });
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-        // Redirect to appropriate route if navigate function is provided
+        // Only navigate if explicitly requested and path doesn't match role
         if (navigate) {
-            if (role === 'client') {
-                navigate('/client');
-            } else if (role === 'agent') {
-                navigate('/agent'); // New route for agents
-            } else {
-                navigate('/admin'); // superadmin and admin go to admin panel
+            const currentPath = window.location.pathname;
+            const currentPathRole = getRoleFromPath(currentPath);
+
+            // Only redirect if we're not already on the correct path
+            if (currentPathRole !== role) {
+                if (role === 'client') {
+                    navigate('/client/dashboard');
+                } else if (role === 'agent') {
+                    navigate('/agent/dashboard');
+                } else if (role === 'admin') {
+                    navigate('/admin/dashboard');
+                } else if (role === 'superadmin') {
+                    navigate('/superadmin/configure');
+                }
             }
         }
     };
 
+    // Enhanced login - maintains existing sessions
     const login = async (email: string, password: string, navigate: NavigateFunction) => {
         try {
-            const api = axios.create({
-                baseURL: API_URL,
-            });
+            const api = axios.create({ baseURL: API_URL });
             const response = await api.post('/api/auth/login', { email, password });
 
             if (response.data.success) {
@@ -206,7 +236,7 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
                 } else if (role === 'superadmin') {
                     setSuperadminUser(user);
                 } else if (role === 'agent') {
-                    setAgentUser(user); // Add this
+                    setAgentUser(user);
                 } else if (role === 'client') {
                     setClientUser(user);
                 }
@@ -216,16 +246,16 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
                 setActiveRole(role);
                 setIsAuthenticated(true);
 
-                // Set authorization header for future requests
+                // Set authorization header
                 api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
                 // Redirect based on role
                 if (role === 'admin' || role === 'superadmin') {
-                    navigate('/admin');
+                    navigate('/admin/dashboard');
                 } else if (role === 'agent') {
-                    navigate('/agent'); // New route
+                    navigate('/agent/dashboard');
                 } else {
-                    navigate('/client');
+                    navigate('/client/dashboard');
                 }
             }
         } catch (error) {
@@ -234,6 +264,7 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
         }
     };
 
+    // Enhanced logout - maintains other sessions
     const logout = (role?: string, navigate?: NavigateFunction) => {
         if (role) {
             // Log out from specific role only
@@ -241,35 +272,33 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
             localStorage.removeItem(`${role}User`);
 
             // Update state for that role
-            // Update state for that role
             if (role === 'admin') {
                 setAdminUser(null);
             } else if (role === 'superadmin') {
                 setSuperadminUser(null);
             } else if (role === 'agent') {
-                setAgentUser(null); // Add this
+                setAgentUser(null);
             } else if (role === 'client') {
                 setClientUser(null);
             }
 
             // If current active role is being logged out, switch to another available role
             if (activeRole === role) {
-                // Priority order: superadmin > admin > agent > client
-                if (role !== 'superadmin' && localStorage.getItem('superadminToken')) {
-                    switchRole('superadmin', navigate);
-                    return;
-                } else if (role !== 'admin' && localStorage.getItem('adminToken')) {
-                    switchRole('admin', navigate);
-                    return;
-                } else if (role !== 'agent' && localStorage.getItem('agentToken')) {
-                    switchRole('agent', navigate);
-                    return;
-                } else if (role !== 'client' && localStorage.getItem('clientToken')) {
-                    switchRole('client', navigate);
-                    return;
-                } else {
-                    logoutAll(navigate);
+                const activeSessions = getAllActiveSessions().filter(r => r !== role);
+
+                if (activeSessions.length > 0) {
+                    // Switch to the highest priority available session
+                    const priorityOrder = ['superadmin', 'admin', 'agent', 'client'];
+                    const nextRole = priorityOrder.find(r => activeSessions.includes(r));
+
+                    if (nextRole) {
+                        switchRole(nextRole, navigate);
+                        return;
+                    }
                 }
+
+                // No other sessions available, do full logout
+                logoutAll(navigate);
             }
         } else {
             // Full logout from all roles
@@ -280,33 +309,27 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
     // Helper function to log out from all roles
     const logoutAll = (navigate?: NavigateFunction) => {
         // Clear all auth-related data
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminUser');
-        localStorage.removeItem('clientToken');
-        localStorage.removeItem('clientUser');
-        localStorage.removeItem('superadminToken');
-        localStorage.removeItem('superadminUser');
-        localStorage.removeItem('agentToken'); // Add this
-        localStorage.removeItem('agentUser');
-        localStorage.removeItem('isImpersonated');
+        const keysToRemove = [
+            'token', 'user', 'adminToken', 'adminUser',
+            'clientToken', 'clientUser', 'superadminToken', 'superadminUser',
+            'agentToken', 'agentUser', 'isImpersonated'
+        ];
+
+        keysToRemove.forEach(key => localStorage.removeItem(key));
 
         // Reset all auth state
         setUser(null);
         setAdminUser(null);
         setClientUser(null);
         setSuperadminUser(null);
-        setAgentUser(null); // Add this
+        setAgentUser(null);
         setActiveRole(null);
         setIsAuthenticated(false);
         setIsImpersonated(false);
         setImpersonationInfo(null);
 
         // Clear API header
-        const api = axios.create({
-            baseURL: API_URL,
-        });
+        const api = axios.create({ baseURL: API_URL });
         delete api.defaults.headers.common['Authorization'];
 
         // Redirect to login if navigate function is provided
@@ -316,20 +339,15 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
     };
 
     const handleEndImpersonation = (navigate?: NavigateFunction) => {
-        // Call utility function to end impersonation
         endImpersonationUtil();
-
-        // Update state
         setIsImpersonated(false);
         setImpersonationInfo(null);
 
-        // If admin was previously logged in, switch back to admin role
         if (localStorage.getItem('adminToken')) {
             switchRole('admin', navigate);
         } else if (localStorage.getItem('superadminToken')) {
             switchRole('superadmin', navigate);
         } else if (navigate) {
-            // No admin role available, go to login
             navigate('/');
         }
     };
@@ -339,7 +357,7 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
             value={{
                 user,
                 adminUser,
-                agentUser, // Add this line
+                agentUser,
                 clientUser,
                 superadminUser,
                 isAuthenticated,
@@ -352,7 +370,11 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
                 switchRole,
                 hasMultipleRoles,
                 endImpersonation: handleEndImpersonation,
-                getToken
+                getToken,
+                // Additional methods for concurrent session management
+                getRoleFromPath,
+                hasValidSession,
+                getAllActiveSessions
             }}
         >
             {children}
@@ -360,7 +382,6 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
     );
 }
 
-// Named function for the custom hook
 function useAuthHook() {
     const context = useContext(AuthContext);
     if (context === undefined) {
@@ -369,11 +390,5 @@ function useAuthHook() {
     return context;
 }
 
-// Export the named components using default exports pattern
 export const AuthProvider = AuthProviderComponent;
 export const useAuth = useAuthHook;
-
-// Alternative solution:
-// Export default the hook and keep the provider as a named export
-// export { AuthProviderComponent as AuthProvider };
-// export default useAuthHook;

@@ -228,6 +228,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
             </div>
           </button>
 
+
           {/* Notifications */}
           <div className="relative" ref={notificationRef}>
             <button

@@ -1,8 +1,8 @@
-// Frontend/src/services/api/apiClient.ts
+// Frontend/src/services/api/apiClient.ts - Enhanced for multiple concurrent sessions
+
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import { toast } from 'sonner';
 
-// Types
 interface ApiError {
     success: false;
     message: string;
@@ -16,11 +16,15 @@ interface ApiResponse<T = any> {
     message?: string;
 }
 
-// Extend AxiosRequestConfig to include metadata for timing
 declare module 'axios' {
     export interface AxiosRequestConfig {
         metadata?: {
             startTime: number;
+        };
+        // Add session context
+        sessionContext?: {
+            role: string;
+            forceRole?: boolean;
         };
     }
 }
@@ -44,11 +48,11 @@ class ApiClient {
     }
 
     private setupInterceptors() {
-        // Request interceptor
+        // Enhanced request interceptor
         this.client.interceptors.request.use(
             (config) => {
-                // Add auth token if available - check for client token specifically
-                const token = this.getAuthToken();
+                // Enhanced token selection based on context
+                const token = this.getAuthTokenForRequest(config);
                 if (token) {
                     config.headers.Authorization = `Bearer ${token}`;
                 }
@@ -63,7 +67,7 @@ class ApiClient {
             }
         );
 
-        // Response interceptor
+        // Enhanced response interceptor
         this.client.interceptors.response.use(
             (response: AxiosResponse) => {
                 // Log response time in development
@@ -81,8 +85,52 @@ class ApiClient {
         );
     }
 
+    // Enhanced token selection logic
+    private getAuthTokenForRequest(config: any): string | null {
+        // If session context is provided, use that role's token
+        if (config.sessionContext?.role) {
+            return localStorage.getItem(`${config.sessionContext.role}Token`);
+        }
+
+        // Determine role from URL path
+        const roleFromPath = this.getRoleFromUrl(config.url || '');
+        if (roleFromPath) {
+            const roleToken = localStorage.getItem(`${roleFromPath}Token`);
+            if (roleToken) return roleToken;
+        }
+
+        // Fallback to current active role or priority order
+        return this.getAuthToken();
+    }
+
+    // Extract role from API URL
+    private getRoleFromUrl(url: string): string | null {
+        if (url.includes('/api/client/') || url.includes('/client/')) return 'client';
+        if (url.includes('/api/admin/') || url.includes('/admin/')) return 'admin';
+        if (url.includes('/api/agent/') || url.includes('/agent/')) return 'agent';
+        if (url.includes('/api/superadmin/') || url.includes('/superadmin/')) return 'superadmin';
+        return null;
+    }
+
     private getAuthToken(): string | null {
-        // Check for client token first, then fallback to others
+        // Enhanced token selection based on current page context
+        const currentPath = window.location.pathname;
+
+        // First, try to get token based on current path
+        if (currentPath.startsWith('/client')) {
+            return localStorage.getItem('clientToken');
+        }
+        if (currentPath.startsWith('/admin')) {
+            return localStorage.getItem('adminToken') || localStorage.getItem('superadminToken');
+        }
+        if (currentPath.startsWith('/agent')) {
+            return localStorage.getItem('agentToken') || localStorage.getItem('adminToken') || localStorage.getItem('superadminToken');
+        }
+        if (currentPath.startsWith('/superadmin')) {
+            return localStorage.getItem('superadminToken');
+        }
+
+        // Fallback to priority order
         return localStorage.getItem('clientToken') ||
             localStorage.getItem('adminToken') ||
             localStorage.getItem('superadminToken') ||
@@ -93,7 +141,6 @@ class ApiClient {
         let errorMessage = 'An unexpected error occurred';
 
         if (error.response) {
-            // Server responded with error status
             const { status, data } = error.response;
 
             switch (status) {
@@ -126,7 +173,6 @@ class ApiClient {
                     errorMessage = data?.message || `Error ${status}`;
             }
         } else if (error.request) {
-            // Network error
             if (error.code === 'ECONNABORTED') {
                 errorMessage = 'Request timeout. Please check your connection.';
             } else {
@@ -151,24 +197,69 @@ class ApiClient {
         }
     }
 
+    // Enhanced unauthorized handling - doesn't clear all sessions
     private handleUnauthorized() {
-        // Clear auth tokens based on your existing auth structure
-        localStorage.removeItem('clientToken');
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('superadminToken');
-        localStorage.removeItem('agentToken');
-        localStorage.removeItem('clientUser');
-        localStorage.removeItem('adminUser');
-        localStorage.removeItem('superadminUser');
-        localStorage.removeItem('agentUser');
+        const currentPath = window.location.pathname;
+        const currentRole = this.getRoleFromPath(currentPath);
 
-        // Redirect to login
+        if (currentRole) {
+            // Only clear the current role's tokens
+            localStorage.removeItem(`${currentRole}Token`);
+            localStorage.removeItem(`${currentRole}User`);
+
+            // Check if other sessions are available
+            const availableRoles = ['client', 'admin', 'agent', 'superadmin']
+                .filter(role => role !== currentRole)
+                .filter(role => localStorage.getItem(`${role}Token`));
+
+            if (availableRoles.length > 0) {
+                // Redirect to an available session
+                const redirectRole = availableRoles[0];
+                const redirectPath = this.getDefaultPathForRole(redirectRole);
+                window.location.href = redirectPath;
+                toast.error(`${currentRole} session expired. Switched to ${redirectRole} session.`);
+                return;
+            }
+        }
+
+        // No other sessions available, full logout
+        this.clearAllSessions();
         window.location.href = '/';
-
         toast.error('Session expired. Please login again.');
     }
 
-    // HTTP Methods
+    // Get role from current path
+    private getRoleFromPath(path: string): string | null {
+        if (path.startsWith('/client')) return 'client';
+        if (path.startsWith('/admin')) return 'admin';
+        if (path.startsWith('/agent')) return 'agent';
+        if (path.startsWith('/superadmin')) return 'superadmin';
+        return null;
+    }
+
+    // Get default path for role
+    private getDefaultPathForRole(role: string): string {
+        switch (role) {
+            case 'client': return '/client/dashboard';
+            case 'admin': return '/admin/dashboard';
+            case 'agent': return '/agent/dashboard';
+            case 'superadmin': return '/superadmin/configure';
+            default: return '/';
+        }
+    }
+
+    // Clear all sessions
+    private clearAllSessions() {
+        const keysToRemove = [
+            'token', 'user', 'adminToken', 'adminUser',
+            'clientToken', 'clientUser', 'superadminToken', 'superadminUser',
+            'agentToken', 'agentUser', 'isImpersonated'
+        ];
+
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+    }
+
+    // Enhanced HTTP Methods with session context support
     async get<T = any>(url: string, config?: any): Promise<AxiosResponse<ApiResponse<T>>> {
         return this.client.get(url, config);
     }
@@ -187,6 +278,23 @@ class ApiClient {
 
     async delete<T = any>(url: string, config?: any): Promise<AxiosResponse<ApiResponse<T>>> {
         return this.client.delete(url, config);
+    }
+
+    // Methods with explicit session context
+    async getWithRole<T = any>(url: string, role: string, config?: any): Promise<AxiosResponse<ApiResponse<T>>> {
+        const enhancedConfig = {
+            ...config,
+            sessionContext: { role, forceRole: true }
+        };
+        return this.client.get(url, enhancedConfig);
+    }
+
+    async postWithRole<T = any>(url: string, role: string, data?: any, config?: any): Promise<AxiosResponse<ApiResponse<T>>> {
+        const enhancedConfig = {
+            ...config,
+            sessionContext: { role, forceRole: true }
+        };
+        return this.client.post(url, data, enhancedConfig);
     }
 
     // File upload helper
@@ -244,16 +352,20 @@ class ApiClient {
             localStorage.removeItem(`${userType}Token`);
             localStorage.removeItem(`${userType}User`);
         } else {
-            // Clear all tokens
-            localStorage.removeItem('clientToken');
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('superadminToken');
-            localStorage.removeItem('agentToken');
-            localStorage.removeItem('clientUser');
-            localStorage.removeItem('adminUser');
-            localStorage.removeItem('superadminUser');
-            localStorage.removeItem('agentUser');
+            this.clearAllSessions();
         }
+    }
+
+    // Check if session exists for role
+    hasSession(role: string): boolean {
+        const token = localStorage.getItem(`${role}Token`);
+        const user = localStorage.getItem(`${role}User`);
+        return !!(token && user);
+    }
+
+    // Get all active sessions
+    getActiveSessions(): string[] {
+        return ['client', 'admin', 'agent', 'superadmin'].filter(role => this.hasSession(role));
     }
 }
 
