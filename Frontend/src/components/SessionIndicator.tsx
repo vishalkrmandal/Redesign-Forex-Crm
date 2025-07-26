@@ -137,20 +137,20 @@ const SessionIndicator: React.FC<SessionIndicatorProps> = ({ className = '' }) =
 
                     {/* Dropdown */}
                     <div
-                        className="fixed z-[60] w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl"
+                        className="fixed z-[60] w-72 bg-card border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl"
                         style={{
                             top: `${dropdownPosition.top}px`,
                             right: `${dropdownPosition.right}px`
                         }}
                     >
-                        <div className="rounded-lg p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <div className="rounded-lg p-3 border-b border-gray-200 dark:border-gray-700 bg-card">
                             <h3 className="font-semibold text-gray-900 dark:text-white">Active Sessions</h3>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 You have {activeSessions.length} active session{activeSessions.length > 1 ? 's' : ''}
                             </p>
                         </div>
 
-                        <div className="py-1 max-h-60 overflow-y-auto bg-white dark:bg-gray-800">
+                        <div className="py-1 max-h-60 overflow-y-auto bg-card">
                             {activeSessions.map((role) => {
                                 const config = ROLE_CONFIG[role as keyof typeof ROLE_CONFIG];
                                 const Icon = config.icon;
@@ -216,7 +216,7 @@ const SessionIndicator: React.FC<SessionIndicatorProps> = ({ className = '' }) =
                             })}
                         </div>
 
-                        <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750 rounded-b-lg">
+                        <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-card dark:bg-gray-750 rounded-b-lg">
                             <button
                                 onClick={() => {
                                     logout(undefined, navigate);
