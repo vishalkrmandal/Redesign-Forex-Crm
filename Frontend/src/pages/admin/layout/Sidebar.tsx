@@ -9,11 +9,13 @@ import {
   ChevronDown,
   ChevronRight,
   BarChart2,
-  HeadphonesIcon,
+  // HeadphonesIcon,
   Home,
   Settings,
   HandshakeIcon,
-  UsersRound,
+  CopyPlus,
+  // UsersRound,
+
 } from "lucide-react"
 
 interface SidebarProps {
@@ -72,15 +74,23 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
       ],
     },
     {
-      title: "Support",
-      icon: HeadphonesIcon,
-      path: "/admin/support/portal",
+      title: "Copy Trading",
+      icon: CopyPlus,
+      submenu: [{
+        title: "Copy Request", path: "/admin/copy/copy-request"
+      }],
     },
-    {
-      title: "Agents Registration",
-      icon: UsersRound,
-      path: "/admin/agents-registration",
-    },
+    // {
+    //   title: "Support",
+    //   icon: HeadphonesIcon,
+    //   path: "/admin/support/portal",
+    // },
+    // {
+    //   title: "Agents Registration",
+    //   icon: UsersRound,
+    //   path: "/admin/agents-registration",
+    // },
+
   ]
 
   const toggleMenu = (title: string) => {

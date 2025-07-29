@@ -21,8 +21,9 @@ export default function Layout() {
   const [isDragging, setIsDragging] = useState(false)
   const [hasDragged, setHasDragged] = useState(false)
 
-
-  useAuth()
+  const { getAllActiveSessions } = useAuth()
+  const activeSessions = getAllActiveSessions()
+  const hasAdminAccess = activeSessions.some(role => role === 'admin' || role === 'superadmin')
 
   // Preserve scroll position and URL state on reload
   useEffect(() => {
@@ -128,6 +129,7 @@ export default function Layout() {
     document.addEventListener('mouseup', handleMouseUp)
   }
 
+
   return (
     <NotificationProvider userType="client">
       {/* Toast notifications */}
@@ -210,26 +212,29 @@ export default function Layout() {
               </div>
             </main>
 
-            {/* Session Indicator - Draggable - Moved outside main */}
-            <div
-              className={`fixed z-[100] cursor-move select-none session-indicator-drag ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-              style={{
-                left: dragPosition.x || 'calc(100% - 200px)',
-                top: dragPosition.y || '80px',
-                transform: dragPosition.x ? 'none' : 'translateX(-100%)'
-              }}
-              onMouseDown={handleMouseDown}
-              onClick={(e) => {
-                if (hasDragged) {
-                  e.stopPropagation()
-                  e.preventDefault()
-                }
-              }}
-            >
-              <div style={{ pointerEvents: hasDragged ? 'none' : 'auto' }}>
-                <SessionIndicator />
+            {/* Session Indicator - Only show if admin/superadmin session exists */}
+            {hasAdminAccess && (
+              <div
+                className={`fixed z-[100] cursor-move select-none session-indicator-drag ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                style={{
+                  left: dragPosition.x || 'calc(100% - 200px)',
+                  top: dragPosition.y || '80px',
+                  transform: dragPosition.x ? 'none' : 'translateX(-100%)'
+                }}
+                onMouseDown={handleMouseDown}
+                onClick={(e) => {
+                  if (hasDragged) {
+                    e.stopPropagation()
+                    e.preventDefault()
+                  }
+                }}
+              >
+                <div style={{ pointerEvents: hasDragged ? 'none' : 'auto' }}>
+                  <SessionIndicator />
+                </div>
               </div>
-            </div>
+            )}
+
           </div>
         </div>
       </div>

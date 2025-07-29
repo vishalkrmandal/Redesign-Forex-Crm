@@ -19,13 +19,15 @@ import ProfilePage from './pages/client/layout/profile/ProfilePage';
 import IBWithdrawal from './pages/client/Partner/IBWithdrawal';
 import TradeCommission from './pages/client/Partner/TradeCommission';
 import PartnerSummary from './pages/client/Partner/Commission/PartnerSummary';
+import CopyRequest from './pages/client/copy/CopyRequest';
+
 
 
 // import Rating from './pages/client/copytrading/Rating';
 // import CopierArea from './pages/client/copytrading/CopierArea';
 // import MasterArea from './pages/client/copytrading/MasterArea';
 // import TermsConditions from './pages/client/copytrading/TermsConditions';
-// import TradingSignals from './pages/client/trading-signals/TradingSignals';
+
 
 import AdminPortal from './pages/admin/support/admin/AdminPortal';
 import AdminTicketDetail from './pages/admin/support/admin/ticket/AdminTicketDetail';
@@ -60,6 +62,7 @@ import SuperadminLayout from './pages/superAdmin/layout/Layout';
 import AdminRegistration from './pages/superAdmin/AdminRegistration';
 import SuperadminConfigurationPage from './pages/superAdmin/configure/ConfigurePage';
 import AgentLayout from './pages/agent/layout/Layout';
+import CopyPage from './pages/admin/copy/CopyPage';
 
 const routes: RouteObject[] = [
   // Root and default client login routes
@@ -216,6 +219,15 @@ const routes: RouteObject[] = [
 
             ]
           },
+          {
+            path: 'copy',
+            children: [
+              {
+                path: 'copy-request',
+                element: <CopyRequest />
+              }
+            ]
+          },
 
           // Customer Support
           {
@@ -255,11 +267,7 @@ const routes: RouteObject[] = [
           //   ]
           // },
 
-          // Trading Signals
-          // {
-          //   path: 'trading-signals',
-          //   element: <TradingSignals />
-          // }
+
         ]
       }
     ]
@@ -350,6 +358,15 @@ const routes: RouteObject[] = [
                 path: 'client/:id/tickets',
                 element: <ClientTickets />
               },
+            ]
+          },
+          {
+            path: 'copy',
+            children: [
+              {
+                path: 'copy-request',
+                element: <CopyPage />
+              }
             ]
           },
           // Admin Agents Registration

@@ -27,6 +27,8 @@ import {
   Trophy,
   History,
   Wallet,
+  CopyPlus,
+  Copy,
 
 } from "lucide-react"
 
@@ -107,6 +109,14 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
         { title: "IB Commission", path: "/client/partner/ib-commission", icon: Percent },
         { title: "IB Withdrawal", path: "/client/partner/ib-withdrawal", icon: CreditCard },
       ],
+    },
+    {
+      title: "Copy Trading",
+      icon: Copy,
+      submenu: [{
+        title: "Copy Request", path: "/client/copy/copy-request",
+        icon: CopyPlus,
+      }],
     },
 
 
