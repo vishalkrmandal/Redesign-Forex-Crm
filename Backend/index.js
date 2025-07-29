@@ -41,6 +41,7 @@ const adminDashboardRoutes = require('./routes/admin/adminDashboardRoutes');
 const clientDashboardRoutes = require('./routes/client/clientDashboardRoutes');
 const adminIBWithdrawalRoutes = require('./routes/admin/ibWithdrawalRoutes');
 const dailyPerformanceRoutes = require('./routes/client/dailyPerformanceRoutes');
+const copyRoutes = require('./routes/copyRoutes');
 
 // Import the new commission routes
 const commissionRoutes = require('./routes/client/commissionRoutes');
@@ -163,6 +164,10 @@ app.use('/api/ibclients/ib-configurations', ibClientConfigurationRoutes);
 app.use('/api/trading', tradingRoutes);
 app.use('/api/client/dashboard', clientDashboardRoutes);
 app.use('/api/daily-performance', dailyPerformanceRoutes);
+
+
+// Copy Routes - NEW
+app.use('/api/copy', copyRoutes);
 
 // Commission Routes - NEW
 app.use('/api/ibclients/commission', commissionRoutes);

@@ -339,3 +339,30 @@ exports.updateAccountPasswords = async (req, res) => {
         });
     }
 };
+
+// @desc    Get user accounts for copy request
+// @route   GET /api/accounts/copy-accounts
+// @access  Private (Client)
+exports.getUserAccountsForCopy = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        // Get user accounts sorted by updatedAt descending
+        const accounts = await Account.find({ user: userId })
+            .select('mt5Account accountType updatedAt')
+            .sort({ updatedAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            count: accounts.length,
+            data: accounts
+        });
+
+    } catch (error) {
+        console.error('Get user accounts for copy error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
