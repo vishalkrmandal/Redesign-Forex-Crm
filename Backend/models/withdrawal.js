@@ -36,8 +36,8 @@ const WithdrawalSchema = new mongoose.Schema({
         ifscCode: String,
     },
     eWalletDetails: {
-        walletId: String,
-        type: String
+        walletId: { type: String },
+        type: { type: String }
     },
     status: {
         type: String,

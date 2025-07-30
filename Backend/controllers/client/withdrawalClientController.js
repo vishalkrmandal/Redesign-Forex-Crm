@@ -68,7 +68,7 @@ exports.createWithdrawal = async (req, res, next) => {
             amount,
             paymentMethod,
             bankDetails: paymentMethod === 'bank' ? bankDetails : undefined,
-            eWalletDetails: (paymentMethod === 'skrill' || paymentMethod === 'neteller') ? eWalletDetails : undefined,
+            eWalletDetails: ['usdt', 'ethereum', 'bitcoin', 'tron', 'skrill', 'neteller'].includes(paymentMethod) ? eWalletDetails : undefined,
             status: 'Pending'
         });
 
