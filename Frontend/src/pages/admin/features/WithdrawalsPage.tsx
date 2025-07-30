@@ -3,7 +3,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Filter, Download, ChevronDown, X, MoreHorizontal, FileText, Eye, ThumbsUp, ThumbsDown } from "lucide-react"
+
+import {
+    Search, Filter,
+    Download,
+    ChevronDown, X, MoreHorizontal, FileText, Eye, ThumbsUp, ThumbsDown
+} from "lucide-react"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -379,7 +385,7 @@ const WithdrawalsPage = () => {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                        {withdrawal.paymentMethod.toLowerCase().includes('bank') && bankDetails ? (
+                        {withdrawal.paymentMethod === 'bank' && bankDetails ? (
                             <>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -404,13 +410,14 @@ const WithdrawalsPage = () => {
                             <>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
+                                        <p className="text-sm font-medium">Wallet Type</p>
+                                        <p className="text-sm text-gray-600">{eWalletDetails.type.toUpperCase()}</p>
+                                    </div>
+                                    <div>
                                         <p className="text-sm font-medium">Wallet ID</p>
                                         <p className="text-sm text-gray-600">{eWalletDetails.walletId}</p>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-medium">Wallet Type</p>
-                                        <p className="text-sm text-gray-600">{eWalletDetails.type}</p>
-                                    </div>
+
                                 </div>
                             </>
                         ) : (
@@ -445,7 +452,7 @@ const WithdrawalsPage = () => {
                                 <p className="text-sm text-gray-600">{withdrawal.user.email}</p>
                             </div>
                             <div>
-                                <p className="text-sm font-medium">Account Number</p>
+                                <p className="text-sm font-medium">Mt5Account</p>
                                 <p className="text-sm text-gray-600">{withdrawal.account.mt5Account}</p>
                             </div>
                             {/* <div>
@@ -462,7 +469,7 @@ const WithdrawalsPage = () => {
                             </div>
                             <div>
                                 <p className="text-sm font-medium">Payment Method</p>
-                                <p className="text-sm text-gray-600">{withdrawal.paymentMethod}</p>
+                                <p className="text-sm text-gray-600">{withdrawal.paymentMethod.toUpperCase()}</p>
                             </div>
                             <div>
                                 <p className="text-sm font-medium">Status</p>
@@ -494,7 +501,7 @@ const WithdrawalsPage = () => {
 
                         <div className="border-t pt-4">
                             <h4 className="font-medium mb-2">Payment Details</h4>
-                            {withdrawal.paymentMethod.toLowerCase().includes('bank') && withdrawal.bankDetails ? (
+                            {withdrawal.paymentMethod === 'bank' && withdrawal.bankDetails ? (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-sm font-medium">Bank Name</p>
@@ -516,13 +523,14 @@ const WithdrawalsPage = () => {
                             ) : withdrawal.eWalletDetails ? (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
+                                        <p className="text-sm font-medium">Wallet Type</p>
+                                        <p className="text-sm text-gray-600">{withdrawal.eWalletDetails.type.toUpperCase()}</p>
+                                    </div>
+                                    <div>
                                         <p className="text-sm font-medium">Wallet ID</p>
                                         <p className="text-sm text-gray-600">{withdrawal.eWalletDetails.walletId}</p>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-medium">Wallet Type</p>
-                                        <p className="text-sm text-gray-600">{withdrawal.eWalletDetails.type}</p>
-                                    </div>
+
                                 </div>
                             ) : (
                                 <p className="text-sm text-gray-600">No payment details available</p>
@@ -838,11 +846,11 @@ const WithdrawalsPage = () => {
                                                             <Avatar className="h-8 w-8 flex-shrink-0">
                                                                 <AvatarImage src={withdrawal.user?.avatar} alt={`${withdrawal.user?.firstname || ''} ${withdrawal.user?.lastname || ''}`} />
                                                                 <AvatarFallback className="text-xs">
-                                                                    {withdrawal.user?.firstname?.charAt(0) || '?'}
+                                                                    {withdrawal.user?.firstname?.charAt(0).toUpperCase() || '?'}
                                                                 </AvatarFallback>
                                                             </Avatar>
                                                             <div className="min-w-0 flex-1">
-                                                                <div className="font-medium text-sm truncate">{`${withdrawal.user.firstname} ${withdrawal.user.lastname}`}</div>
+                                                                <div className="font-medium text-sm truncate">{`${withdrawal.user.firstname.charAt(0).toUpperCase() + withdrawal.user.firstname.slice(1).toLowerCase()} ${withdrawal.user.lastname.charAt(0).toUpperCase() + withdrawal.user.lastname.slice(1).toLowerCase()}`}</div>
                                                                 <div className="text-xs text-muted-foreground truncate">{withdrawal.user.email}</div>
                                                             </div>
                                                         </div>
@@ -862,7 +870,7 @@ const WithdrawalsPage = () => {
                                                         <div className="text-sm text-center">{withdrawal.account.accountType}</div>
                                                     </TableCell>
                                                     <TableCell >
-                                                        <div className="text-sm text-center">{withdrawal.paymentMethod}</div>
+                                                        <div className="text-sm text-center">{withdrawal.paymentMethod.toUpperCase()}</div>
                                                     </TableCell>
                                                     <TableCell >
                                                         <Button

@@ -722,6 +722,36 @@ export default function Withdrawal() {
                         </div>
                       </motion.div>
                     )}
+
+                    {method === "ewallet" && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="space-y-3 overflow-hidden"
+                      >
+                        <div>
+                          <Label>E-Wallet Type</Label>
+                          <div className="p-2 bg-muted rounded">
+                            {eWalletType ? eWalletType.toUpperCase() : 'Not selected'}
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="walletAddress">
+                            {profilePaymentMethods && selectedWallet ? `${selectedWallet.name} Address` : 'Wallet Address'}
+                          </Label>
+                          <Input
+                            id="walletAddress"
+                            name="walletId"
+                            value={eWalletDetails.walletId}
+                            onChange={handleEWalletDetailChange}
+                            readOnly={profilePaymentMethods && selectedWallet ? true : false}
+                            required
+                          />
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
                 </div>
 
