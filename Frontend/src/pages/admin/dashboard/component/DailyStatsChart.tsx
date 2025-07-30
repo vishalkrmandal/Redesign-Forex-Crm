@@ -137,7 +137,7 @@ const DailyStatsChart: React.FC<DailyStatsChartProps> = ({ data }) => {
                                 <Area
                                     type="monotone"
                                     dataKey="withdrawals"
-                                    stackId="1"
+                                    stackId="2"
                                     stroke="#EF4444"
                                     fill="#EF4444"
                                     fillOpacity={0.6}

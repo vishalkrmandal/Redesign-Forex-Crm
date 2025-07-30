@@ -319,8 +319,8 @@ const OptimizedDailyPerformance: React.FC = () => {
             )}
 
             {/* Chart */}
-            <div className="p-6">
-                <div className="h-96">
+            <div className="-ml-10 p-6 md:m-0">
+                <div className="h-72 md:h-96">
                     <ResponsiveContainer width="100%" height="100%">
                         {selectedChartType === 'Area' ? (
                             <AreaChart data={getFilteredData(selectedFilter)}>

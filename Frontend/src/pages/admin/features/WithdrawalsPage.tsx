@@ -578,7 +578,9 @@ const WithdrawalsPage = () => {
 
                                         <div className="p-2">
                                             <p className="text-xs font-medium mb-1">Status</p>
-                                            <Select value={selectedStatus || ""} onValueChange={setSelectedStatus}>
+                                            <Select value={selectedStatus || "all"} onValueChange={(value) => {
+                                                setSelectedStatus(value === "all" ? null : value);
+                                            }}>
                                                 <SelectTrigger className="w-full">
                                                     <SelectValue placeholder="All Status" />
                                                 </SelectTrigger>

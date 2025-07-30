@@ -214,18 +214,18 @@ const ClientDashboard: React.FC = () => {
     <div className="container mx-auto px-0 max-w-7xl">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-1 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
         <div className="relative">
           <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Dashboard
           </h1>
-          <p className="text-sm mt-2 text-muted-foreground flex items-center gap-2">
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
             Welcome back! Here's your trading overview.
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex flex-col-1 sm:flex-row items-center gap-3">
           {/* Last refresh info */}
           {lastRefresh && (
             <div className="text-xs text-muted-foreground text-center sm:text-right">
@@ -239,7 +239,7 @@ const ClientDashboard: React.FC = () => {
             {/* Open Account button */}
             <button
               onClick={handleOpenAccount}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              className="flex items-center gap-2 px-6 py-1 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
             >
               <Plus className="w-5 h-5" />
               <span className="hidden sm:inline">Open Account</span>
