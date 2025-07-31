@@ -84,44 +84,55 @@ export default function SuperadminLayout() {
     }
   }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true)
     setHasDragged(false)
 
     const rect = e.currentTarget.getBoundingClientRect()
-    const offsetX = e.clientX - rect.left
-    const offsetY = e.clientY - rect.top
 
-    // Get reference to the element for direct DOM manipulation
+    // Handle both mouse and touch events
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+
+    const offsetX = clientX - rect.left
+    const offsetY = clientY - rect.top
+
     const dragElement = e.currentTarget as HTMLElement
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMove = (e: MouseEvent | TouchEvent) => {
       setHasDragged(true)
 
-      // Direct DOM manipulation for smoother dragging
-      const newX = e.clientX - offsetX
-      const newY = e.clientY - offsetY
+      // Handle both mouse and touch events
+      const moveClientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+      const moveClientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+
+      const newX = moveClientX - offsetX
+      const newY = moveClientY - offsetY
 
       dragElement.style.left = `${newX}px`
       dragElement.style.top = `${newY}px`
       dragElement.style.transform = 'none'
 
-      // Update state less frequently for performance
       requestAnimationFrame(() => {
         setDragPosition({ x: newX, y: newY })
       })
     }
 
-    const handleMouseUp = () => {
+    const handleEnd = () => {
       setIsDragging(false)
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
+      document.removeEventListener('mousemove', handleMove)
+      document.removeEventListener('mouseup', handleEnd)
+      document.removeEventListener('touchmove', handleMove)
+      document.removeEventListener('touchend', handleEnd)
 
       setTimeout(() => setHasDragged(false), 50)
     }
 
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
+    // Add both mouse and touch event listeners
+    document.addEventListener('mousemove', handleMove)
+    document.addEventListener('mouseup', handleEnd)
+    document.addEventListener('touchmove', handleMove)
+    document.addEventListener('touchend', handleEnd)
   }
 
   return (
@@ -199,9 +210,11 @@ export default function SuperadminLayout() {
               style={{
                 left: dragPosition.x || 'calc(100% - 200px)',
                 top: dragPosition.y || '80px',
-                transform: dragPosition.x ? 'none' : 'translateX(-100%)'
+                transform: dragPosition.x ? 'none' : 'translateX(-100%)',
+                touchAction: 'none' // Prevent default touch behaviors
               }}
               onMouseDown={handleMouseDown}
+              onTouchStart={handleMouseDown}
               onClick={(e) => {
                 if (hasDragged) {
                   e.stopPropagation()
