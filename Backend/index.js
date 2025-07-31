@@ -221,6 +221,7 @@ server.listen(PORT, async () => {
 ⏰ Started at: ${new Date().toLocaleString()}
  `);
 
+
   // Start the automated trade sync service
   try {
     await tradeSyncService.startAutoSync();
