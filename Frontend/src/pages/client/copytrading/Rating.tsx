@@ -2,6 +2,7 @@
 const Rating = () => {
     return (
         <div>Rating</div>
+
     )
 }
 
