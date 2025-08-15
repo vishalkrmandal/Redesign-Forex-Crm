@@ -851,26 +851,32 @@ const TradeCommission = () => {
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
                                             {partner.userId ?
-                                                `${partner.userId.firstname || 'N/A'} ${partner.userId.lastname || 'N/A'}`
+                                                `${partner.userId.firstname.charAt(0) || 'N/A'}${partner.userId.lastname.charAt(0) || 'N/A'}`
                                                 : 'User Not Found'
                                             }
                                         </div>
                                         <div>
-                                            <CardTitle className="text-lg">
-                                                {partner.userId ?
-                                                    `${partner.userId.firstname || 'N/A'} ${partner.userId.lastname || 'N/A'}`
-                                                    : 'User Not Found'
-                                                }
-                                            </CardTitle>
-                                            <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                                <Mail className="h-3 w-3" />
-                                                {partner.userId?.email || 'N/A'}
-                                                <span className="mx-2">•</span>
-                                                <Globe className="h-3 w-3" />
-                                                {partner.country}
-                                                <span className="mx-2">•</span>
-                                                <Badge variant="outline">Level {partner.level}</Badge>
-                                            </p>
+                                            <div>
+                                                <CardTitle className="text-lg">
+                                                    {partner.userId ?
+                                                        `${partner.userId.firstname || 'N/A'} ${partner.userId.lastname || 'N/A'}`
+                                                        : 'User Not Found'
+                                                    }
+                                                </CardTitle>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                                                    <Mail className="h-3 w-3" />
+                                                    {partner.userId?.email || 'N/A'}
+                                                    <span className="mx-0.5">•</span>
+                                                </p>
+                                                <p className="text-xs text-muted-foreground flex items-center gap-2">
+
+                                                    <Globe className="h-3 w-3" />{partner.country}
+                                                    <span className="mx-0.5">•</span>
+                                                    <Badge variant="outline">Level {partner.level}</Badge>
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
 
