@@ -1695,6 +1695,34 @@ const ClientsPage = () => {
                                                 <p className="text-sm">{selectedClient.ibPartner || 'None'}</p>
                                             )}
                                         </div>
+
+                                        {/* Email Address */}
+                                        <div className="space-y-1">
+                                            <div className="flex items-center justify-between">
+                                                <Label>Email Address</Label>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8"
+                                                    onClick={() => toggleEditMode('email')}
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            {editMode.email ? (
+                                                <Input
+                                                    type="email"
+                                                    value={selectedClient.email || ''}
+                                                    onChange={(e) => setSelectedClient({
+                                                        ...selectedClient,
+                                                        email: e.target.value
+                                                    })}
+                                                    placeholder="Enter email address"
+                                                />
+                                            ) : (
+                                                <p className="text-sm">{selectedClient.email || 'Not specified'}</p>
+                                            )}
+                                        </div>
                                     </div>
                                 </TabsContent>
 
