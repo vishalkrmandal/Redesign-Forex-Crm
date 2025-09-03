@@ -23,23 +23,28 @@ const ImpersonationBanner: React.FC = () => {
     }
 
     return (
-        <div className="bg-amber-500 text-white py-2 px-4 flex items-center justify-between">
-            <div className="flex items-center">
-                <span className="font-medium mr-2">Admin Session:</span>
-                <span>
-                    You are viewing {impersonationInfo.clientName}'s account ({impersonationInfo.clientEmail}) as administrator {impersonationInfo.adminName}
+        <div className="bg-amber-500 text-white py-1 px-4 flex items-center justify-between">
+            <div className="flex items-center text-xs md:text-sm">
+                <span className="font-bold mr-2 ">Admin Session:</span>
+                <span className="md:ml-40 ">
+                    You are viewing {impersonationInfo.clientName}'s account ({impersonationInfo.clientEmail})
+                </span>
+                <span className="mx-1 hidden md:inline ">
+                    as administrator {impersonationInfo.adminName}
                 </span>
             </div>
+
             <button
                 onClick={() => {
                     endImpersonation(navigate);
                     window.close();
                 }}
-                className="bg-white text-amber-500 px-3 py-1 rounded-md hover:bg-amber-50 transition-colors flex items-center"
+                className="bg-white text-amber-500 px-2 py-1 rounded-sm hover:bg-amber-50 transition-colors flex items-center text-xs whitespace-nowrap"
             >
-                <span className="mr-1">Exit Client View</span>
-                <X size={16} />
+                <span>Exit Client</span>
+                <X size={12} />
             </button>
+
         </div>
     );
 };
