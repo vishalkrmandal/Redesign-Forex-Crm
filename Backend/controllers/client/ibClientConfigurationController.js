@@ -5,6 +5,7 @@ const IBWithdrawal = require('../../models/IBWithdrawal');
 const IBConfiguration = require('../../models/admin/IBAdminConfiguration');
 const User = require('../../models/User');
 const crypto = require('crypto');
+const Account = require('../../models/client/Account');
 
 // @desc    Create a new IB referral code (or activate existing pending one)
 // @route   POST /api/ibclients/ib-configurations/create
@@ -319,7 +320,7 @@ exports.getPartnersList = async (req, res) => {
 
         console.log('IB Configuration:', ibConfiguration);
         if (!ibConfiguration) {
-            return res.status(200).json({
+            return res.status(204).json({
                 success: false,
                 message: 'No IB configuration found. Please create your referral code first.'
             });
@@ -362,6 +363,22 @@ exports.getPartnersList = async (req, res) => {
 
                 const totalEarned = earned.length > 0 ? earned[0].total : 0;
 
+                // Get account data for this partner
+                const accountData = await Account.aggregate([
+                    { $match: { user: partner.userId._id } },
+                    {
+                        $group: {
+                            _id: null,
+                            totalBalance: { $sum: "$balance" },
+                            totalEquity: { $sum: "$equity" }
+                        }
+                    }
+                ]);
+
+                const totalBalance = accountData.length > 0 ? accountData[0].totalBalance : 0;
+                const totalEquity = accountData.length > 0 ? accountData[0].totalEquity : 0;
+
+
                 return {
                     _id: partner._id,
                     userId: partner.userId,
@@ -369,6 +386,8 @@ exports.getPartnersList = async (req, res) => {
                     level: partner.level, // This is now the normalized level
                     totalVolume,
                     totalEarned,
+                    totalBalance,
+                    totalEquity,
                     createdAt: partner.createdAt
                 };
             } catch (error) {
@@ -380,6 +399,8 @@ exports.getPartnersList = async (req, res) => {
                     level: partner.level,
                     totalVolume: 0,
                     totalEarned: 0,
+                    totalBalance,
+                    totalEquity,
                     createdAt: partner.createdAt
                 };
             }

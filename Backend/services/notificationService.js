@@ -274,6 +274,7 @@ class NotificationService {
 
             case 'deposit_status':
                 const statusColor = data.status === 'Approved' ? '#28a745' : data.status === 'Rejected' ? '#dc3545' : '#ffc107';
+                console.log('Deposit status data:', data);
                 return baseTemplate(`
                     <p>${message}</p>
                     <div class="details">

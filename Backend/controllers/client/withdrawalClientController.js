@@ -19,7 +19,7 @@ exports.createWithdrawal = async (req, res, next) => {
             otpVerified,
             withdrawalData
         } = req.body;
-        console.log('Withdrawal request body:', req.body);
+        console.log('Withdrawal request body:', req.body.data);
 
         // Add OTP verification check at the beginning
         if (!otpVerified || !withdrawalData) {
