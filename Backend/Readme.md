@@ -49,11 +49,6 @@ This is a Node.js Express backend for a financial trading platform that manages 
 3. Set up environment variables
    Create a `.env` file in the root directory with the following variables:
    ```
-   NODE_ENV=development
-   PORT=5000
-   MONGO_URI=your_mongodb_connection_string
-   JWT_SECRET=your_jwt_secret
-   JWT_EXPIRE=30d
    ```
 
 4. Start the development server
