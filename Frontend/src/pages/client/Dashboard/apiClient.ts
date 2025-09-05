@@ -155,19 +155,19 @@ class ApiClient {
                     errorMessage = 'Access forbidden';
                     break;
                 case 404:
-                    errorMessage = 'Resource not found';
+                    errorMessage = data?.message || 'Resource not found';
                     break;
                 case 422:
                     errorMessage = data?.message || 'Validation error';
                     break;
                 case 429:
-                    errorMessage = 'Too many requests. Please try again later.';
+                    errorMessage = data?.message || 'Too many requests. Please try again later.';
                     break;
                 case 500:
-                    errorMessage = 'Internal server error';
+                    errorMessage = data?.message || 'Internal server error';
                     break;
                 case 503:
-                    errorMessage = 'Service unavailable';
+                    errorMessage = data?.message || 'Service unavailable';
                     break;
                 default:
                     errorMessage = data?.message || `Error ${status}`;

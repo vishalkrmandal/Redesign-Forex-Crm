@@ -51,6 +51,8 @@ interface IBPartner {
     level: number;
     totalVolume: number;
     totalEarned: number;
+    totalBalance: number;
+    totalEquity: number;
 }
 
 interface IBSummary {
@@ -330,6 +332,8 @@ const IBDashboard = () => {
                                             <TableHead className="font-semibold">Referral Code</TableHead>
                                             <TableHead className="font-semibold">Level</TableHead>
                                             <TableHead className="font-semibold">Total Volume</TableHead>
+                                            <TableHead className="font-semibold">Total Balance</TableHead>
+                                            <TableHead className="font-semibold">Total Equity</TableHead>
                                             <TableHead className="font-semibold">Commission Earned</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -360,6 +364,12 @@ const IBDashboard = () => {
                                                     </TableCell>
                                                     <TableCell className="font-mono text-blue-600">
                                                         {partner.totalVolume.toFixed(2)}
+                                                    </TableCell>
+                                                    <TableCell className="font-mono text-orange-600">
+                                                        ${partner.totalBalance.toFixed(2)}
+                                                    </TableCell>
+                                                    <TableCell className="font-mono text-amber-600">
+                                                        ${partner.totalEquity.toFixed(2)}
                                                     </TableCell>
                                                     <TableCell className="font-mono font-medium text-green-600">
                                                         ${partner.totalEarned.toFixed(2)}

@@ -324,7 +324,7 @@ export default function OpenNewAccount() {
                   {visibleGroups.map((group) => (
                     <div
                       key={group._id}
-                      className={`rounded-lg border-2 bg-card p-6 shadow-sm transition-all duration-300 cursor-pointer hover:shadow-lg ${selectedGroup?.value === group.value
+                      className={`m-2 border-rounded rounded-lg border-2 bg-card p-6 shadow-sm transition-all duration-300 cursor-pointer hover:shadow-lg ${selectedGroup?.value === group.value
                         ? "border-primary ring-2 ring-primary/20 shadow-md"
                         : "border-border hover:border-primary/50"
                         }`}

@@ -658,7 +658,7 @@ const TradeCommission = () => {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto rounded-sm border">
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
@@ -711,7 +711,7 @@ const TradeCommission = () => {
                                                         </div>
                                                     </TableCell> */}
                                                     <TableCell>
-                                                        <Badge variant="outline" className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-700">
+                                                        <Badge variant="outline" className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-700 whitespace-nowrap">
                                                             Level {partner.level}
                                                         </Badge>
                                                     </TableCell>
@@ -741,7 +741,7 @@ const TradeCommission = () => {
                                                 <AnimatePresence>
                                                     {expandedPartner === partner._id && (
                                                         <TableRow>
-                                                            <TableCell colSpan={6} className="p-0">
+                                                            <TableCell colSpan={6} className="p-0 bg-background rounded-sm">
                                                                 <motion.div
                                                                     initial={{ height: 0, opacity: 0 }}
                                                                     animate={{ height: "auto", opacity: 1 }}
@@ -749,7 +749,7 @@ const TradeCommission = () => {
                                                                     transition={{ duration: 0.3 }}
                                                                     className="overflow-hidden"
                                                                 >
-                                                                    <div className="p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-800 dark:to-gray-800 border-t">
+                                                                    <div className="p-4  border-t">
                                                                         <h4 className="font-semibold mb-3 flex items-center gap-2">
                                                                             <Eye className="h-4 w-4" />
                                                                             Trade Details for {partner.userId ?
@@ -766,43 +766,45 @@ const TradeCommission = () => {
                                                                             </div>
                                                                         ) : partnerTrades[partner._id] && partnerTrades[partner._id].length > 0 ? (
                                                                             <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden">
-                                                                                <Table>
-                                                                                    <TableHeader>
-                                                                                        <TableRow className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30">
-                                                                                            <TableHead className="text-xs">MT5 Account</TableHead>
-                                                                                            <TableHead className="text-xs">Symbol</TableHead>
-                                                                                            <TableHead className="text-xs">Volume</TableHead>
-                                                                                            <TableHead className="text-xs">Open Price</TableHead>
-                                                                                            <TableHead className="text-xs">Close Price</TableHead>
-                                                                                            <TableHead className="text-xs">Profit</TableHead>
-                                                                                            <TableHead className="text-xs">Commission</TableHead>
-                                                                                            <TableHead className="text-xs">Status</TableHead>
-                                                                                        </TableRow>
-                                                                                    </TableHeader>
-                                                                                    <TableBody>
-                                                                                        {partnerTrades[partner._id].map((trade, index) => (
-                                                                                            <TableRow key={index} className="hover:bg-muted/30">
-                                                                                                <TableCell className="font-mono text-xs">{trade.acNo}</TableCell>
-                                                                                                <TableCell className="font-mono text-xs font-medium">{trade.symbol}</TableCell>
-                                                                                                <TableCell className="font-mono text-xs">{trade.volume.toFixed(4)}</TableCell>
-                                                                                                <TableCell className="font-mono text-xs">{trade.openPrice}</TableCell>
-                                                                                                <TableCell className="font-mono text-xs">{trade.closePrice}</TableCell>
-                                                                                                <TableCell className={`font-mono text-xs ${trade.profit < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                                                                    {trade.profit < 0 ? '-' : ''}${formatCurrency(Math.abs(trade.profit))}
-                                                                                                </TableCell>
-                                                                                                <TableCell className="font-mono text-xs font-medium text-blue-600">
-                                                                                                    ${formatCurrency(trade.rebate)}
-                                                                                                </TableCell>
-                                                                                                <TableCell>
-                                                                                                    <Badge variant="outline" className="text-xs text-green-600 border-green-300">
-                                                                                                        <CheckCircle className="h-2 w-2 mr-1" />
-                                                                                                        {trade.status}
-                                                                                                    </Badge>
-                                                                                                </TableCell>
+                                                                                <div className="max-h-96 overflow-y-auto">
+                                                                                    <Table>
+                                                                                        <TableHeader>
+                                                                                            <TableRow className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30">
+                                                                                                <TableHead className="text-xs">MT5 Account</TableHead>
+                                                                                                <TableHead className="text-xs">Symbol</TableHead>
+                                                                                                <TableHead className="text-xs">Volume</TableHead>
+                                                                                                <TableHead className="text-xs">Open Price</TableHead>
+                                                                                                <TableHead className="text-xs">Close Price</TableHead>
+                                                                                                <TableHead className="text-xs">Profit</TableHead>
+                                                                                                <TableHead className="text-xs">Commission</TableHead>
+                                                                                                <TableHead className="text-xs">Status</TableHead>
                                                                                             </TableRow>
-                                                                                        ))}
-                                                                                    </TableBody>
-                                                                                </Table>
+                                                                                        </TableHeader>
+                                                                                        <TableBody>
+                                                                                            {partnerTrades[partner._id].map((trade, index) => (
+                                                                                                <TableRow key={index} className="hover:bg-muted/30">
+                                                                                                    <TableCell className="font-mono text-xs">{trade.acNo}</TableCell>
+                                                                                                    <TableCell className="font-mono text-xs font-medium">{trade.symbol}</TableCell>
+                                                                                                    <TableCell className="font-mono text-xs">{trade.volume.toFixed(4)}</TableCell>
+                                                                                                    <TableCell className="font-mono text-xs">{trade.openPrice}</TableCell>
+                                                                                                    <TableCell className="font-mono text-xs">{trade.closePrice}</TableCell>
+                                                                                                    <TableCell className={`font-mono text-xs ${trade.profit < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                                                                        {trade.profit < 0 ? '-' : ''}${formatCurrency(Math.abs(trade.profit))}
+                                                                                                    </TableCell>
+                                                                                                    <TableCell className="font-mono text-xs font-medium text-blue-600">
+                                                                                                        ${formatCurrency(trade.rebate)}
+                                                                                                    </TableCell>
+                                                                                                    <TableCell>
+                                                                                                        <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                                                                                                            <CheckCircle className="h-2 w-2 mr-1" />
+                                                                                                            {trade.status}
+                                                                                                        </Badge>
+                                                                                                    </TableCell>
+                                                                                                </TableRow>
+                                                                                            ))}
+                                                                                        </TableBody>
+                                                                                    </Table>
+                                                                                </div>
                                                                             </div>
                                                                         ) : (
                                                                             <div className="text-center py-4 text-muted-foreground">
@@ -916,67 +918,69 @@ const TradeCommission = () => {
                                             <Skeleton className="h-8 w-full" />
                                         </div>
                                     ) : partnerTrades[partner._id] && partnerTrades[partner._id].length > 0 ? (
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-800 dark:to-gray-800">
-                                                    <TableHead className="text-xs font-semibold">MT5 Account</TableHead>
-                                                    <TableHead className="text-xs font-semibold">Symbol</TableHead>
-                                                    <TableHead className="text-xs font-semibold">Volume</TableHead>
-                                                    <TableHead className="text-xs font-semibold">Open Price</TableHead>
-                                                    <TableHead className="text-xs font-semibold">Close Price</TableHead>
-                                                    <TableHead className="text-xs font-semibold">Profit</TableHead>
-                                                    <TableHead className="text-xs font-semibold">Commission</TableHead>
-                                                    <TableHead className="text-xs font-semibold">Open Time</TableHead>
-                                                    <TableHead className="text-xs font-semibold">Status</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {partnerTrades[partner._id].map((trade, index) => (
-                                                    <TableRow key={index} className="hover:bg-muted/30">
-                                                        <TableCell className="font-mono text-xs font-medium">{trade.acNo}</TableCell>
-                                                        <TableCell className="font-mono text-xs font-bold text-blue-600">{trade.symbol}</TableCell>
-                                                        <TableCell className="font-mono text-xs">{trade.volume.toFixed(4)}</TableCell>
-                                                        <TableCell className="font-mono text-xs">{trade.openPrice}</TableCell>
-                                                        <TableCell className="font-mono text-xs">{trade.closePrice}</TableCell>
-                                                        <TableCell className={`font-mono text-xs font-medium ${trade.profit < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                            {trade.profit < 0 ? '-' : ''}${formatCurrency(Math.abs(trade.profit))}
-                                                        </TableCell>
-                                                        <TableCell className="font-mono text-xs font-bold text-green-600">
-                                                            ${formatCurrency(trade.rebate)}
-                                                        </TableCell>
-                                                        <TableCell className="text-xs">
-                                                            {formatDateTime(trade.openTime)}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <Badge variant="outline" className="text-xs text-green-600 border-green-300">
-                                                                <CheckCircle className="h-2 w-2 mr-1" />
-                                                                {trade.status}
-                                                            </Badge>
-                                                        </TableCell>
+                                        <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-y-auto max-h-96">
+                                            <Table>
+                                                <TableHeader className="sticky top-0 z-10">
+                                                    <TableRow className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-800 dark:to-gray-800">
+                                                        <TableHead className="text-xs font-semibold">MT5 Account</TableHead>
+                                                        <TableHead className="text-xs font-semibold">Symbol</TableHead>
+                                                        <TableHead className="text-xs font-semibold">Volume</TableHead>
+                                                        <TableHead className="text-xs font-semibold">Open Price</TableHead>
+                                                        <TableHead className="text-xs font-semibold">Close Price</TableHead>
+                                                        <TableHead className="text-xs font-semibold">Profit</TableHead>
+                                                        <TableHead className="text-xs font-semibold">Commission</TableHead>
+                                                        <TableHead className="text-xs font-semibold">Open Time</TableHead>
+                                                        <TableHead className="text-xs font-semibold">Status</TableHead>
                                                     </TableRow>
-                                                ))}
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {partnerTrades[partner._id].map((trade, index) => (
+                                                        <TableRow key={index} className="hover:bg-muted/30">
+                                                            <TableCell className="font-mono text-xs font-medium">{trade.acNo}</TableCell>
+                                                            <TableCell className="font-mono text-xs font-bold text-blue-600">{trade.symbol}</TableCell>
+                                                            <TableCell className="font-mono text-xs">{trade.volume.toFixed(4)}</TableCell>
+                                                            <TableCell className="font-mono text-xs">{trade.openPrice}</TableCell>
+                                                            <TableCell className="font-mono text-xs">{trade.closePrice}</TableCell>
+                                                            <TableCell className={`font-mono text-xs font-medium ${trade.profit < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                                {trade.profit < 0 ? '-' : ''}${formatCurrency(Math.abs(trade.profit))}
+                                                            </TableCell>
+                                                            <TableCell className="font-mono text-xs font-bold text-green-600">
+                                                                ${formatCurrency(trade.rebate)}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs">
+                                                                {formatDateTime(trade.openTime)}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                                                                    <CheckCircle className="h-2 w-2 mr-1" />
+                                                                    {trade.status}
+                                                                </Badge>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
 
-                                                {/* Individual Partner Totals Row */}
-                                                <TableRow className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/30 dark:to-green-900/30 font-bold border-t-2">
-                                                    <TableCell colSpan={2} className="text-right font-bold text-sm">
-                                                        Partner Total:
-                                                    </TableCell>
-                                                    <TableCell className="font-mono font-bold text-blue-600 text-sm">
-                                                        {partnerTrades[partner._id].reduce((sum, trade) => sum + trade.volume, 0).toFixed(4)}
-                                                    </TableCell>
-                                                    <TableCell></TableCell>
-                                                    <TableCell></TableCell>
-                                                    <TableCell className="font-mono font-bold text-purple-600 text-sm">
-                                                        ${formatCurrency(Math.abs(partnerTrades[partner._id].reduce((sum, trade) => sum + trade.profit, 0)))}
-                                                    </TableCell>
-                                                    <TableCell className="font-mono font-bold text-green-600 text-sm">
-                                                        ${formatCurrency(partnerTrades[partner._id].reduce((sum, trade) => sum + trade.rebate, 0))}
-                                                    </TableCell>
-                                                    <TableCell></TableCell>
-                                                    <TableCell></TableCell>
-                                                </TableRow>
-                                            </TableBody>
-                                        </Table>
+                                                    {/* Individual Partner Totals Row */}
+                                                    <TableRow className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/30 dark:to-green-900/30 font-bold border-t-2">
+                                                        <TableCell colSpan={2} className="text-right font-bold text-sm">
+                                                            Partner Total:
+                                                        </TableCell>
+                                                        <TableCell className="font-mono font-bold text-blue-600 text-sm">
+                                                            {partnerTrades[partner._id].reduce((sum, trade) => sum + trade.volume, 0).toFixed(4)}
+                                                        </TableCell>
+                                                        <TableCell></TableCell>
+                                                        <TableCell></TableCell>
+                                                        <TableCell className="font-mono font-bold text-purple-600 text-sm">
+                                                            ${formatCurrency(Math.abs(partnerTrades[partner._id].reduce((sum, trade) => sum + trade.profit, 0)))}
+                                                        </TableCell>
+                                                        <TableCell className="font-mono font-bold text-green-600 text-sm">
+                                                            ${formatCurrency(partnerTrades[partner._id].reduce((sum, trade) => sum + trade.rebate, 0))}
+                                                        </TableCell>
+                                                        <TableCell></TableCell>
+                                                        <TableCell></TableCell>
+                                                    </TableRow>
+                                                </TableBody>
+                                            </Table>
+                                        </div>
                                     ) : (
                                         <div className="text-center py-8 text-muted-foreground bg-gray-50 dark:bg-gray-900">
                                             <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />

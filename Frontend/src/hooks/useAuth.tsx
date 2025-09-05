@@ -120,10 +120,22 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
                 if (isImpersonationActive() && clientToken && clientUserStr) {
                     const clientUser = JSON.parse(clientUserStr);
                     setUser(clientUser);
-                    setActiveRole('client');
                     setIsAuthenticated(true);
                     setIsImpersonated(true);
                     setImpersonationInfo(getImpersonationInfo());
+
+                    // During impersonation, set role based on current path
+                    const currentPath = window.location.pathname;
+                    const pathBasedRole = getRoleFromPath(currentPath);
+
+                    // If on admin/superadmin path during impersonation, maintain that role context
+                    if ((pathBasedRole === 'admin' || pathBasedRole === 'superadmin') &&
+                        (hasValidSession('admin') || hasValidSession('superadmin'))) {
+                        setActiveRole(pathBasedRole as 'admin' | 'superadmin');
+                    } else {
+                        setActiveRole('client');
+                    }
+
                     setIsLoading(false);
                     return;
                 }

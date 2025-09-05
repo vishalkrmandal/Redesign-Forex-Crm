@@ -24,8 +24,8 @@ export const impersonateClient = (clientToken: string, userData: UserData) => {
     localStorage.setItem('isImpersonated', 'true');
 
     // Add admin reference for returning to admin panel
-    const adminToken = localStorage.getItem('token');
-    const adminUser = localStorage.getItem('user');
+    const adminToken = localStorage.getItem('adminToken');
+    const adminUser = localStorage.getItem('adminUser');
 
     if (adminToken && adminUser) {
         localStorage.setItem('adminToken', adminToken);
@@ -47,8 +47,8 @@ export const endImpersonation = () => {
     const adminUser = localStorage.getItem('adminUser');
 
     if (adminToken && adminUser) {
-        localStorage.setItem('token', adminToken);
-        localStorage.setItem('user', adminUser);
+        localStorage.setItem('adminToken', adminToken);
+        localStorage.setItem('adminUser', adminUser);
     }
 
     // Remove client-specific items

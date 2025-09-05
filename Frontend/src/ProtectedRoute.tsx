@@ -3,6 +3,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useEffect, useState } from 'react';
+import { isImpersonationActive } from '@/utils/impersonation';
 
 interface ProtectedRouteProps {
   allowedRoles: string[];
@@ -36,18 +37,34 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   };
 
   useEffect(() => {
+    // Check if impersonation is active
+    const impersonationActive = isImpersonationActive();
+
     // Determine expected role based on current path
     const pathBasedRole = getExpectedRoleFromPath(location.pathname);
 
     let targetRole: string | null = null;
 
     if (pathBasedRole) {
-      // If path suggests a specific role, check if we have valid token for it
-      if (hasValidTokenForRole(pathBasedRole) && allowedRoles.includes(pathBasedRole)) {
-        targetRole = pathBasedRole;
+      // If impersonation is active and we're on admin/superadmin path, don't switch to client
+      if (impersonationActive && (pathBasedRole === 'admin' || pathBasedRole === 'superadmin')) {
+        // Check if we have valid token for the path-based role (admin/superadmin)
+        if (hasValidTokenForRole(pathBasedRole) && allowedRoles.includes(pathBasedRole)) {
+          targetRole = pathBasedRole;
+        }
+      } else if (!impersonationActive && pathBasedRole === 'client') {
+        // Normal client access when not impersonating
+        if (hasValidTokenForRole(pathBasedRole) && allowedRoles.includes(pathBasedRole)) {
+          targetRole = pathBasedRole;
+        }
+      } else if (pathBasedRole !== 'client') {
+        // For non-client paths, proceed normally
+        if (hasValidTokenForRole(pathBasedRole) && allowedRoles.includes(pathBasedRole)) {
+          targetRole = pathBasedRole;
+        }
       }
     } else {
-      // Fallback to priority order if no path-based role detected
+      // Fallback logic remains the same
       if (allowedRoles.includes('superadmin') && superadminToken) {
         targetRole = 'superadmin';
       } else if (allowedRoles.includes('admin') && adminToken) {
@@ -61,12 +78,44 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
 
     // Only switch role if we have a valid target role and it's different from current
     if (targetRole && activeRole !== targetRole) {
-      // Don't navigate on role switch - maintain current URL
       switchRole(targetRole, undefined);
     }
 
     setIsInitialized(true);
   }, [activeRole, allowedRoles, adminToken, clientToken, superadminToken, agentToken, switchRole, location.pathname]);
+
+  // useEffect(() => {
+  //   // Determine expected role based on current path
+  //   const pathBasedRole = getExpectedRoleFromPath(location.pathname);
+
+  //   let targetRole: string | null = null;
+
+  //   if (pathBasedRole) {
+  //     // If path suggests a specific role, check if we have valid token for it
+  //     if (hasValidTokenForRole(pathBasedRole) && allowedRoles.includes(pathBasedRole)) {
+  //       targetRole = pathBasedRole;
+  //     }
+  //   } else {
+  //     // Fallback to priority order if no path-based role detected
+  //     if (allowedRoles.includes('superadmin') && superadminToken) {
+  //       targetRole = 'superadmin';
+  //     } else if (allowedRoles.includes('admin') && adminToken) {
+  //       targetRole = 'admin';
+  //     } else if (allowedRoles.includes('agent') && agentToken) {
+  //       targetRole = 'agent';
+  //     } else if (allowedRoles.includes('client') && clientToken) {
+  //       targetRole = 'client';
+  //     }
+  //   }
+
+  //   // Only switch role if we have a valid target role and it's different from current
+  //   if (targetRole && activeRole !== targetRole) {
+  //     // Don't navigate on role switch - maintain current URL
+  //     switchRole(targetRole, undefined);
+  //   }
+
+  //   setIsInitialized(true);
+  // }, [activeRole, allowedRoles, adminToken, clientToken, superadminToken, agentToken, switchRole, location.pathname]);
 
   // Don't render anything until we've determined the correct role
   if (!isInitialized) {
