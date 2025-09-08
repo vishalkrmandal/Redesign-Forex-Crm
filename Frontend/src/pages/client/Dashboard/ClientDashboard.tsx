@@ -40,6 +40,7 @@ const ClientDashboard: React.FC = () => {
   const [countdown, setCountdown] = useState(5);
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const [isRequestInProgress, setIsRequestInProgress] = useState(false);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
@@ -80,7 +81,14 @@ const ClientDashboard: React.FC = () => {
 
   // Replace your existing fetchDashboardData function with this:
   const fetchDashboardData = async (showRefreshLoader = false, isAutoRefresh = false) => {
+    // Prevent overlapping requests
+    if (isRequestInProgress && isAutoRefresh) {
+      return;
+    }
+
     try {
+      setIsRequestInProgress(true);
+
       if (showRefreshLoader) {
         setRefreshing(true);
       } else if (!isAutoRefresh) {
@@ -93,7 +101,6 @@ const ClientDashboard: React.FC = () => {
       }
 
       const [overviewResponse, transactionsResponse, accountsResponse] = await Promise.all([
-
         dashboardApi.getOverview(),
         dashboardApi.getRecentTransactions(),
         dashboardApi.getActiveAccounts(),
@@ -105,8 +112,6 @@ const ClientDashboard: React.FC = () => {
         recentTransactions: transactionsResponse.data.transactions,
         activeAccounts: accountsResponse.data.accounts
       });
-
-      // setPartnersData(partnersResponse.partners);
 
       setLastRefresh(new Date());
       setCountdown(5);
@@ -122,6 +127,7 @@ const ClientDashboard: React.FC = () => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setIsRequestInProgress(false);
     }
   };
 
@@ -145,9 +151,11 @@ const ClientDashboard: React.FC = () => {
     // Initial load
     fetchDashboardData();
 
-    // Setup auto-refresh every 5 seconds
+    // Setup auto-refresh - only start new request when previous is complete
     intervalRef.current = setInterval(() => {
-      fetchDashboardData(false, true);
+      if (!isRequestInProgress) {
+        fetchDashboardData(false, true);
+      }
     }, 5000);
 
     // Setup countdown timer
@@ -169,7 +177,7 @@ const ClientDashboard: React.FC = () => {
         clearInterval(countdownRef.current);
       }
     };
-  }, []);
+  }, []); // Empty dependency array - runs only once on mount
 
   const handleManualRefresh = () => {
     // Clear existing intervals
@@ -183,20 +191,20 @@ const ClientDashboard: React.FC = () => {
     // Fetch data with refresh loader
     fetchDashboardData(true, false);
 
-    // Restart intervals
-    setTimeout(() => {
-      intervalRef.current = setInterval(() => {
+    // Restart intervals immediately
+    intervalRef.current = setInterval(() => {
+      if (!isRequestInProgress) {
         fetchDashboardData(false, true);
-      }, 5000);
+      }
+    }, 5000);
 
-      countdownRef.current = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            return 5;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          return 5;
+        }
+        return prev - 1;
+      });
     }, 1000);
   };
 
