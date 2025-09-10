@@ -294,8 +294,9 @@ const WithdrawalsPage = () => {
             // Show success message
             toast.success('Withdrawal approved successfully')
         } catch (error) {
+            const err = error as any;
             console.error('Error approving withdrawal:', error)
-            toast.error('Failed to approve withdrawal')
+            toast.error('Failed to approve withdrawal ' + err.response?.data?.message || '')
         } finally {
             setIsApproving(false)
         }
