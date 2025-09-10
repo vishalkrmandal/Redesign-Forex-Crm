@@ -1,4 +1,4 @@
-// Frontend/src/pages/auth/sign-in/SignUp.tsx - Fixed for mobile scrolling
+// Frontend/src/pages/auth/sign-in/SignUp.tsx - Fixed for mobile scrolling with security enhancements
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -19,16 +19,60 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+// Security utility functions
+const escapeHtml = (unsafe: string): string => {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+};
+
+const sanitizeName = (input: string): string => {
+    return escapeHtml(input)
+        .replace(/[^a-zA-Z\s'\-]/g, '') // Only letters, spaces, apostrophes, hyphens
+        .trim()
+        .slice(0, 50);
+};
+
+// Enhanced form schema with security validations
 const formSchema = z.object({
-    firstname: z.string().min(1, "First name is required").max(50, "First name too long"),
-    lastname: z.string().min(1, "Last name is required").max(50, "Last name too long"),
+    firstname: z.string()
+        .min(1, "First name is required")
+        .max(50, "First name too long")
+        .regex(/^[a-zA-Z\s'-]+$/, "Only letters, spaces, hyphens and apostrophes allowed"),
+
+    lastname: z.string()
+        .min(1, "Last name is required")
+        .max(50, "Last name too long")
+        .regex(/^[a-zA-Z\s'-]+$/, "Only letters, spaces, hyphens and apostrophes allowed"),
+
     country: z.tuple([z.string(), z.string().optional()]),
-    phone: z.string().min(10, "Enter a valid phone number"),
+
+    phone: z.string()
+        .min(10, "Enter a valid phone number")
+        .regex(/^[\d\s\-\+\(\)]+$/, "Invalid phone number format"),
+
     dateofbirth: z.date({ required_error: "Date of birth is required" }),
-    email: z.string().email("Invalid email format"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z.string().min(1, "Please confirm your password"),
-    referralCode: z.string().optional()
+
+    email: z.string()
+        .email("Invalid email format")
+        .max(254, "Email too long"),
+
+    password: z.string()
+        .min(8, "Password must be at least 8 characters")
+        .max(32, "Password too long")
+        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain uppercase, lowercase and number"),
+
+    confirmPassword: z.string()
+        .min(8, "Please confirm your password")
+        .max(32, "Password too long"),
+
+    referralCode: z.string()
+        .max(20, "Referral code too long")
+        .regex(/^[a-zA-Z0-9]*$/, "Invalid referral code format")
+        .optional()
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"]
@@ -86,8 +130,14 @@ export default function SignUp({ validReferral }: SignUpProps) {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    ...values,
-                    country: [countryName, stateName]
+                    firstname: sanitizeName(values.firstname),
+                    lastname: sanitizeName(values.lastname),
+                    email: escapeHtml(values.email.toLowerCase().trim()),
+                    phone: values.phone.replace(/[^\d\+\-\s\(\)]/g, ''), // Only allow phone chars
+                    password: values.password, // Never sanitize passwords
+                    country: [sanitizeName(countryName), sanitizeName(stateName)],
+                    referralCode: values.referralCode ? values.referralCode.replace(/[^a-zA-Z0-9]/g, '') : undefined,
+                    dateofbirth: values.dateofbirth
                 }),
             });
 
@@ -138,7 +188,7 @@ export default function SignUp({ validReferral }: SignUpProps) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email: escapeHtml(email.toLowerCase().trim()) }),
             });
 
             const data = await response.json();
@@ -182,7 +232,7 @@ export default function SignUp({ validReferral }: SignUpProps) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email: userEmail }),
+                body: JSON.stringify({ email: escapeHtml(userEmail.toLowerCase().trim()) }),
             });
 
             const data = await response.json();
@@ -214,7 +264,6 @@ export default function SignUp({ validReferral }: SignUpProps) {
         }
     };
 
-
     return (
         <div className="min-h-screen w-full bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-x-hidden">
             {/* Theme Toggle - Fixed position but with proper z-index */}
@@ -242,7 +291,7 @@ export default function SignUp({ validReferral }: SignUpProps) {
                             </CardTitle>
                             <CardDescription className="text-base md:text-lg text-muted-foreground px-2">
                                 {validReferral?.preValidated && validReferral.userName ?
-                                    `Join us today! You were referred by ${validReferral.userName}` :
+                                    `Join us today! You were referred by ${escapeHtml(validReferral.userName)}` :
                                     "Join us today and start your journey"
                                 }
                             </CardDescription>
@@ -258,7 +307,7 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                             Valid Referral Code!
                                         </AlertTitle>
                                         <AlertDescription className="text-green-700 dark:text-green-300 text-sm">
-                                            You were referred by <strong>{validReferral.userName}</strong>.
+                                            You were referred by <strong>{escapeHtml(validReferral.userName)}</strong>.
                                             The referral bonus will be applied to your account.
                                         </AlertDescription>
                                     </div>
