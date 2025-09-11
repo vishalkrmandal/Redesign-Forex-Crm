@@ -328,6 +328,8 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
         ];
 
         keysToRemove.forEach(key => localStorage.removeItem(key));
+        // Capture current role before resetting state
+        const currentRole = activeRole;
 
         // Reset all auth state
         setUser(null);
@@ -344,9 +346,17 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
         const api = axios.create({ baseURL: API_URL });
         delete api.defaults.headers.common['Authorization'];
 
-        // Redirect to login if navigate function is provided
+        // Redirect to role-specific login page if navigate function is provided
         if (navigate) {
-            navigate('/');
+            if (currentRole === 'admin') {
+                navigate('/login/admin');
+            } else if (currentRole === 'superadmin') {
+                navigate('/login/superadmin');
+            } else if (currentRole === 'agent') {
+                navigate('/login/agent');
+            } else {
+                navigate('/'); // or '/login' for client/default
+            }
         }
     };
 
