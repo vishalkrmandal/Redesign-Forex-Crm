@@ -117,7 +117,8 @@ const WithdrawalsPage = () => {
 
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
-
+    // Add this after your existing useState declarations (around line 71)
+    const [processingWithdrawals, setProcessingWithdrawals] = useState<Set<string>>(new Set())
 
     useEffect(() => {
         fetchWithdrawals()
@@ -277,6 +278,7 @@ const WithdrawalsPage = () => {
     // Update the handleApprove function
     const handleApprove = async (withdrawalId: string) => {
         try {
+            setProcessingWithdrawals(prev => new Set(prev).add(withdrawalId))
             setIsApproving(true)
             await withdrawalService.approveWithdrawal(withdrawalId, {
                 remarks: approvalRemarks
@@ -299,6 +301,11 @@ const WithdrawalsPage = () => {
             toast.error('Failed to approve withdrawal ' + err.response?.data?.message || '')
         } finally {
             setIsApproving(false)
+            setProcessingWithdrawals(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(withdrawalId)
+                return newSet
+            })
         }
     }
 
@@ -309,6 +316,7 @@ const WithdrawalsPage = () => {
         }
 
         try {
+            setProcessingWithdrawals(prev => new Set(prev).add(withdrawalId))
             setIsRejecting(true)
             await withdrawalService.rejectWithdrawal(withdrawalId, {
                 remarks: rejectRemarks
@@ -333,6 +341,11 @@ const WithdrawalsPage = () => {
             toast.error('Failed to reject withdrawal')
         } finally {
             setIsRejecting(false)
+            setProcessingWithdrawals(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(withdrawalId)
+                return newSet
+            })
         }
     }
 
@@ -922,10 +935,10 @@ const WithdrawalsPage = () => {
                                                                                 setSelectedWithdrawal(withdrawal)
                                                                                 handleApprove(withdrawal._id)
                                                                             }}
-                                                                            disabled={isApproving}
+                                                                            disabled={processingWithdrawals.has(withdrawal._id)}
                                                                         >
-                                                                            {isApproving ? (
-                                                                                <>Loading...</>
+                                                                            {processingWithdrawals.has(withdrawal._id) ? (
+                                                                                <>Processing...</>
                                                                             ) : (
                                                                                 <>
                                                                                     <ThumbsUp className="mr-2 h-4 w-4" />
@@ -939,7 +952,7 @@ const WithdrawalsPage = () => {
                                                                                 setSelectedWithdrawal(withdrawal)
                                                                                 setRejectDialogOpen(true)
                                                                             }}
-                                                                            disabled={isRejecting}
+                                                                            disabled={processingWithdrawals.has(withdrawal._id)}
                                                                         >
                                                                             <ThumbsDown className="mr-2 h-4 w-4" />
                                                                             Reject
