@@ -316,6 +316,20 @@ function AuthProviderComponent({ children }: { children: React.ReactNode }) {
             // Full logout from all roles
             logoutAll(navigate);
         }
+
+        // Auto-redirect based on current role if no navigate function provided
+        if (!navigate) {
+            const currentRole = activeRole || role;
+            if (currentRole === 'admin') {
+                window.location.href = '/login/admin';
+            } else if (currentRole === 'superadmin') {
+                window.location.href = '/login/superadmin';
+            } else if (currentRole === 'agent') {
+                window.location.href = '/login/agent';
+            } else {
+                window.location.href = '/';
+            }
+        }
     };
 
     // Helper function to log out from all roles

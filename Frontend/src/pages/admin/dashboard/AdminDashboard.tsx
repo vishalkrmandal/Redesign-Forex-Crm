@@ -133,10 +133,10 @@ const AdminDashboard: React.FC = () => {
     useEffect(() => {
         fetchDashboardData();
 
-        // Auto-refresh every 5 minutes
+        // Auto-refresh every 1 minutes
         const interval = setInterval(() => {
             fetchDashboardData();
-        }, 5 * 60 * 1000);
+        }, 1 * 60 * 1000);
 
         // Online/offline detection
         const handleOnline = () => setIsOnline(true);

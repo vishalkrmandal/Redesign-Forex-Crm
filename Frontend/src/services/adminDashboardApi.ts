@@ -1,4 +1,6 @@
 // Frontend/src/services/adminDashboardApi.ts --> API service for admin dashboard data fetching
+import { handleUnauthorized } from '@/utils/authHandler';
+import { toast } from 'sonner';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface ApiResponse<T> {
@@ -23,6 +25,14 @@ class AdminDashboardApi {
                 method: 'GET',
                 headers: this.getAuthHeaders(),
             });
+
+
+            // Handle 401 responses
+            if (response.status === 401) {
+                handleUnauthorized();
+                throw new Error('Unauthorized - Session expired');
+            }
+
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -160,6 +170,7 @@ class AdminDashboardApi {
                 topClients: topClientsResponse.data
             };
         } catch (error) {
+            toast.error('Session expired. Please login again.');
             console.error('Error fetching all dashboard data:', error);
             throw error;
         }
