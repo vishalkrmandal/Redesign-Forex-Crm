@@ -8,9 +8,6 @@ export const handleUnauthorized = () => {
     const currentPath = window.location.pathname;
     let activeRole: string | null = null;
 
-    localStorage.setItem('currentpath', currentPath);
-
-
     // Try to get active role from current path
     if (currentPath.startsWith('/superadmin')) {
         activeRole = 'superadmin';
@@ -21,7 +18,6 @@ export const handleUnauthorized = () => {
     } else if (currentPath.startsWith('/client')) {
         activeRole = 'client';
     }
-    localStorage.setItem('activeRole', activeRole || '');
 
     // Additional check: if no role from path, check localStorage
     if (!activeRole) {
