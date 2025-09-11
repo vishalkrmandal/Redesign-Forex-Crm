@@ -231,7 +231,7 @@ async function runTests() {
             console.log('🌐 Testing API call...');
             console.log('🔗 URL:', apiUrl);
 
-            const response = await axios.get(apiUrl, { timeout: 30000 });
+            const response = await axios.get(apiUrl);
 
             console.log('✅ API response received');
             console.log('📊 Status:', response.status);

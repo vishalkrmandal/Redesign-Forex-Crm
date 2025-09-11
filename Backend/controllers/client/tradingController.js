@@ -12,7 +12,7 @@ const fetchExternalTradeData = async (mt5Account, managerIndex, type = 'open') =
     try {
         let url;
         if (type === 'open') {
-           url = `${process.env.MT5_API_URL}/GetOpenTradeByAccount?Manager_Index=${managerIndex}&MT5Accont=${mt5Account}`;
+            url = `${process.env.MT5_API_URL}/GetOpenTradeByAccount?Manager_Index=${managerIndex}&MT5Accont=${mt5Account}`;
         } else {
             // For closed trades, get trades from last 30 days
             const endDate = new Date();
@@ -26,7 +26,7 @@ const fetchExternalTradeData = async (mt5Account, managerIndex, type = 'open') =
         }
 
         const response = await axios.get(url, {
-            timeout: 10000, // 10 second timeout
+            // timeout: 10000, // 10 second timeout
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
@@ -218,7 +218,7 @@ exports.getUserTrades = async (req, res) => {
             const accountInfo = {
                 name: account.name,
                 accountType: account.accountType,
-                groupName: account.groupName,
+                // groupName: account.groupName,
                 leverage: account.leverage
             };
 
@@ -280,7 +280,7 @@ exports.getUserTrades = async (req, res) => {
                 mt5Account: acc.mt5Account,
                 name: acc.name,
                 accountType: acc.accountType,
-                groupName: acc.groupName,
+                // groupName: acc.groupName,
                 leverage: acc.leverage
             }))
         };

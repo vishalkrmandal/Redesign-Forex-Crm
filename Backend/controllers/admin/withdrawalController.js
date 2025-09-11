@@ -238,7 +238,6 @@ async function callMT5WithdrawAPI(mt5Account, amount, comment) {
 
         const response = await axios.get(url, {
             params,
-            timeout: 30000 // 30 second timeout
         });
 
 

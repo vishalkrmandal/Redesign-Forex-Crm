@@ -18,7 +18,6 @@ const makeWithdrawal = async (mt5Account, amount, comment = 'Transfer withdrawal
                 Amount: amount,
                 Comment: comment
             },
-            timeout: 30000 // 30 seconds timeout
         });
 
         if (response.data.error || !response.data.Result) {
@@ -41,7 +40,6 @@ const makeDeposit = async (mt5Account, amount, comment = 'Transfer deposit') => 
                 Amount: amount,
                 Comment: comment
             },
-            timeout: 30000 // 30 seconds timeout
         });
 
         if (response.data.error || !response.data.Result) {

@@ -18,7 +18,7 @@ const fetchClosedTrades = async (managerIndex, startTime, endTime) => {
                 StartTime: startTime,
                 EndTime: endTime
             },
-            timeout: 30000
+            // timeout: 30000
         });
         return response.data;
     } catch (error) {

@@ -323,7 +323,6 @@ exports.approveDeposit = async (req, res) => {
 
             const depositResponse = await axios.get(depositApiUrl, {
                 params: depositParams,
-                timeout: 30000 // 30 seconds timeout
             });
 
             console.log('Deposit API Response:', depositResponse.data);
@@ -344,7 +343,6 @@ exports.approveDeposit = async (req, res) => {
 
             const balanceResponse = await axios.get(balanceApiUrl, {
                 params: balanceParams,
-                timeout: 30000 // 30 seconds timeout
             });
 
             console.log('Balance API Response:', balanceResponse.data);

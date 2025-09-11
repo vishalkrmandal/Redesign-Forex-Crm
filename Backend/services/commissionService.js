@@ -26,12 +26,12 @@ class CommissionService {
         // Process immediately
         setTimeout(() => {
             this.processCommissions();
-        }, 30000); // Wait 30 seconds after server start
+        }, 50000); // Wait 50 seconds after server start
 
-        // Then process every 30 seconds for debugging (change back to 10000 later)
+        // Then process every 50 seconds for debugging (change back to 10000 later)
         setInterval(() => {
             this.processCommissions();
-        }, 300000);
+        }, 50000);
     }
 
     // Test database connectivity
@@ -180,7 +180,7 @@ class CommissionService {
             console.log(`🌐 Fetching trades for Manager ${managerIndex}...`);
 
             const response = await axios.get(apiUrl, {
-                timeout: 300000,
+                // timeout: 300000,
                 headers: {
                     'User-Agent': 'Commission-Service/1.0'
                 }

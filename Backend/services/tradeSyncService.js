@@ -152,7 +152,7 @@ class TradeSyncService {
 
             const response = await axios.get(url, {
                 params,
-                timeout: 30000
+                // timeout: 30000
             });
 
             if (response.data && Array.isArray(response.data)) {

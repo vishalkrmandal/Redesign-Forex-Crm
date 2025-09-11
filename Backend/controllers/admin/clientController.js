@@ -450,7 +450,6 @@ exports.getUserAccounts = async (req, res) => {
 
                 const axios = require('axios');
                 const response = await axios.post(apiUrl, requestData, {
-                    timeout: 30000,
                     headers: {
                         'Content-Type': 'application/json'
                     }

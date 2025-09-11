@@ -10,6 +10,7 @@ const connectDB = require('./config/db');
 const config = require('./config/config');
 const setupWebSocket = require('./utils/socketServer');
 const cron = require('node-cron');
+const helmet = require('helmet');
 
 // Import the trade sync service
 const tradeSyncService = require('./services/tradeSyncService');
@@ -51,12 +52,18 @@ const commissionRoutes = require('./routes/client/commissionRoutes');
 const { addNotificationTriggers } = require('./middlewares/notificationMiddleware');
 const notificationRoutes = require('./routes/notificationRoutes');
 
+
+
+
 // Connect to MongoDB
 connectDB();
 
 // Initialize Express app
 const app = express();
 const server = http.createServer(app);
+
+// Add basic security headers
+app.use(helmet());
 
 // Set up WebSocket server
 const io = setupWebSocket(server);
