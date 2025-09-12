@@ -7,6 +7,7 @@ const {
     getPartnersList,
     verifyReferralCode,
     getIBTree,
+    getPartnersAccounts
 } = require('../../controllers/client/ibClientConfigurationController');
 const { protect, authorize } = require('../../middlewares/auth');
 
@@ -21,5 +22,6 @@ router.get('/my-code', protect, authorize('client'), getMyIBConfiguration);
 router.get('/dashboard', protect, authorize('client'), getIBDashboardSummary);
 router.get('/partners', protect, authorize('client'), getPartnersList);
 router.get('/tree', protect, authorize('client'), getIBTree);
-
+// Get accounts for a specific user
+router.get('/user/partners-accounts', protect, authorize('client', 'admin'), getPartnersAccounts);
 module.exports = router;
