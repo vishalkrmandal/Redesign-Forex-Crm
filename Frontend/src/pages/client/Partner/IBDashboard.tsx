@@ -86,8 +86,39 @@ const IBDashboard = () => {
     const [withdrawalHistory, setWithdrawalHistory] = useState<WithdrawalRequest[]>([]);
 
     useEffect(() => {
+        // Trigger account balance update on initial load
+        triggerAccountBalanceUpdate();
         fetchDashboardData();
     }, []);
+
+
+
+    // Helper function to trigger account balance update
+    const triggerAccountBalanceUpdate = async () => {
+        try {
+            const token = localStorage.getItem('clientToken');
+
+            console.log('Token:', token ? 'exists' : 'missing');
+
+            if (!token) return;
+
+            const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/ibclients/ib-configurations/user/partners-accounts`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            console.log('Response:', response.data);
+
+        } catch (error) {
+            if (error instanceof Error) {
+                console.log('Error:', error.message);
+            } else {
+                console.log('Error:', error);
+            }
+        }
+    };
 
     const fetchDashboardData = async () => {
         try {
