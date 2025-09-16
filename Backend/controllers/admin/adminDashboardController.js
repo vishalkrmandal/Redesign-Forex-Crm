@@ -201,6 +201,22 @@ exports.getAdminDashboardStats = async (req, res) => {
             createdAt: { $gte: startOfDay }
         });
 
+        // Calculate accounts growth
+        const accountsLast30Days = await Account.countDocuments({
+            status: true,
+            createdAt: { $gte: last30Days }
+        });
+        const accountsPrevious30Days = await Account.countDocuments({
+            status: true,
+            createdAt: {
+                $gte: new Date(last30Days.getTime() - 30 * 24 * 60 * 60 * 1000),
+                $lt: last30Days
+            }
+        });
+        const accountsGrowthPercentage = accountsPrevious30Days > 0
+            ? ((accountsLast30Days - accountsPrevious30Days) / accountsPrevious30Days * 100).toFixed(1)
+            : 100;
+
         res.status(200).json({
             success: true,
             data: {
@@ -236,7 +252,8 @@ exports.getAdminDashboardStats = async (req, res) => {
                 },
                 accounts: {
                     total: totalAccounts,
-                    today: accountsToday
+                    today: accountsToday,
+                    growth: parseFloat(accountsGrowthPercentage)
                 }
             }
         });
