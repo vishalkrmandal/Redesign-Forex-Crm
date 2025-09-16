@@ -47,6 +47,7 @@ interface DashboardCardsProps {
         accounts: {
             total: number;
             today: number;
+            growth: number;
         };
     };
 }
@@ -160,8 +161,8 @@ const DashboardCards: React.FC<DashboardCardsProps> = ({ stats }) => {
         {
             title: 'Active Accounts',
             value: formatNumber(stats.accounts.total),
-            change: '+0%',
-            changeValue: 0,
+            change: `${stats.accounts.growth >= 0 ? '+' : ''}${stats.accounts.growth}%`,
+            changeValue: stats.accounts.growth,
             icon: CreditCard,
             color: 'bg-orange-500',
             lightBg: 'bg-orange-50 dark:bg-orange-900/20',

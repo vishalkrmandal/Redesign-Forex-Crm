@@ -51,6 +51,7 @@ interface DashboardData {
         accounts: {
             total: number;
             today: number;
+            growth: number;
         };
     };
     revenueData: Array<{
