@@ -1,3 +1,4 @@
+// Frontend\src\pages\client\financial\Transfer.tsx
 import { useState, useEffect } from "react";
 import { ArrowLeftRight, AlertCircle } from "lucide-react";
 import axios from "axios";
@@ -334,10 +335,10 @@ export default function Transfer() {
           <table className="w-full">
             <thead>
               <tr className="border-b">
-                <th className="pb-2 text-left font-medium">Date</th>
                 <th className="pb-2 text-left font-medium">From</th>
                 <th className="pb-2 text-left font-medium">To</th>
                 <th className="pb-2 text-left font-medium">Amount</th>
+                <th className="pb-2 text-left font-medium">Date</th>
                 <th className="pb-2 text-left font-medium">Status</th>
               </tr>
             </thead>
@@ -345,10 +346,10 @@ export default function Transfer() {
               {transfers && transfers.length > 0 ? (
                 transfers.map((transfer) => (
                   <tr key={transfer._id} className="border-b last:border-0">
-                    <td className="py-3 text-sm">{formatDate(transfer.createdAt)}</td>
                     <td className="py-3 text-sm">{transfer.fromAccount?.mt5Account || "Unknown"}</td>
                     <td className="py-3 text-sm">{transfer.toAccount?.mt5Account || "Unknown"}</td>
                     <td className="py-3 text-sm">{formatCurrency(transfer.amount)}</td>
+                    <td className="py-3 text-sm">{formatDate(transfer.createdAt)}</td>
                     <td className="py-3 text-sm">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${transfer.status === 'Completed'
                         ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400'

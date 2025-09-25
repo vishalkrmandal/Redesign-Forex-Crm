@@ -852,23 +852,23 @@ export default function Withdrawal() {
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="pb-2 text-left font-medium">Date</th>
+                  <th className="pb-2 text-left font-medium">Account</th>
                   <th className="pb-2 text-left font-medium">Method</th>
                   <th className="pb-2 text-left font-medium">Amount</th>
-                  <th className="pb-2 text-left font-medium">Account</th>
-                  <th className="pb-2 text-left font-medium">Status</th>
+                  <th className="pb-2 text-left font-medium">Date</th>
+                  <th className="pb-2 px-2 text-left font-medium">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {withdrawalHistory.length > 0 ? (
                   withdrawalHistory.map((withdrawal) => (
                     <tr key={withdrawal._id} className="border-b last:border-0">
-                      <td className="py-3 text-sm">{formatDate(withdrawal.createdAt)}</td>
+                      <td className="py-3 text-sm">{withdrawal.accountNumber}</td>
                       <td className="py-3 text-sm">{withdrawal.paymentMethod === "bank" ? "Bank Transfer" :
                         withdrawal.paymentMethod === "card" ? "Credit Card" :
                           `E-Wallet (${withdrawal.paymentMethod})`}</td>
                       <td className="py-3 text-sm">${withdrawal.amount.toFixed(2)}</td>
-                      <td className="py-3 text-sm">{withdrawal.accountNumber}</td>
+                      <td className="py-3 text-sm">{formatDate(withdrawal.createdAt)}</td>
                       <td className="py-3 text-sm">
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(withdrawal.status)}`}
