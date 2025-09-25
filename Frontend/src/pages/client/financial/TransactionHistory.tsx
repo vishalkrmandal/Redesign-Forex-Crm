@@ -17,11 +17,11 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 export default function TransactionHistory() {
   interface Transaction {
     _id: string;
-    date: string;
+    account: string;
     type: string;
     description: string;
     amount: string;
-    account: string;
+    date: string;
     status: string;
     formattedDate?: string; // Optional property for formatted date
   }
@@ -141,22 +141,22 @@ export default function TransactionHistory() {
 
         // Add header row
         worksheet.addRow([
-          "Date & Time",
+          "Account",
           "Type",
           "Description",
           "Amount",
-          "Account",
+          "Date & Time",
           "Status"
         ])
 
         // Add data rows
         transactions.forEach((transaction: Transaction) => {
           worksheet.addRow([
-            transaction.formattedDate,
+            transaction.account,
             transaction.type,
             transaction.description,
             transaction.amount,
-            transaction.account,
+            transaction.formattedDate,
             transaction.status
           ])
         })
@@ -287,7 +287,7 @@ export default function TransactionHistory() {
         doc.setFontSize(8) // Reduced font size
         doc.setFont('', 'bold')
 
-        const headers = ['S.No', 'Date & Time', 'Type', 'Description', 'Amount', 'Account', 'Status']
+        const headers = ['S.No', 'Account', 'Type', 'Description', 'Amount', 'Date & Time', 'Status']
         headers.forEach((header, index) => {
           doc.text(header, colPositions[index] + 1, currentY + 5) // Better positioning
         })
@@ -354,11 +354,11 @@ export default function TransactionHistory() {
           // Add row data including serial number
           const rowData = [
             (index + 1).toString(),
-            formattedDateTime,
+            transaction.account || '',
             transaction.type || '',
             transaction.description || '',
             transaction.amount || '',
-            transaction.account || '',
+            formattedDateTime,
             transaction.status || ''
           ]
 
@@ -571,9 +571,9 @@ export default function TransactionHistory() {
                   <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">
-                        Date & Time
+                        Account
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="px-8 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">
                         Type
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">
@@ -582,10 +582,10 @@ export default function TransactionHistory() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">
                         Amount
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">
-                        Account
+                      <th className="px-8 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">
+                        Date & Time
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="px-8 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">
                         Status
                       </th>
                     </tr>
@@ -595,14 +595,7 @@ export default function TransactionHistory() {
                       transactions.map((transaction) => (
                         <tr key={transaction._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {new Date(transaction.date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true
-                            })}
+                            {transaction.account}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
@@ -626,7 +619,14 @@ export default function TransactionHistory() {
                             {transaction.amount}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {transaction.account}
+                            {new Date(transaction.date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
