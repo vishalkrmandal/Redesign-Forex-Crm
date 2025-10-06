@@ -25,7 +25,7 @@ import {
     Banknote,
     History,
     Users,
-    Trees,
+    // Trees,
     Wallet,
     RefreshCw,
     ArrowUpRight,
@@ -330,7 +330,7 @@ const IBDashboard = () => {
 
             {/* Lightweight Tabs */}
             <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="details">
                         <Users className="mr-2 h-4 w-4" />
                         Partner Details
@@ -339,10 +339,10 @@ const IBDashboard = () => {
                         <History className="mr-2 h-4 w-4" />
                         Withdrawal History
                     </TabsTrigger>
-                    <TabsTrigger value="tree">
+                    {/* <TabsTrigger value="tree">
                         <Trees className="mr-2 h-4 w-4" />
                         Network Tree
-                    </TabsTrigger>
+                    </TabsTrigger> */}
                 </TabsList>
 
                 {/* Partner Details Tab */}

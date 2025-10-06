@@ -104,7 +104,7 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
       icon: Briefcase,
       submenu: [
 
-        { title: "Create New Account", path: "/client/partner/new-account", icon: UserPlus },
+        { title: "Create IB Account", path: "/client/partner/new-account", icon: UserPlus },
         { title: "Partner Dashboard", path: "/client/partner/dashboard", icon: BarChart3 },
         { title: "IB Commission", path: "/client/partner/ib-commission", icon: Percent },
         { title: "IB Withdrawal", path: "/client/partner/ib-withdrawal", icon: CreditCard },

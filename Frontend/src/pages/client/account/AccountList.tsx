@@ -98,6 +98,36 @@ export default function AccountList() {
 
   const ACCOUNTS_PER_PAGE = 10;
 
+  // Helper function to trigger account balance update
+  const triggerAccountBalanceUpdate = async () => {
+    try {
+      const token = localStorage.getItem('clientToken');
+      const userData = JSON.parse(localStorage.getItem('clientUser') || '{}');
+      const userId = userData.id;
+
+      console.log('Token:', token ? 'exists' : 'missing');
+      console.log('UserId:', userId);
+
+      if (!token || !userId) return;
+
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/clients/users/${userId}/accounts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Response:', response.data);
+
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log('Error:', error.message);
+      } else {
+        console.log('Error:', error);
+      }
+    }
+  };
+
   // Fetch accounts from the backend
   const fetchAccounts = async () => {
     setLoading(true);
@@ -366,6 +396,10 @@ export default function AccountList() {
 
   // Fetch accounts on component mount
   useEffect(() => {
+
+    // Trigger account balance update on initial load
+    triggerAccountBalanceUpdate();
+
     fetchAccounts();
   }, []);
 
@@ -705,7 +739,7 @@ export default function AccountList() {
                     )}
                   </div>
                 ) : (
-                <div className="mt-2">
+                  <div className="mt-2">
                     <div className="relative">
                       <input
                         type="text"
@@ -749,8 +783,8 @@ export default function AccountList() {
                       <input
                         type={passwordDialog.showNewMasterPwd ? "text" : "password"}
                         className={`w-full rounded-md border px-3 py-2 pr-10 text-sm ${passwordDialog.newMasterPwd && passwordDialog.masterPwdErrors.length > 0
-                            ? 'border-red-500 focus:border-red-500'
-                            : 'border-input'
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-input'
                           }`}
                         placeholder="New master password"
                         value={passwordDialog.newMasterPwd}
@@ -811,8 +845,8 @@ export default function AccountList() {
                       <input
                         type={passwordDialog.showConfirmMasterPwd ? "text" : "password"}
                         className={`w-full rounded-md border px-3 py-2 pr-10 text-sm ${passwordDialog.confirmMasterPwd && passwordDialog.newMasterPwd !== passwordDialog.confirmMasterPwd
-                            ? 'border-red-500 focus:border-red-500'
-                            : 'border-input'
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-input'
                           }`}
                         placeholder="Confirm new master password"
                         value={passwordDialog.confirmMasterPwd}
