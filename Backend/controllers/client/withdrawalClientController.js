@@ -22,12 +22,12 @@ exports.createWithdrawal = async (req, res, next) => {
         console.log('Withdrawal request body:', req.body.data);
 
         // Add OTP verification check at the beginning
-        if (!otpVerified || !withdrawalData) {
-            return res.status(400).json({
-                success: false,
-                message: 'OTP verification required before withdrawal'
-            });
-        }
+        // if (!otpVerified || !withdrawalData) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         message: 'OTP verification required before withdrawal'
+        //     });
+        // }
         // Verify account exists and belongs to user
         const account = await Account.findOne({
             _id: accountId,

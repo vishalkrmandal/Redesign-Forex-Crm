@@ -183,6 +183,8 @@ exports.signup = async (req, res, next) => {
         await sendVerificationEmail(user, verificationToken);
         await user.save();
 
+        console.log("Referral Information:", validReferral, referringIBConfig);
+
         // Auto-create IB configuration if user signed up through referral
         if (validReferral && referringIBConfig) {
             try {

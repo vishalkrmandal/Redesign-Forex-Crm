@@ -161,7 +161,7 @@ exports.createAccount = async (req, res) => {
 // @access  Private
 exports.getAccounts = async (req, res) => {
     try {
-        const accounts = await Account.find({ user: req.user.id });
+        const accounts = await Account.find({ user: req.user.id }).sort({ createdAt: -1 });
 
         res.status(200).json({
             success: true,

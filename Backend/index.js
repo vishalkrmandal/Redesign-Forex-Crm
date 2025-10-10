@@ -101,7 +101,23 @@ app.use(cors({
 
 // Logging in development
 if (config.NODE_ENV === 'production') {
-  app.use(morgan('dev'));
+  morgan.token('ist-time', (req, res) => {
+    return new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  });
+
+  // Custom token for colored status
+  morgan.token('status-colored', (req, res) => {
+    const status = res.statusCode;
+    const color = status >= 500 ? 31 // red
+      : status >= 400 ? 33 // yellow
+        : status >= 300 ? 36 // cyan
+          : status >= 200 ? 32 // green
+            : 0; // no color
+
+    return '\x1b[' + color + 'm' + status + '\x1b[0m';
+  });
+
+  app.use(morgan('[:ist-time] :method :url :status-colored :response-time ms - :res[content-length]'));
 }
 
 // Serve static files

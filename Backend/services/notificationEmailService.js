@@ -31,7 +31,7 @@ class EmailService {
             }
 
             const mailOptions = {
-                from: `"zforexlive" <${config.EMAIL_FROM}>`,
+                from: `"Test" <${config.EMAIL_FROM}>`,
                 to,
                 subject,
                 html,

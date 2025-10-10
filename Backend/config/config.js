@@ -13,6 +13,6 @@ module.exports = {
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASS: process.env.SMTP_PASS,
     EMAIL_FROM: process.env.EMAIL_FROM,
-    CLIENT_URL: process.env.CLIENT_URL || 'https://crm.zforexlive.com',
-    SERVER_URL: process.env.SERVER_URL || 'https://zforexlive.testcrm.top'
+    CLIENT_URL: process.env.CLIENT_URL || 'https://crm.Test.com',
+    SERVER_URL: process.env.SERVER_URL || 'https://Test.testcrm.top'
 };

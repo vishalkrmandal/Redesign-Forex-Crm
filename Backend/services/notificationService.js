@@ -239,7 +239,7 @@ class NotificationService {
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>🔔 Zforexlive CRM Notification</h1>
+                        <h1>🔔 Test CRM Notification</h1>
                         <p>Important update for your account</p>
                     </div>
                     <div class="content">
@@ -247,7 +247,7 @@ class NotificationService {
                         <h2>Hi ${userName}!</h2>
                         ${content}
                         <div class="footer">
-                            <p>This is an automated notification from Zforexlive CRM.</p>
+                            <p>This is an automated notification from Test CRM.</p>
                             <p>If you have any questions, please contact our support team.</p>
                         </div>
                     </div>

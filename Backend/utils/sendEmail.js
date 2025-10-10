@@ -12,23 +12,23 @@ const config = require('../config/config');
  */
 const sendEmail = async (options) => {
     // Create transporter
-     const transporter = nodemailer.createTransport({
-            host: config.SMTP_HOST,
-            port: config.SMTP_PORT,
-            secure: false,
-            auth: {
-                user: config.SMTP_USER,
-                pass: config.SMTP_PASS
-            }
-        });
-    
-        // Define email options
-        const mailOptions = {
-            from: `"zforexlive" <${config.EMAIL_FROM}>`,
-            to: options.to,
-            subject: options.subject,
-            html: options.html
-        };
+    const transporter = nodemailer.createTransport({
+        host: config.SMTP_HOST,
+        port: config.SMTP_PORT,
+        secure: false,
+        auth: {
+            user: config.SMTP_USER,
+            pass: config.SMTP_PASS
+        }
+    });
+
+    // Define email options
+    const mailOptions = {
+        from: `"Test" <${config.EMAIL_FROM}>`,
+        to: options.to,
+        subject: options.subject,
+        html: options.html
+    };
 
     // Send email
     await transporter.sendMail(mailOptions);
