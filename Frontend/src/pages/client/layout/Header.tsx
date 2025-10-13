@@ -4,20 +4,20 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { useTheme } from "@/context/ThemeContext"
+// import { useTheme } from "@/context/ThemeContext"
 import { useAuth } from "@/hooks/useAuth"
 // import { useNotifications } from "@/context/NotificationContext"
 import {
   Menu,
-  Moon,
-  Sun,
+  // Moon,
+  // Sun,
   // Bell,
   User,
   Search,
-  Settings,
+  // Settings,
   LogOut,
   Shield,
-  Clock,
+  // Clock,
   ChevronDown,
   X,
   Mail,
@@ -37,7 +37,7 @@ interface UserData {
 }
 
 export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
-  const { theme, toggleTheme } = useTheme()
+  // const { theme, toggleTheme } = useTheme()
   const { user, logout, activeRole } = useAuth()
   // const {
   //   notifications,
@@ -253,7 +253,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
 
 
           {/* Theme Toggle */}
-          <button
+          {/* <button
             onClick={toggleTheme}
             className="group relative rounded-lg p-2 text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground active:scale-95"
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -265,7 +265,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                 <Moon className="h-5 w-5 transition-transform duration-200 group-hover:-rotate-12" />
               )}
             </div>
-          </button>
+          </button> */}
 
           {/* Notifications */}
           {/* <div className="relative" ref={notificationRef}>
@@ -347,7 +347,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                     <span>My Profile</span>
                   </button>
 
-                  <button className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground">
+                  {/* <button className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground">
                     <Settings className="h-4 w-4" />
                     <span>Settings</span>
                   </button>
@@ -355,9 +355,9 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                   <button className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground">
                     <Clock className="h-4 w-4" />
                     <span>Activity Log</span>
-                  </button>
+                  </button> */}
 
-                  <div className="my-2 border-t border-border/50" />
+                  <div className="border-t border-border/50" />
 
                   <button
                     onClick={handleLogout}

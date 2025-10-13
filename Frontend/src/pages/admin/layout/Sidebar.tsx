@@ -13,7 +13,7 @@ import {
   Home,
   Settings,
   HandshakeIcon,
-  CopyPlus,
+  // CopyPlus,
   // UsersRound,
 
 } from "lucide-react"
@@ -73,13 +73,13 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
         { title: "IB Withdrawals", path: "/admin/partner/ib-withdrawals" },
       ],
     },
-    {
-      title: "Copy Trading",
-      icon: CopyPlus,
-      submenu: [{
-        title: "Copy Request", path: "/admin/copy/copy-request"
-      }],
-    },
+    // {
+    //   title: "Copy Trading",
+    //   icon: CopyPlus,
+    //   submenu: [{
+    //     title: "Copy Request", path: "/admin/copy/copy-request"
+    //   }],
+    // },
     // {
     //   title: "Support",
     //   icon: HeadphonesIcon,

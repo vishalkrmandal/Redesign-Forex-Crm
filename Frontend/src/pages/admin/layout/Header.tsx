@@ -6,22 +6,22 @@ import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { useTheme } from "@/context/ThemeContext"
 import { useAuth } from "@/hooks/useAuth"
-import { useNotifications } from "@/context/NotificationContext"
+// import { useNotifications } from "@/context/NotificationContext"
 import {
   Menu,
   Moon,
   Sun,
-  Bell,
-  User,
+  // Bell,
+  // User,
   Search,
-  Settings,
+  // Settings,
   LogOut,
   Shield,
-  Clock,
+  // Clock,
   ChevronDown,
   X,
 } from "lucide-react"
-import NotificationDropdown from "@/components/notifications/NotificationDropdown"
+// import NotificationDropdown from "@/components/notifications/NotificationDropdown"
 
 interface HeaderProps {
   toggleSidebar: () => void
@@ -38,18 +38,18 @@ interface UserData {
 export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
   const { user, logout, activeRole } = useAuth()
-  const {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    loading,
-    isConnected
-  } = useNotifications()
+  // const {
+  //   notifications,
+  //   unreadCount,
+  //   markAsRead,
+  //   markAllAsRead,
+  //   deleteNotification,
+  //   loading,
+  //   isConnected
+  // } = useNotifications()
   const navigate = useNavigate()
 
-  const [showNotifications, setShowNotifications] = useState(false)
+  // const [showNotifications, setShowNotifications] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -78,7 +78,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setShowNotifications(false)
+        // setShowNotifications(false)
       }
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false)
@@ -96,21 +96,21 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
     }
   }, [showSearch])
 
-  const toggleNotifications = () => {
-    setShowNotifications(!showNotifications)
-    setShowUserMenu(false)
-    setShowSearch(false)
-  }
+  // const toggleNotifications = () => {
+  //   setShowNotifications(!showNotifications)
+  //   setShowUserMenu(false)
+  //   setShowSearch(false)
+  // }
 
   const toggleUserMenu = () => {
     setShowUserMenu(!showUserMenu)
-    setShowNotifications(false)
+    // setShowNotifications(false)
     setShowSearch(false)
   }
 
   const toggleSearch = () => {
     setShowSearch(!showSearch)
-    setShowNotifications(false)
+    // setShowNotifications(false)
     setShowUserMenu(false)
     if (!showSearch) {
       setSearchQuery("")
@@ -126,10 +126,10 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
     setShowUserMenu(false)
   }
 
-  const handleNavigateToProfile = () => {
-    navigate('profile/my-profile')
-    setShowUserMenu(false)
-  }
+  // const handleNavigateToProfile = () => {
+  //   navigate('profile/my-profile')
+  //   setShowUserMenu(false)
+  // }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -230,7 +230,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
 
 
           {/* Notifications */}
-          <div className="relative" ref={notificationRef}>
+          {/* <div className="relative" ref={notificationRef}>
             <button
               onClick={toggleNotifications}
               className="group relative rounded-lg p-2 text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground active:scale-95"
@@ -261,7 +261,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                 unreadCount={unreadCount}
               />
             )}
-          </div>
+          </div> */}
 
           {/* User Menu */}
           <div className="relative" ref={userMenuRef}>
@@ -301,15 +301,15 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
 
                 {/* Menu Items */}
                 <div className="p-2">
-                  <button
+                  {/* <button
                     onClick={handleNavigateToProfile}
                     className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground"
                   >
                     <User className="h-4 w-4" />
                     <span>My Profile</span>
-                  </button>
+                  </button> */}
 
-                  <button className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground">
+                  {/* <button className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground">
                     <Settings className="h-4 w-4" />
                     <span>Settings</span>
                   </button>
@@ -317,9 +317,9 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                   <button className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground">
                     <Clock className="h-4 w-4" />
                     <span>Activity Log</span>
-                  </button>
+                  </button> */}
 
-                  <div className="my-2 border-t border-border/50" />
+                  {/* <div className="my-2 border-t border-border/50" /> */}
 
                   <button
                     onClick={handleLogout}
