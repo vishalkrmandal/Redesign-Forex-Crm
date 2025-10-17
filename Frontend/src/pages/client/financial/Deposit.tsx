@@ -462,6 +462,7 @@ export default function Deposit() {
                                       src={`${API_BASE_URL.replace('/api', '')}${method.qrCode}`}
                                       alt="Payment QR Code"
                                       className="object-contain h-auto max-h-32"
+                                      crossOrigin="anonymous"
                                     />
                                     <div className="mt-2">
                                       <a
@@ -570,6 +571,7 @@ export default function Deposit() {
                                   src={`${API_BASE_URL.replace('/api', '')}${wallet.qrCode}`}
                                   alt="Wallet QR Code"
                                   className="object-contain h-auto max-h-32"
+                                  crossOrigin="anonymous"
                                 />
                                 <div className="mt-2">
                                   <a
@@ -714,6 +716,7 @@ export default function Deposit() {
                           src={`${API_BASE_URL.replace('/api', '')}${selectedMethodDetails.qrCode}`}
                           alt="QR Code"
                           className="w-60 h-auto object-contain"
+                          crossOrigin="anonymous"
                         />
                       </div>
                       <div className="mt-4">
@@ -846,6 +849,7 @@ export default function Deposit() {
                       src={proofPreview}
                       alt="Proof Preview"
                       className="max-w-full h-auto max-h-48 object-contain border rounded"
+                      crossOrigin="anonymous"
                     />
                   </div>
                 )}

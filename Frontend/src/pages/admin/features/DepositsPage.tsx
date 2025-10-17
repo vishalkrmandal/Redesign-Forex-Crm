@@ -1521,9 +1521,10 @@ const DepositsPage = () => {
                                                     src={`${API_BASE_URL}${selectedDeposit.proofOfPayment}`}
                                                     alt="Document preview"
                                                     className="max-w-full"
+                                                    crossOrigin="anonymous"
                                                     onError={(e) => {
+                                                        console.error('Failed to load image:', `${API_BASE_URL}${selectedDeposit.proofOfPayment}`);
                                                         e.currentTarget.onerror = null;
-                                                        // e.currentTarget.src = "/placeholder.svg";
                                                     }}
                                                 />
                                             ) : selectedDeposit.proofOfPayment.match(/\.(pdf)$/i) ? (

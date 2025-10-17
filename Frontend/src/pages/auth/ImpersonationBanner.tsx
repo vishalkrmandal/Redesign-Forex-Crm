@@ -18,7 +18,7 @@ const ImpersonationBanner: React.FC = () => {
         setVisible(isImpersonated && !!impersonationInfo);
     }, [isImpersonated, impersonationInfo]);
 
-    if (!visible) {
+    if (!visible || !impersonationInfo) {
         return null;
     }
 

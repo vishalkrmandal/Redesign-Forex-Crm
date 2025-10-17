@@ -435,7 +435,7 @@ export default function PaymentMethod() {
         );
     };
 
- const QRCodeOnlySection = () => (
+    const QRCodeOnlySection = () => (
         <div className="space-y-2">
             <Label>QR Code</Label>
             <div className="flex items-center space-x-2">
@@ -897,9 +897,10 @@ export default function PaymentMethod() {
                                         <div className="space-y-2">
                                             <Label>QR Code</Label>
                                             <img
-                                                src={`http://localhost:5000${selectedMethodDetails.qrCode}`}
+                                                src={`${API_BASE_URL}${selectedMethodDetails.qrCode}`}
                                                 alt="QR Code"
                                                 className="max-w-full h-auto"
+                                                crossOrigin="anonymous"
                                             />
                                         </div>
                                     )}

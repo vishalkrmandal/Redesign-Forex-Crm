@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, RefreshCw, Lock, EyeOff, Eye, Copy } from "l
 import axios, { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { createPortal } from 'react-dom';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -600,7 +601,7 @@ export default function AccountList() {
       </div>
 
       {/* Password Change Dialog */}
-      {passwordDialog.isOpen && (
+      {passwordDialog.isOpen && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="w-full max-w-md rounded-lg  p-6 shadow-lg bg-card">
             <h3 className="mb-4 text-lg font-medium">Account Passwords</h3>
@@ -915,7 +916,8 @@ export default function AccountList() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

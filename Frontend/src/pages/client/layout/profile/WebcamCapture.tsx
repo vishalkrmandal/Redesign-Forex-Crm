@@ -96,12 +96,16 @@ const WebcamCapture: React.FC<WebcamCaptureProps> = ({ onCapture, fieldName }) =
                 const currentTrack = stream.getVideoTracks()[0];
                 const currentFacingMode = currentTrack.getSettings().facingMode;
 
-                // Toggle facing mode
+                // Toggle facing mode with EXACT constraint
                 const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
 
-                // Start new stream with toggled facing mode
+                // Start new stream with EXACT facing mode
                 const newStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: newFacingMode }
+                    video: {
+                        facingMode: { exact: newFacingMode },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
                 });
 
                 setStream(newStream);
@@ -129,7 +133,7 @@ const WebcamCapture: React.FC<WebcamCaptureProps> = ({ onCapture, fieldName }) =
             </Button>
 
             <Dialog open={isOpen} onOpenChange={(open) => !open && closeWebcam()}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md max-w-full w-full h-[90vh] sm:h-auto">
                     <DialogHeader>
                         <DialogTitle>Capture Image</DialogTitle>
                         {/* <Button
@@ -147,7 +151,7 @@ const WebcamCapture: React.FC<WebcamCaptureProps> = ({ onCapture, fieldName }) =
                             autoPlay
                             playsInline
                             muted
-                            className="w-full h-auto rounded-md"
+                            className="w-full h-auto max-h-[60vh] object-cover rounded-md"
                         />
 
                         {/* Hidden canvas for capturing frames */}
