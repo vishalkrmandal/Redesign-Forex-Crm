@@ -131,7 +131,12 @@ const IBWithdrawal = () => {
 
         } catch (error) {
             console.error('Error fetching data:', error);
-            toast.error('Failed to load data');
+            if (typeof error === "object" && error !== null && "response" in error) {
+                // @ts-ignore
+                toast.info(error.response?.data?.message || '');
+            } else {
+                toast.error('Failed to load data');
+            }
         } finally {
             setLoading(false);
         }
