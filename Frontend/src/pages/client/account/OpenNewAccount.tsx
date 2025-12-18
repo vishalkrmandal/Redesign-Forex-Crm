@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useNavigate } from 'react-router-dom';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const SERVER_NAME = import.meta.env.VITE_SERVER_NAME;
 
 interface Leverage {
   _id: string
@@ -35,7 +36,7 @@ export default function OpenNewAccount() {
   const [formValues, setFormValues] = useState({
     leverage: "",
     accountType: "",
-    platform: "MetaTrader 5"
+    platform: SERVER_NAME
   });
   const navigate = useNavigate();
 
@@ -112,7 +113,7 @@ export default function OpenNewAccount() {
     setFormValues({
       leverage: "",
       accountType: "",
-      platform: "MetaTrader 5"
+      platform: SERVER_NAME
     });
     setSelectedGroup(null);
   }, []);
@@ -137,7 +138,7 @@ export default function OpenNewAccount() {
     try {
       await axios.post(`${API_BASE_URL}/api/accounts/create`, {
         ...formValues,
-        platform: "MetaTrader 5"
+        platform: SERVER_NAME
       }, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('clientToken')}`
@@ -456,7 +457,7 @@ export default function OpenNewAccount() {
                 Trading Platform
               </label>
               <div className="w-full rounded-md border border-input bg-muted px-4 py-3 text-sm text-muted-foreground">
-                MetaTrader 5
+                {SERVER_NAME}
               </div>
             </div>
           </div>

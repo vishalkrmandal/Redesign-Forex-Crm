@@ -6,10 +6,10 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Link, useLocation } from "react-router-dom"
 import {
+  BarChart2,
   ChevronDown,
   ChevronRight,
   HeadphonesIcon,
-  Settings,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -180,9 +180,15 @@ export default function Sidebar({ open, isMobile = false, onItemClick }: Sidebar
       <div className="flex h-16 items-center justify-center border-gray-200 dark:border-gray-700 transition-all duration-500 ease-in-out flex-shrink-0">
         <div className={`transition-all duration-500 ease-in-out ${shouldShowExpanded ? 'opacity-100 scale-100' : 'opacity-100 scale-100'}`}>
           {shouldShowExpanded ? (
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white whitespace-nowrap transition-all duration-500 ease-in-out">TestCRM Agent</h2>
+            <div className="flex items-center space-x-2 gap-0.5 text-gray-800 dark:text-white font-bold text-2xl ">
+              <img
+                src="/logo-removebg.png"
+                alt={import.meta.env.VITE_SITE_NAME + " Logo"}
+                className="h-8 text-gray-800 dark:text-white whitespace-nowrap transition-all duration-500 ease-in-out"
+              />
+            </div>
           ) : (
-            <Settings className="h-8 w-8 text-gray-800 dark:text-white transition-all duration-500 ease-in-out" />
+            <BarChart2 className="h-8 w-8 text-gray-800 dark:text-white transition-all duration-500 ease-in-out" />
           )}
         </div>
       </div>

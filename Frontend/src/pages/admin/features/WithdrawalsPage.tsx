@@ -429,9 +429,8 @@ const WithdrawalsPage = () => {
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium">Wallet ID</p>
-                                        <p className="text-sm text-gray-600">{eWalletDetails.walletId}</p>
+                                        <p className="text-sm text-gray-600 break-all">{eWalletDetails.walletId}</p>
                                     </div>
-
                                 </div>
                             </>
                         ) : (

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { AlertCircle, ChevronDown, ChevronUp, CreditCard, MoreHorizontal, RefreshCw } from "lucide-react";
 
+const SERVER_NAME = import.meta.env.VITE_SERVER_NAME;
+
 // Active Accounts
 type ActiveAccount = {
     _id: string;
@@ -46,14 +48,18 @@ const ActiveAccounts: React.FC<ActiveAccountsProps> = ({
 
     return (
         <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-lg border-2 border-gray-200 dark:border-gray-700 p-6 hover:shadow-2xl transition-all duration-300">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-4 p-6 pb-0 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-3">
                     <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg">
-                        <CreditCard className="w-6 h-6 text-white" />
+                        <CreditCard className="w-3 h-3 text-white" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-foreground">Active Accounts</h3>
+                        <h3 className="text-lg font-bold text-foreground">Active Accounts</h3>
                         <p className="text-sm text-muted-foreground">{accounts.length} accounts connected</p>
+                        <div className="flex flex-col-1 text-sm text-muted-foreground">
+                            <h3 className="text-sm font-semibold text-foreground">Server Name:</h3>
+                            <h3 className="text-sm font-semibold text-muted-foreground">&nbsp;{SERVER_NAME}</h3>
+                        </div>
                     </div>
                 </div>
                 <button
