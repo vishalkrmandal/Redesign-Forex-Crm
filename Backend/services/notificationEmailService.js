@@ -31,7 +31,7 @@ class EmailService {
             }
 
             const mailOptions = {
-                from: `"Test" <${config.EMAIL_FROM}>`,
+                from: `"${config.SITE_NAME}" <${process.env.EMAIL_FROM}>`,
                 to,
                 subject,
                 html,

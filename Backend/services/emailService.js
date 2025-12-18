@@ -20,7 +20,7 @@ const sendEmail = async (options) => {
 
     // Define email options
     const mailOptions = {
-        from: `"Test" <${config.EMAIL_FROM}>`,
+        from: `"${config.SITE_NAME}" <${config.EMAIL_FROM}>`,
         to: options.to,
         subject: options.subject,
         html: options.html
@@ -35,7 +35,7 @@ const sendVerificationEmail = async (user, verificationToken) => {
 
     await sendEmail({
         to: user.email,
-        subject: '🔐 Verify Your Email Address - Test',
+        subject: `🔐 Verify Your Email Address - ${config.SITE_NAME}`,
         html: verificationEmailTemplate(user.firstname, verificationURL)
     });
 };
@@ -48,7 +48,7 @@ const sendPasswordResetEmail = async (user, resetToken) => {
     console.log('Sending password reset email to:', user.email);
     await sendEmail({
         to: user.email,
-        subject: '🔒 Password Reset - Test',
+        subject: `🔒 Password Reset - ${config.SITE_NAME}`,
         html: passwordResetTemplate(user.firstname, resetURL)
     });
 };

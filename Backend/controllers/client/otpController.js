@@ -95,7 +95,7 @@ exports.sendWithdrawalOTP = async (req, res, next) => {
                         </div>
 
                         <div class="footer">
-                            <p>This is an automated notification from Test CRM.</p>
+                            <p>This is an automated notification from ${process.env.SITE_NAME} CRM.</p>
                             <p>If you have any questions, please contact our support team.</p>
                         </div>
                     </div>
@@ -106,7 +106,7 @@ exports.sendWithdrawalOTP = async (req, res, next) => {
 
         await emailService.sendEmail({
             to: user.email,
-            subject: 'Withdrawal OTP Verification - Test',
+            subject: `Withdrawal OTP Verification - ${process.env.SITE_NAME}`,
             html: emailTemplate
         });
 
@@ -249,7 +249,7 @@ exports.resendWithdrawalOTP = async (req, res, next) => {
 
         await emailService.sendEmail({
             to: user.email,
-            subject: 'Withdrawal OTP Verification (Resent) - Test',
+            subject: `Withdrawal OTP Verification (Resent) - ${process.env.SITE_NAME}`,
             html: emailTemplate
         });
 

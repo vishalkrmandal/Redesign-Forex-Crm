@@ -13,7 +13,7 @@ class TradeSyncService {
     constructor() {
         this.isProcessing = false;
         this.lastSyncTime = new Date();
-        this.managerIndexes = process.env.Manager_Index || 3;
+        this.managerIndexes = [parseInt(process.env.Manager_Index)];
         this.apiBaseUrl = process.env.MT5_API_URL || 'https://api2.infoapi.biz/api/mt5';
 
         this.syncModes = {
