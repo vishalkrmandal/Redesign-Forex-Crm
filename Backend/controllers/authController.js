@@ -253,7 +253,20 @@ exports.verifyEmail = async (req, res, next) => {
         await user.save();
 
         // Redirect to login page with success message
-        res.redirect(`${config.CLIENT_URL}/?verified=true`);
+        res.status(200).send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Email Verified</title>
+                <meta http-equiv="refresh" content="3;url=${config.CLIENT_URL}/?verified=true">
+            </head>
+            <body>
+                <h1>Email Verified Successfully!</h1>
+                <p>Redirecting to login page...</p>
+                <p>If not redirected, <a href="${config.CLIENT_URL}/?verified=true">click here</a></p>
+            </body>
+            </html>
+        `);
     } catch (error) {
         console.error('Email verification error:', error);
         res.status(500).json({
