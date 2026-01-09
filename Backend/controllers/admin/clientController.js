@@ -9,6 +9,7 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const Account = require('../../models/client/Account');
 const IBClientConfiguration = require('../../models/client/IBClientConfiguration');
+const { metaApi } = require('../../api/metaApi');
 require('dotenv').config();
 
 // @desc    Get all clients
@@ -434,7 +435,6 @@ exports.getUserAccounts = async (req, res) => {
                 });
             });
 
-            console.log('Accounts grouped by manager:', accountsByManager);
 
             // Fetch updated info for each manager group
             for (const [managerIndex, managerAccounts] of Object.entries(accountsByManager)) {
@@ -442,18 +442,12 @@ exports.getUserAccounts = async (req, res) => {
 
                 console.log(`Fetching info for Manager ${managerIndex}:`, mt5AccountNumbers);
 
-                const apiUrl = `${process.env.MT5_API_URL}/GetUserInfoByAccounts`;
                 const requestData = {
                     Manager_Index: parseInt(managerIndex),
                     MT5Accounts: mt5AccountNumbers
                 };
 
-                const axios = require('axios');
-                const response = await axios.post(apiUrl, requestData, {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+                const response = await metaApi.post(`/GetUserInfoByAccounts`, requestData);
 
                 console.log(`API Response for Manager ${managerIndex}:`, response.data);
 
@@ -487,7 +481,7 @@ exports.getUserAccounts = async (req, res) => {
                                     { new: true }
                                 );
 
-                                console.log(`Account updated successfully:`, updatedAccount);
+                                // console.log(`Account updated successfully:`, updatedAccount);
                                 return updatedAccount;
                             } else {
                                 console.log(`No account mapping found for MT5Account: ${mt5Account}`);

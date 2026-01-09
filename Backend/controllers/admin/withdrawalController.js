@@ -3,12 +3,12 @@
 const Withdrawal = require('../../models/Withdrawal');
 const Account = require('../../models/client/Account');
 const User = require('../../models/User');
+const { metaApi } = require('../../api/metaApi');
 const axios = require('axios');
 require('dotenv').config();
 
 // MT5 API Configuration
-const MT5_API_BASE_URL = process.env.MT5_API_URL;
-const MANAGER_INDEX = process.env.Manager_Index || 3; // fallback to 3 if not set
+const MANAGER_INDEX = process.env.Manager_Index;
 
 exports.getAllWithdrawals = async (req, res) => {
 
@@ -226,7 +226,6 @@ exports.rejectWithdrawal = async (req, res) => {
 // Helper function to call MT5 API
 async function callMT5WithdrawAPI(mt5Account, amount, comment) {
     try {
-        const url = `${MT5_API_BASE_URL}/MakeWithdrawBalance`;
         const params = {
             Manager_Index: MANAGER_INDEX,
             MT5Account: mt5Account,
@@ -236,8 +235,8 @@ async function callMT5WithdrawAPI(mt5Account, amount, comment) {
 
 
 
-        const response = await axios.get(url, {
-            params,
+        const response = await metaApi.get(`/MakeWithdrawBalance`, {
+            params
         });
 
 

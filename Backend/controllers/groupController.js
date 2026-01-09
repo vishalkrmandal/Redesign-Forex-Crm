@@ -1,5 +1,6 @@
 // backend/controllers/groupController.js
 const Group = require('../models/Group');
+const { metaApi } = require('../api/metaApi');
 const axios = require('axios');
 require('dotenv').config();
 
@@ -95,9 +96,8 @@ exports.deleteGroup = async (req, res, next) => {
 exports.getMt5Groups = async (req, res, next) => {
     try {
         const managerIndex = process.env.Manager_Index;
-        const mt5ApiUrl = process.env.MT5_API_URL;
 
-        const response = await axios.get(`${mt5ApiUrl}/GetGroups?Manager_Index=${managerIndex}`);
+        const response = await metaApi.get(`/GetGroups?Manager_Index=${managerIndex}`);
         res.status(200).json({
             success: true,
             data: response.data

@@ -2,6 +2,7 @@
 
 const Withdrawal = require('../../models/Withdrawal');
 const Account = require('../../models/client/Account');
+const { metaApi } = require('../../api/metaApi');
 const axios = require('axios');
 require('dotenv').config();
 
@@ -19,7 +20,7 @@ exports.createWithdrawal = async (req, res, next) => {
             otpVerified,
             withdrawalData
         } = req.body;
-        console.log('Withdrawal request body:', req.body.data);
+        // console.log('Withdrawal request body:', req.body);
 
         // Add OTP verification check at the beginning
         // if (!otpVerified || !withdrawalData) {
@@ -41,8 +42,15 @@ exports.createWithdrawal = async (req, res, next) => {
             });
         }
 
-        const checkTradesUrl = `${process.env.MT5_API_URL}/GetOpenTradeByAccount?Manager_Index=${process.env.Manager_Index}&MT5Accont=${account.mt5Account}`;
-        const tradesResponse = await axios.get(checkTradesUrl);
+        // const checkTradesUrl = `${process.env.MT5_API_URL}/GetOpenTradeByAccount?Manager_Index=${process.env.Manager_Index}&MT5Accont=${account.mt5Account}`;
+        const tradesResponse = await metaApi.get(`/GetOpenTradeByAccount`, {
+            params: {
+                Manager_Index: process.env.Manager_Index,
+                MT5Accont: account.mt5Account
+            }
+        });
+
+        // console.log('Trades response:', tradesResponse.data);
 
         // If trades are found (not error status), prevent withdrawal
         if (tradesResponse.data.status !== 'error') {

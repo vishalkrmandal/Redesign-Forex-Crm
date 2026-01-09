@@ -13,6 +13,7 @@ const Group = require('./models/Group');
 const User = require('./models/User');
 const IBClosedTrade = require('./models/IBClosedTrade');
 const IBCommission = require('./models/IBCommission');
+const { metaApi } = require('./api/metaApi');
 
 async function runTests() {
     try {
@@ -226,12 +227,12 @@ async function runTests() {
                 return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
             };
 
-            const apiUrl = `${process.env.MT5_API_URL}/GetCloseTradeAllUsers?Manager_Index=${managerIndex}&StartTime=${formatDate(startTime)}&EndTime=${formatDate(endTime)}`;
+            const apiUrl = `/GetCloseTradeAllUsers?Manager_Index=${managerIndex}&StartTime=${formatDate(startTime)}&EndTime=${formatDate(endTime)}`;
 
             console.log('🌐 Testing API call...');
             console.log('🔗 URL:', apiUrl);
 
-            const response = await axios.get(apiUrl);
+            const response = await metaApi.get(apiUrl);
 
             console.log('✅ API response received');
             console.log('📊 Status:', response.status);

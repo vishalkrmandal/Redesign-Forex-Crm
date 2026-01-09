@@ -6,6 +6,7 @@ const IBConfiguration = require('../../models/admin/IBAdminConfiguration');
 const User = require('../../models/User');
 const crypto = require('crypto');
 const Account = require('../../models/client/Account');
+const { metaApi } = require('../../api/metaApi');
 
 // @desc    Create a new IB referral code (or activate existing pending one)
 // @route   POST /api/ibclients/ib-configurations/create
@@ -489,20 +490,13 @@ exports.getPartnersAccounts = async (req, res) => {
                 const mt5AccountNumbers = managerAccounts.map(acc => acc.mt5Account);
                 console.log(`Fetching info for Manager ${managerIndex}:`, mt5AccountNumbers);
 
-                const apiUrl = `${process.env.MT5_API_URL}/GetUserInfoByAccounts`;
                 const requestData = {
                     Manager_Index: parseInt(managerIndex),
                     MT5Accounts: mt5AccountNumbers
                 };
 
-                const axios = require('axios');
-
                 try {
-                    const response = await axios.post(apiUrl, requestData, {
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
+                    const response = await metaApi.post(`/GetUserInfoByAccounts`, requestData);
 
                     console.log(`API Response for Manager ${managerIndex}:`, response.data);
 

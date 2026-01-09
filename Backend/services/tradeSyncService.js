@@ -7,6 +7,7 @@ const IBClientConfiguration = require('../models/client/IBClientConfiguration');
 const IBAdminConfiguration = require('../models/admin/IBAdminConfiguration');
 const Group = require('../models/Group');
 const User = require('../models/User');
+const { metaApi } = require('../api/metaApi');
 require('dotenv').config();
 
 class TradeSyncService {
@@ -14,7 +15,6 @@ class TradeSyncService {
         this.isProcessing = false;
         this.lastSyncTime = new Date();
         this.managerIndexes = [parseInt(process.env.Manager_Index)];
-        this.apiBaseUrl = process.env.MT5_API_URL || 'https://api2.infoapi.biz/api/mt5';
 
         this.syncModes = {
             INITIAL_SETUP: 365,
@@ -140,7 +140,7 @@ class TradeSyncService {
             const startTimeStr = this.formatDateForAPI(startTime);
             const endTimeStr = this.formatDateForAPI(endTime);
 
-            const url = `${this.apiBaseUrl}/GetCloseTradeAllUsers`;
+            const url = `/GetCloseTradeAllUsers`;
             const params = {
                 Manager_Index: managerIndex,
                 StartTime: startTimeStr,
@@ -150,7 +150,7 @@ class TradeSyncService {
             console.log(`📡 Fetching trades from API for Manager ${managerIndex}...`);
             console.log(`📅 Time range: ${startTimeStr} to ${endTimeStr} (${daysToFetch} days - ${this.currentSyncMode} mode)`);
 
-            const response = await axios.get(url, {
+            const response = await metaApi.get(url, {
                 params,
                 // timeout: 30000
             });

@@ -8,6 +8,7 @@ const PDFDocument = require('pdfkit');
 const docx = require('docx');
 const { Document, Paragraph, Table, TableRow, TableCell, TextRun } = docx;
 const axios = require('axios'); // Add this import
+const { metaApi } = require('../../api/metaApi');
 require('dotenv').config();
 
 // Get all deposits with filtering and sorting
@@ -311,7 +312,6 @@ exports.approveDeposit = async (req, res) => {
 
         try {
             // Step 1: Make deposit through external API
-            const depositApiUrl = `${process.env.MT5_API_URL}/MakeDepositBalance`;
             const depositParams = {
                 Manager_Index: managerIndex,
                 MT5Account: mt5Account,
@@ -321,7 +321,7 @@ exports.approveDeposit = async (req, res) => {
 
             console.log('Making deposit API call:', depositParams);
 
-            const depositResponse = await axios.get(depositApiUrl, {
+            const depositResponse = await metaApi.get(`/MakeDepositBalance`, {
                 params: depositParams,
             });
 
@@ -333,7 +333,6 @@ exports.approveDeposit = async (req, res) => {
             }
 
             // Step 2: Get updated balance and equity
-            const balanceApiUrl = `${process.env.MT5_API_URL}/GetUserInfo`;
             const balanceParams = {
                 Manager_Index: managerIndex,
                 MT5Account: mt5Account
@@ -341,7 +340,7 @@ exports.approveDeposit = async (req, res) => {
 
             console.log('Making balance check API call:', balanceParams);
 
-            const balanceResponse = await axios.get(balanceApiUrl, {
+            const balanceResponse = await metaApi.get(`/GetUserInfo`, {
                 params: balanceParams,
             });
 

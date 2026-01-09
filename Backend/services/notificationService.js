@@ -2,6 +2,8 @@
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const emailService = require('./notificationEmailService');
+const config = require('../config/config');
+
 
 class NotificationService {
     constructor(io) {

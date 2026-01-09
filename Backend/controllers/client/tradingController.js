@@ -1,6 +1,7 @@
 // Backend/controllers/client/tradingController.js
 const axios = require('axios');
 const Account = require('../../models/client/Account');
+const { metaApi } = require('../../api/metaApi');
 require('dotenv').config();
 
 // Cache to store trading data and reduce API calls
@@ -12,7 +13,7 @@ const fetchExternalTradeData = async (mt5Account, managerIndex, type = 'open') =
     try {
         let url;
         if (type === 'open') {
-            url = `${process.env.MT5_API_URL}/GetOpenTradeByAccount?Manager_Index=${managerIndex}&MT5Accont=${mt5Account}`;
+            url = `/GetOpenTradeByAccount?Manager_Index=${managerIndex}&MT5Accont=${mt5Account}`;
         } else {
             // For closed trades, get trades from last 30 days
             const endDate = new Date();
@@ -22,16 +23,10 @@ const fetchExternalTradeData = async (mt5Account, managerIndex, type = 'open') =
             const startTime = startDate.toISOString().slice(0, 19).replace('T', ' ');
             const endTime = endDate.toISOString().slice(0, 19).replace('T', ' ');
 
-            url = `${process.env.MT5_API_URL}/GetCloseTradeAll?Manager_Index=${managerIndex}&MT5Accont=${mt5Account}&StartTime=${encodeURIComponent(startTime)}&EndTime=${encodeURIComponent(endTime)}`;
+            url = `/GetCloseTradeAll?Manager_Index=${managerIndex}&MT5Accont=${mt5Account}&StartTime=${encodeURIComponent(startTime)}&EndTime=${encodeURIComponent(endTime)}`;
         }
 
-        const response = await axios.get(url, {
-            // timeout: 10000, // 10 second timeout
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        });
+        const response = await metaApi.get(url);
 
         // Enhanced response validation
         console.log(`API Response for ${type} trades (${mt5Account}):`, {

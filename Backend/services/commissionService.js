@@ -5,6 +5,7 @@ const IBCommission = require('../models/IBCommission');
 const IBClientConfiguration = require('../models/client/IBClientConfiguration');
 const IBAdminConfiguration = require('../models/admin/IBAdminConfiguration');
 const Account = require('../models/client/Account');
+const { metaApi } = require('../api/metaApi');
 const Group = require('../models/Group');
 const User = require('../models/User');
 require('dotenv').config();
@@ -12,7 +13,6 @@ require('dotenv').config();
 class CommissionService {
     constructor() {
         this.isProcessing = false;
-        this.apiBaseUrl = process.env.MT5_API_URL || 'https://api2.infoapi.biz/api/mt5';
         this.debugMode = true; // Enable detailed logging
     }
 
@@ -174,17 +174,12 @@ class CommissionService {
             const startTimeStr = this.formatDateForAPI(startTime);
             const endTimeStr = this.formatDateForAPI(endTime);
 
-            const apiUrl = `${this.apiBaseUrl}/GetCloseTradeAllUsers?Manager_Index=${managerIndex}&StartTime=${startTimeStr}&EndTime=${endTimeStr}`;
+            const apiUrl = `/GetCloseTradeAllUsers?Manager_Index=${managerIndex}&StartTime=${startTimeStr}&EndTime=${endTimeStr}`;
 
             console.log(`🌐 API URL: ${apiUrl}`);
             console.log(`🌐 Fetching trades for Manager ${managerIndex}...`);
 
-            const response = await axios.get(apiUrl, {
-                // timeout: 300000,
-                headers: {
-                    'User-Agent': 'Commission-Service/1.0'
-                }
-            });
+            const response = await metaApi.get(apiUrl);
 
             console.log(`📡 API Response Status: ${response.status}`);
             console.log(`📡 API Response Headers:`, response.headers);

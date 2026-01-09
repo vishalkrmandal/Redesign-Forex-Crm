@@ -1,17 +1,17 @@
 // controllers/transferController.js
 const Transfer = require('../../models/client/Transfer');
 const Account = require('../../models/client/Account');
+const { metaApi } = require('../../api/metaApi');
 const axios = require('axios');
 require('dotenv').config();
 
 // MT5 API Configuration
-const MT5_API_BASE_URL = process.env.MT5_API_URL;
-const MANAGER_INDEX = process.env.Manager_Index || 3;
+const MANAGER_INDEX = process.env.Manager_Index;
 
 // Helper function to make MT5 withdrawal
 const makeWithdrawal = async (mt5Account, amount, comment = 'Transfer withdrawal') => {
     try {
-        const response = await axios.get(`${MT5_API_BASE_URL}/MakeWithdrawBalance`, {
+        const response = await metaApi.get(`/MakeWithdrawBalance`, {
             params: {
                 Manager_Index: MANAGER_INDEX,
                 MT5Account: mt5Account,
@@ -33,7 +33,7 @@ const makeWithdrawal = async (mt5Account, amount, comment = 'Transfer withdrawal
 // Helper function to make MT5 deposit
 const makeDeposit = async (mt5Account, amount, comment = 'Transfer deposit') => {
     try {
-        const response = await axios.get(`${MT5_API_BASE_URL}/MakeDepositBalance`, {
+        const response = await metaApi.get(`/MakeDepositBalance`, {
             params: {
                 Manager_Index: MANAGER_INDEX,
                 MT5Account: mt5Account,

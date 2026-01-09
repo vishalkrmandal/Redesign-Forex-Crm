@@ -2,6 +2,7 @@ const Account = require('../../models/client/Account');
 const User = require('../../models/User');
 const Group = require('../../models/Group');
 const axios = require('axios');
+const { metaApi } = require('../../api/metaApi');
 require('dotenv').config();
 
 // Helper function to generate a random MT5 account with format YYMMDD + 3 random digits
@@ -63,7 +64,7 @@ exports.createAccount = async (req, res) => {
 
         // Create payload for external API
         const externalAPIPayload = {
-            Manager_Index: process.env.Manager_Index || "3",
+            Manager_Index: process.env.Manager_Index,
             MT5Account: mt5Account,
             Name: name,
             Leverage: leverage,
@@ -73,8 +74,7 @@ exports.createAccount = async (req, res) => {
         // Call external API to create account
         let externalAPIResponse;
         try {
-            externalAPIResponse = await axios.post(
-                `${process.env.MT5_API_URL}/Adduser`,
+            externalAPIResponse = await metaApi.post(`/Adduser`,
                 externalAPIPayload
             );
             console.log(externalAPIResponse.data);
@@ -236,16 +236,13 @@ exports.updateAccountPasswords = async (req, res) => {
         // Update investor password if provided
         if (investor_pwd) {
             try {
-                const investorResponse = await axios.get(
-                    `${process.env.MT5_API_URL}/ChangeInvesterPassword`,
-                    {
-                        params: {
-                            Manager_Index: process.env.Manager_Index || "3",
-                            Account: account.mt5Account,
-                            password: investor_pwd
-                        }
+                const investorResponse = await metaApi.get(`/ChangeInvesterPassword`, {
+                    params: {
+                        Manager_Index: process.env.Manager_Index,
+                        Account: account.mt5Account,
+                        password: investor_pwd
                     }
-                );
+                });
 
                 if (investorResponse.data.status === 'success') {
                     updateData.investor_pwd = investor_pwd;
@@ -269,16 +266,13 @@ exports.updateAccountPasswords = async (req, res) => {
         // Update master password if provided
         if (master_pwd) {
             try {
-                const masterResponse = await axios.get(
-                    `${process.env.MT5_API_URL}/ChangeMasterPassword`,
-                    {
-                        params: {
-                            Manager_Index: process.env.Manager_Index || "3",
-                            Account: account.mt5Account,
-                            password: master_pwd
-                        }
+                const masterResponse = await metaApi.get(`/ChangeMasterPassword`, {
+                    params: {
+                        Manager_Index: process.env.Manager_Index,
+                        Account: account.mt5Account,
+                        password: master_pwd
                     }
-                );
+                });
 
                 if (masterResponse.data.status === 'success') {
                     updateData.master_pwd = master_pwd;
