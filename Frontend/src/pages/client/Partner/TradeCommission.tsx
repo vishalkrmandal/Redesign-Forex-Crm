@@ -930,6 +930,7 @@ const TradeCommission = () => {
                                                         <TableHead className="text-xs font-semibold">Profit</TableHead>
                                                         <TableHead className="text-xs font-semibold">Commission</TableHead>
                                                         <TableHead className="text-xs font-semibold">Open Time</TableHead>
+                                                        <TableHead className="text-xs font-semibold">Close Time</TableHead>
                                                         <TableHead className="text-xs font-semibold">Status</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
@@ -950,6 +951,9 @@ const TradeCommission = () => {
                                                             <TableCell className="text-xs">
                                                                 {formatDateTime(trade.openTime)}
                                                             </TableCell>
+                                                            <TableCell className="text-xs">
+                                                                {formatDateTime(trade.closeTime)}
+                                                            </TableCell>
                                                             <TableCell>
                                                                 <Badge variant="outline" className="text-xs text-green-600 border-green-300">
                                                                     <CheckCircle className="h-2 w-2 mr-1" />
@@ -969,12 +973,13 @@ const TradeCommission = () => {
                                                         </TableCell>
                                                         <TableCell></TableCell>
                                                         <TableCell></TableCell>
-                                                        <TableCell className="font-mono font-bold text-purple-600 text-sm">
-                                                            ${formatCurrency(Math.abs(partnerTrades[partner._id].reduce((sum, trade) => sum + trade.profit, 0)))}
+                                                        <TableCell className={`font-mono font-bold text-sm ${partnerTrades[partner._id].reduce((sum, trade) => sum + trade.profit, 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                            {partnerTrades[partner._id].reduce((sum, trade) => sum + trade.profit, 0) < 0 ? '-' : ''}${formatCurrency(Math.abs(partnerTrades[partner._id].reduce((sum, trade) => sum + trade.profit, 0)))}
                                                         </TableCell>
                                                         <TableCell className="font-mono font-bold text-green-600 text-sm">
                                                             ${formatCurrency(partnerTrades[partner._id].reduce((sum, trade) => sum + trade.rebate, 0))}
                                                         </TableCell>
+                                                        <TableCell></TableCell>
                                                         <TableCell></TableCell>
                                                         <TableCell></TableCell>
                                                     </TableRow>
