@@ -12,6 +12,9 @@ const setupWebSocket = require('./utils/socketServer');
 const cron = require('node-cron');
 const helmet = require('helmet');
 
+// Import the account sync service
+const accountSyncService = require('./services/accountSyncService');
+
 // Import the trade sync service
 const tradeSyncService = require('./services/tradeSyncService');
 
@@ -251,5 +254,13 @@ server.listen(PORT, async () => {
     console.log('🔄 Automated trade sync service started successfully!');
   } catch (error) {
     console.error('❌ Failed to start trade sync service:', error);
+  }
+
+  // Start the automated account sync service
+  try {
+    await accountSyncService.startAutoSync();
+    console.log('💰 Automated account sync service started successfully!');
+  } catch (error) {
+    console.error('❌ Failed to start account sync service:', error);
   }
 });
