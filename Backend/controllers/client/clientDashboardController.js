@@ -167,7 +167,7 @@ const getRecentTransactions = async (req, res) => {
                 totalTransactions: allTransactions.length
             }
         });
-        console.log('Recent transactions:', allTransactions)
+        // console.log('Recent transactions:', allTransactions)
     } catch (error) {
         console.error('Recent transactions error:', error);
         res.status(500).json({
