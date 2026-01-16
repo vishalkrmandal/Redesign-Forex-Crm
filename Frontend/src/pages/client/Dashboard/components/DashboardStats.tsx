@@ -42,6 +42,18 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
             trend: 'up'
         },
         {
+            id: 'equity',
+            title: 'Total Equity',
+            value: formatCurrency(data.totalEquity),
+            icon: TrendingUp,
+            color: 'indigo',
+            bgColor: 'bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/30',
+            iconColor: 'text-indigo-600 dark:text-indigo-400',
+            valueColor: 'bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-400 dark:to-indigo-300',
+            borderColor: 'hover:border-indigo-300 dark:hover:border-indigo-600',
+            trend: 'up'
+        },
+        {
             id: 'deposits',
             title: 'Total Deposits',
             value: formatCurrency(data.totalDeposits),
@@ -83,20 +95,20 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
     return (
         <div className="mb-8">
             {/* Main Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
                 {statsCards.map((stat) => {
                     const IconComponent = stat.icon;
                     return (
                         <div
 
                             key={stat.id}
-                            className={`group p-6 rounded-2xl border-2 border-transparent ${stat.bgColor} shadow-lg hover:shadow-2xl transition-all duration-300 ${stat.borderColor} hover:-translate-y-2 relative overflow-hidden backdrop-blur-sm`}
+                            className={`group p-4 rounded-2xl border-2 border-transparent ${stat.bgColor} shadow-lg hover:shadow-2xl transition-all duration-300 ${stat.borderColor} hover:-translate-y-2 relative overflow-hidden backdrop-blur-sm`}
                         >
                             <div className={`absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-${stat.color}-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
                             <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-${stat.color}-400 to-${stat.color}-600 rounded-t-2xl`}></div>
                             <div className="flex items-center justify-between">
                                 <div className="flex-1">
-                                    <p className="text-sm font-medium text-muted-foreground">
+                                    <p className="text-xm font-medium text-muted-foreground">
                                         {stat.title}
                                     </p>
                                     {/* INSERT THE CONDITIONAL GLOW CODE HERE */}
@@ -104,6 +116,12 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
                                         <>
                                             <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-t-2xl"></div>
+                                        </>
+                                    )}
+                                    {stat.id === 'equity' && (
+                                        <>
+                                            <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-400 to-indigo-600 rounded-t-2xl"></div>
                                         </>
                                     )}
                                     {stat.id === 'deposits' && (
@@ -125,7 +143,7 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
                                         </>
                                     )}
 
-                                    <p className={`text-3xl font-bold mt-3 bg-clip-text text-transparent ${stat.valueColor}`}>
+                                    <p className={`text-2xl font-bold mt-3 bg-clip-text text-transparent ${stat.valueColor}`}>
                                         {stat.value}
                                     </p>
                                     {stat.change && (
@@ -141,8 +159,8 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
                                         </div>
                                     )}
                                 </div>
-                                <div className={`p-4 rounded-2xl ${stat.bgColor} group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                                    <IconComponent className={`w-7 h-7 ${stat.iconColor}`} />
+                                <div className={`p-3 rounded-2xl ${stat.bgColor} group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                                    <IconComponent className={`w-6 h-6 ${stat.iconColor}`} />
                                 </div>
                             </div>
                         </div>

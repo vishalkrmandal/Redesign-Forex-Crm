@@ -9,7 +9,6 @@ import ActiveAccounts from './components/ActiveAccounts';
 
 import { dashboardApi } from './dashboardApi';
 import { useTheme } from '@/context/ThemeContext';
-import LoadingSpinner from './components/LoadingSpinner';
 // Add these imports after your existing imports
 // import PartnerLevelsPieChart from './components/PartnerLevelsPieChart';
 // import CommissionEarningsBarChart from './components/CommissionEarningsBarChart';
@@ -33,6 +32,8 @@ interface DashboardData {
 }
 
 const ClientDashboard: React.FC = () => {
+  const [overviewData, setOverviewData] = useState<DashboardData['overview'] | null>(null);
+  const overviewIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,6 +45,8 @@ const ClientDashboard: React.FC = () => {
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
+
+  const overview = overviewData ?? dashboardData?.overview;
 
   // Add this after your existing state declarations
   // const [partnersData, setPartnersData] = useState<Partner[]>([]);
@@ -78,6 +81,14 @@ const ClientDashboard: React.FC = () => {
     }
   };
 
+  const fetchOverviewOnly = async () => {
+    try {
+      const overviewResponse = await dashboardApi.getOverview();
+      setOverviewData(overviewResponse.data);
+    } catch (error) {
+      console.error('Error fetching overview:', error);
+    }
+  };
 
   // Replace your existing fetchDashboardData function with this:
   const fetchDashboardData = async (showRefreshLoader = false, isAutoRefresh = false) => {
@@ -112,6 +123,7 @@ const ClientDashboard: React.FC = () => {
         recentTransactions: transactionsResponse.data.transactions,
         activeAccounts: accountsResponse.data.accounts
       });
+      setOverviewData(overviewResponse.data);
 
       setLastRefresh(new Date());
       setCountdown(5);
@@ -158,6 +170,11 @@ const ClientDashboard: React.FC = () => {
       }
     }, 5000);
 
+    // Setup auto-refresh for overview only every 5 seconds
+    overviewIntervalRef.current = setInterval(() => {
+      fetchOverviewOnly();
+    }, 5000);
+
     // Setup countdown timer
     countdownRef.current = setInterval(() => {
       setCountdown(prev => {
@@ -173,6 +190,9 @@ const ClientDashboard: React.FC = () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      if (overviewIntervalRef.current) {
+        clearInterval(overviewIntervalRef.current);
+      }
       if (countdownRef.current) {
         clearInterval(countdownRef.current);
       }
@@ -183,6 +203,9 @@ const ClientDashboard: React.FC = () => {
     // Clear existing intervals
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
+    }
+    if (overviewIntervalRef.current) {
+      clearInterval(overviewIntervalRef.current);
     }
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
@@ -198,6 +221,10 @@ const ClientDashboard: React.FC = () => {
       }
     }, 5000);
 
+    overviewIntervalRef.current = setInterval(() => {
+      fetchOverviewOnly();
+    }, 5000);
+
     countdownRef.current = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
@@ -210,11 +237,55 @@ const ClientDashboard: React.FC = () => {
 
   if (loading && !dashboardData) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner size="lg" />
+      <div className="container mx-auto px-0 max-w-7xl">
+        {/* Header Skeleton */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-1 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+          <div className="relative">
+            <div className="h-8 w-48 bg-gray-300 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-64 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 w-32 bg-gray-300 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+            <div className="h-10 w-24 bg-gray-300 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Stats Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-white dark:bg-card p-4 rounded-xl border animate-pulse">
+              <div className="h-8 w-40 bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
+              <div className="h-16 w-42 bg-gray-200 dark:bg-gray-600 rounded"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Performance Chart Skeleton */}
+        <div className="bg-white dark:bg-card p-6 rounded-xl border mb-6">
+          <div className="h-6 w-48 bg-gray-300 dark:bg-gray-700 rounded animate-pulse mb-4"></div>
+          <div className="h-64 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+        </div>
+
+        {/* Transactions and Accounts Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="bg-white dark:bg-card p-6 rounded-xl border">
+              <div className="h-6 w-40 bg-gray-300 dark:bg-gray-700 rounded animate-pulse mb-4"></div>
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((j) => (
+                  <div key={j} className="flex justify-between items-center">
+                    <div className="h-4 w-32 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+                    <div className="h-4 w-20 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
+
 
   return (
     // <div className="min-h-screen transition-colors duration-200">
@@ -271,9 +342,9 @@ const ClientDashboard: React.FC = () => {
       </div>
 
       {/* Dashboard Stats */}
-      {dashboardData?.overview && (
+      {overview && (
         <DashboardStats
-          data={dashboardData.overview}
+          data={overview}
           theme={theme}
         />
       )}
