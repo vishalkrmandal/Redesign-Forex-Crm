@@ -43,15 +43,15 @@ class AccountSyncService {
                 // Run the sync
                 await this.syncAllAccounts();
 
-                // Wait 30 seconds before next sync
-                await new Promise(resolve => setTimeout(resolve, 30000));
+                // Wait 5 seconds before next sync
+                await new Promise(resolve => setTimeout(resolve, 5000));
             } catch (error) {
                 console.error('Error in continuous sync loop:', error);
                 // Continue even if there's an error
                 this.syncStats.errorCount++;
 
-                // Wait 30 seconds even on error before retrying
-                await new Promise(resolve => setTimeout(resolve, 30000));
+                // Wait 5 seconds even on error before retrying
+                await new Promise(resolve => setTimeout(resolve, 5000));
             }
         }
     }
@@ -151,7 +151,7 @@ class AccountSyncService {
             this.syncStats.status = 'idle';
 
             console.log(`✅ Account sync completed: ${updatedCount} accounts updated, ${errorCount} errors`);
-            console.log(`⏳ Waiting 30 seconds before next sync...`);
+            console.log(`⏳ Waiting 5 seconds before next sync...`);
 
         } catch (error) {
             console.error('❌ Account sync error:', error.message);
