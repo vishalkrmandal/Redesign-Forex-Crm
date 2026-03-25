@@ -31,7 +31,7 @@ const escapeHtml = (unsafe: string): string => {
 
 const sanitizeName = (input: string): string => {
     return escapeHtml(input)
-        .replace(/[^a-zA-Z\s'\-]/g, '') // Only letters, spaces, apostrophes, hyphens
+        .replace(/[^a-zA-Z\s'\-]/g, '')
         .trim()
         .slice(0, 50);
 };
@@ -133,8 +133,8 @@ export default function SignUp({ validReferral }: SignUpProps) {
                     firstname: sanitizeName(values.firstname),
                     lastname: sanitizeName(values.lastname),
                     email: escapeHtml(values.email.toLowerCase().trim()),
-                    phone: values.phone.replace(/[^\d\+\-\s\(\)]/g, ''), // Only allow phone chars
-                    password: values.password, // Never sanitize passwords
+                    phone: values.phone.replace(/[^\d\+\-\s\(\)]/g, ''),
+                    password: values.password,
                     country: [sanitizeName(countryName), sanitizeName(stateName)],
                     referralCode: values.referralCode ? values.referralCode.replace(/[^a-zA-Z0-9]/g, '') : undefined,
                     dateofbirth: values.dateofbirth
@@ -147,13 +147,12 @@ export default function SignUp({ validReferral }: SignUpProps) {
                 setUserEmail(values.email);
                 setRegistrationSuccess(true);
                 setShowResendOption(false);
-                setResendTimer(60); // Start 1-minute timer
+                setResendTimer(60);
 
                 toast.success("Registration successful! Please check your email to verify your account.", {
                     duration: 5000
                 });
 
-                // Start the resend timer
                 const timer = setInterval(() => {
                     setResendTimer((prev) => {
                         if (prev <= 1) {
@@ -165,9 +164,7 @@ export default function SignUp({ validReferral }: SignUpProps) {
                     });
                 }, 1000);
 
-                // Start checking for email verification
                 startVerificationCheck(values.email);
-
                 form.reset();
             } else {
                 toast.error(data.message || "Failed to register. Please try again.");
@@ -180,17 +177,13 @@ export default function SignUp({ validReferral }: SignUpProps) {
         }
     }
 
-    // Function to check verification status
     const checkVerificationStatus = async (email: string) => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/auth/check-verification-status`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: escapeHtml(email.toLowerCase().trim()) }),
             });
-
             const data = await response.json();
             return data.isVerified;
         } catch (error) {
@@ -199,39 +192,26 @@ export default function SignUp({ validReferral }: SignUpProps) {
         }
     };
 
-    // Function to start verification checking
     const startVerificationCheck = (email: string) => {
         const checkInterval = setInterval(async () => {
             const isVerified = await checkVerificationStatus(email);
-
             if (isVerified) {
                 clearInterval(checkInterval);
-                toast.success("Your email has been verified! Redirecting to login...", {
-                    duration: 3000
-                });
-
-                setTimeout(() => {
-                    navigate('/?verified=true');
-                }, 3000);
+                toast.success("Your email has been verified! Redirecting to login...", { duration: 3000 });
+                setTimeout(() => navigate('/?verified=true'), 3000);
             }
-        }, 5000); // Check every 5 seconds
+        }, 5000);
 
-        // Clear interval after 10 minutes to avoid infinite checking
-        setTimeout(() => {
-            clearInterval(checkInterval);
-        }, 600000);
+        setTimeout(() => clearInterval(checkInterval), 600000);
     };
 
-    // Function to resend verification email
     const resendVerificationEmail = async () => {
         try {
             setIsResendingEmail(true);
 
             const response = await fetch(`${API_BASE_URL}/api/auth/resend-verification`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: escapeHtml(userEmail.toLowerCase().trim()) }),
             });
 
@@ -242,7 +222,6 @@ export default function SignUp({ validReferral }: SignUpProps) {
                 setShowResendOption(false);
                 setResendTimer(60);
 
-                // Restart timer
                 const timer = setInterval(() => {
                     setResendTimer((prev) => {
                         if (prev <= 1) {
@@ -266,47 +245,48 @@ export default function SignUp({ validReferral }: SignUpProps) {
 
     return (
         <div className="min-h-screen w-full bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-x-hidden">
-            {/* Theme Toggle - Fixed position but with proper z-index */}
+            {/* Theme Toggle */}
             <div className="fixed top-4 right-4 z-50">
                 <ThemeToggle />
             </div>
 
-            {/* Background decoration - Hidden on mobile to improve performance */}
+            {/* Background decoration - desktop only */}
             <div className="absolute inset-0 overflow-hidden hidden md:block">
                 <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob dark:bg-purple-600 dark:opacity-30"></div>
                 <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000 dark:bg-blue-600 dark:opacity-30"></div>
                 <div className="absolute top-40 left-1/2 transform -translate-x-1/2 w-80 h-80 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000 dark:bg-pink-600 dark:opacity-30"></div>
             </div>
 
-            {/* Main Content Container - Changed to use padding instead of flex centering */}
-            <div className="relative z-10 w-full px-4 py-6 md:py-8 lg:py-12">
-                <div className="max-w-4xl mx-auto">
+            {/* Main Content */}
+            <div className="relative z-10 w-full px-4 py-6 md:py-8 lg:py-10">
+                <div className="max-w-3xl mx-auto">
                     <Card className="w-full shadow-2xl border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-                        <CardHeader className="text-center space-y-4 pb-6 md:pb-8">
-                            <div className="mx-auto w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
-                                <User className="w-6 h-6 md:w-8 md:h-8 text-white" />
+
+                        {/* Header */}
+                        <CardHeader className="text-center space-y-2 pb-4 pt-6">
+                            <div className="mx-auto w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-1">
+                                <User className="w-6 h-6 text-white" />
                             </div>
-                            <CardTitle className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                                 Create Your Account
                             </CardTitle>
-                            <CardDescription className="text-base md:text-lg text-muted-foreground px-2">
-                                {validReferral?.preValidated && validReferral.userName ?
-                                    `Join us today! You were referred by ${escapeHtml(validReferral.userName)}` :
-                                    "Join us today and start your journey"
-                                }
+                            <CardDescription className="text-sm text-muted-foreground px-2">
+                                {validReferral?.preValidated && validReferral.userName
+                                    ? `Join us today! You were referred by ${escapeHtml(validReferral.userName)}`
+                                    : "Join us today and start your journey"}
                             </CardDescription>
                         </CardHeader>
 
                         {/* Valid Referral Alert */}
                         {validReferral?.preValidated && (
-                            <div className="px-4 md:px-8 mb-4">
-                                <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
-                                    <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                            <div className="px-6 mb-3">
+                                <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20 py-3">
+                                    <Check className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
                                     <div className="ml-2">
-                                        <AlertTitle className="text-green-800 dark:text-green-200 text-sm md:text-base">
+                                        <AlertTitle className="text-green-800 dark:text-green-200 text-sm font-semibold">
                                             Valid Referral Code!
                                         </AlertTitle>
-                                        <AlertDescription className="text-green-700 dark:text-green-300 text-sm">
+                                        <AlertDescription className="text-green-700 dark:text-green-300 text-xs">
                                             You were referred by <strong>{escapeHtml(validReferral.userName)}</strong>.
                                             The referral bonus will be applied to your account.
                                         </AlertDescription>
@@ -315,28 +295,29 @@ export default function SignUp({ validReferral }: SignUpProps) {
                             </div>
                         )}
 
-                        <CardContent className="px-4 md:px-8 pb-6 md:pb-8">
+                        <CardContent className="px-6 pb-6">
                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 md:space-y-6">
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
                                     {/* Name Fields */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <FormField
                                             control={form.control}
                                             name="firstname"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <User className="w-4 h-4" />
+                                                    <FormLabel className="text-sm flex items-center gap-1.5">
+                                                        <User className="w-3.5 h-3.5" />
                                                         First Name
                                                     </FormLabel>
                                                     <FormControl>
                                                         <Input
                                                             placeholder="Enter your first name"
-                                                            className="h-10 md:h-12 bg-background/50 text-sm md:text-base"
+                                                            className="h-10 text-sm bg-background/50"
                                                             {...field}
                                                         />
                                                     </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
+                                                    <FormMessage className="text-xs" />
                                                 </FormItem>
                                             )}
                                         />
@@ -346,18 +327,18 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                             name="lastname"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <User className="w-4 h-4" />
+                                                    <FormLabel className="text-sm flex items-center gap-1.5">
+                                                        <User className="w-3.5 h-3.5" />
                                                         Last Name
                                                     </FormLabel>
                                                     <FormControl>
                                                         <Input
                                                             placeholder="Enter your last name"
-                                                            className="h-10 md:h-12 bg-background/50 text-sm md:text-base"
+                                                            className="h-10 text-sm bg-background/50"
                                                             {...field}
                                                         />
                                                     </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
+                                                    <FormMessage className="text-xs" />
                                                 </FormItem>
                                             )}
                                         />
@@ -369,12 +350,12 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                         name="country"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                    <Globe className="w-4 h-4" />
+                                                <FormLabel className="text-sm flex items-center gap-1.5">
+                                                    <Globe className="w-3.5 h-3.5" />
                                                     Location
                                                 </FormLabel>
                                                 <FormControl>
-                                                    <div className="min-h-[40px] md:min-h-[48px]">
+                                                    <div className="min-h-[40px]">
                                                         <LocationSelector
                                                             onCountryChange={(country) => {
                                                                 setCountryName(country?.name || "");
@@ -387,31 +368,31 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                                         />
                                                     </div>
                                                 </FormControl>
-                                                <FormMessage className="text-xs md:text-sm" />
+                                                <FormMessage className="text-xs" />
                                             </FormItem>
                                         )}
                                     />
 
-                                    {/* Phone and Date */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                    {/* Phone and Date of Birth */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <FormField
                                             control={form.control}
                                             name="phone"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <Phone className="w-4 h-4" />
+                                                    <FormLabel className="text-sm flex items-center gap-1.5">
+                                                        <Phone className="w-3.5 h-3.5" />
                                                         Phone Number
                                                     </FormLabel>
                                                     <FormControl>
                                                         <PhoneInput
                                                             placeholder="Enter phone number"
                                                             defaultCountry="IN"
-                                                            className="h-10 md:h-12"
+                                                            className="h-10 text-sm"
                                                             {...field}
                                                         />
                                                     </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
+                                                    <FormMessage className="text-xs" />
                                                 </FormItem>
                                             )}
                                         />
@@ -421,18 +402,18 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                             name="dateofbirth"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <CalendarIcon className="w-4 h-4" />
+                                                    <FormLabel className="text-sm flex items-center gap-1.5">
+                                                        <CalendarIcon className="w-3.5 h-3.5" />
                                                         Date of Birth
                                                     </FormLabel>
                                                     <FormControl>
                                                         <DatePicker
                                                             value={field.value}
                                                             onChange={field.onChange}
-                                                            className="h-10 md:h-12 w-full"
+                                                            className="h-10 w-full text-sm"
                                                         />
                                                     </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
+                                                    <FormMessage className="text-xs" />
                                                 </FormItem>
                                             )}
                                         />
@@ -444,37 +425,37 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                         name="email"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                    <Mail className="w-4 h-4" />
+                                                <FormLabel className="text-sm flex items-center gap-1.5">
+                                                    <Mail className="w-3.5 h-3.5" />
                                                     Email Address
                                                 </FormLabel>
                                                 <FormControl>
                                                     <Input
                                                         placeholder="Enter your email address"
                                                         type="email"
-                                                        className="h-10 md:h-12 bg-background/50 text-sm md:text-base"
+                                                        className="h-10 text-sm bg-background/50"
                                                         {...field}
                                                     />
                                                 </FormControl>
-                                                <FormMessage className="text-xs md:text-sm" />
+                                                <FormMessage className="text-xs" />
                                             </FormItem>
                                         )}
                                     />
 
-                                    {/* Hidden referral code field for pre-validated referrals */}
+                                    {/* Hidden referral code for pre-validated referrals */}
                                     {validReferral?.preValidated && (
                                         <input type="hidden" {...form.register("referralCode")} />
                                     )}
 
                                     {/* Password Fields */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <FormField
                                             control={form.control}
                                             name="password"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <Lock className="w-4 h-4" />
+                                                    <FormLabel className="text-sm flex items-center gap-1.5">
+                                                        <Lock className="w-3.5 h-3.5" />
                                                         Password
                                                     </FormLabel>
                                                     <FormControl>
@@ -482,7 +463,7 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                                             <Input
                                                                 placeholder="Create a strong password"
                                                                 type={showPassword ? "text" : "password"}
-                                                                className="h-10 md:h-12 bg-background/50 pr-10 text-sm md:text-base"
+                                                                className="h-10 text-sm bg-background/50 pr-10"
                                                                 {...field}
                                                             />
                                                             <Button
@@ -492,15 +473,14 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                                                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                                                                 onClick={() => setShowPassword(!showPassword)}
                                                             >
-                                                                {showPassword ? (
-                                                                    <EyeOff className="h-4 w-4" />
-                                                                ) : (
-                                                                    <Eye className="h-4 w-4" />
-                                                                )}
+                                                                {showPassword
+                                                                    ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                    : <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                }
                                                             </Button>
                                                         </div>
                                                     </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
+                                                    <FormMessage className="text-xs" />
                                                 </FormItem>
                                             )}
                                         />
@@ -510,8 +490,8 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                             name="confirmPassword"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <Lock className="w-4 h-4" />
+                                                    <FormLabel className="text-sm flex items-center gap-1.5">
+                                                        <Lock className="w-3.5 h-3.5" />
                                                         Confirm Password
                                                     </FormLabel>
                                                     <FormControl>
@@ -519,7 +499,7 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                                             <Input
                                                                 placeholder="Confirm your password"
                                                                 type={showConfirmPassword ? "text" : "password"}
-                                                                className="h-10 md:h-12 bg-background/50 pr-10 text-sm md:text-base"
+                                                                className="h-10 text-sm bg-background/50 pr-10"
                                                                 {...field}
                                                             />
                                                             <Button
@@ -529,15 +509,14 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                                                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                                                                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                                                             >
-                                                                {showConfirmPassword ? (
-                                                                    <EyeOff className="h-4 w-4" />
-                                                                ) : (
-                                                                    <Eye className="h-4 w-4" />
-                                                                )}
+                                                                {showConfirmPassword
+                                                                    ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                    : <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                }
                                                             </Button>
                                                         </div>
                                                     </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
+                                                    <FormMessage className="text-xs" />
                                                 </FormItem>
                                             )}
                                         />
@@ -546,12 +525,12 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                     {/* Submit Button */}
                                     <Button
                                         type="submit"
-                                        className="w-full h-10 md:h-12 text-base md:text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 mt-6"
+                                        className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-md hover:shadow-lg transition-all duration-300 mt-2"
                                         disabled={isSubmitting}
                                     >
                                         {isSubmitting ? (
                                             <div className="flex items-center gap-2">
-                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                                 Creating Account...
                                             </div>
                                         ) : (
@@ -561,26 +540,28 @@ export default function SignUp({ validReferral }: SignUpProps) {
 
                                     {/* Resend Verification Section */}
                                     {registrationSuccess && (
-                                        <div className="text-center py-4 border-t border-gray-200 dark:border-gray-700">
-                                            <p className="text-muted-foreground text-sm md:text-base mb-2">
+                                        <div className="text-center py-3 border-t border-gray-200 dark:border-gray-700">
+                                            <p className="text-muted-foreground text-sm mb-2">
                                                 Didn't receive the verification email?
                                             </p>
 
                                             {!showResendOption && resendTimer > 0 ? (
-                                                <p className="text-sm text-gray-500">
-                                                    You can resend the email in <span className="font-semibold text-blue-600">{resendTimer}</span> seconds
+                                                <p className="text-xs text-gray-500">
+                                                    Resend available in{" "}
+                                                    <span className="font-semibold text-blue-600">{resendTimer}</span> seconds
                                                 </p>
                                             ) : showResendOption ? (
                                                 <Button
                                                     type="button"
                                                     variant="outline"
-                                                    className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                                    size="sm"
+                                                    className="h-8 text-xs text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                                     onClick={resendVerificationEmail}
                                                     disabled={isResendingEmail}
                                                 >
                                                     {isResendingEmail ? (
                                                         <div className="flex items-center gap-2">
-                                                            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                                            <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                                                             Sending...
                                                         </div>
                                                     ) : (
@@ -592,18 +573,19 @@ export default function SignUp({ validReferral }: SignUpProps) {
                                     )}
 
                                     {/* Sign In Link */}
-                                    <div className="text-center pt-4">
-                                        <p className="text-muted-foreground text-sm md:text-base">
+                                    <div className="text-center pt-2">
+                                        <p className="text-sm text-muted-foreground">
                                             Already have an account?{" "}
                                             <Button
                                                 variant="link"
-                                                className="p-0 h-auto font-semibold text-blue-600 hover:text-blue-700 text-sm md:text-base"
+                                                className="p-0 h-auto text-sm font-semibold text-blue-600 hover:text-blue-700"
                                                 onClick={() => navigate('/')}
                                             >
                                                 Sign in here
                                             </Button>
                                         </p>
                                     </div>
+
                                 </form>
                             </Form>
                         </CardContent>

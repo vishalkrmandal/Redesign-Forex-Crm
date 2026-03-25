@@ -160,9 +160,9 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
 
           {!isMobile && (
             <div className="hidden md:block">
-              <h1 className="text-xl font-semibold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+              {/* <h1 className="text-xl font-semibold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
                 Test CRM Agent
-              </h1>
+              </h1> */}
             </div>
           )}
         </div>

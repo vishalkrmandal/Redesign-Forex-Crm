@@ -1,4 +1,4 @@
-// Frontend/src/pages/auth/sign-in/components/SignInCard.tsx - FIXED VERSION
+// Frontend/src/pages/auth/sign-in/components/SignInCard.tsx
 
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -94,28 +94,23 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
         }
     });
 
-    // 🔧 FIXED: Only redirect if current login type has active session
     React.useEffect(() => {
-        // Only check token for the CURRENT login type, not all roles
         const currentRoleToken = localStorage.getItem(`${loginType}Token`);
         const currentRoleUser = localStorage.getItem(`${loginType}User`);
 
         if (currentRoleToken && currentRoleUser) {
-            // Only redirect if we have VALID session for current role
             try {
                 const user = JSON.parse(currentRoleUser);
                 if (user && user.role === loginType) {
                     setShowExistingSession(true);
                 }
             } catch (error) {
-                // Invalid user data, clear it
                 localStorage.removeItem(`${loginType}Token`);
                 localStorage.removeItem(`${loginType}User`);
             }
         }
-    }, [loginType]); // Only depend on loginType, not navigate
+    }, [loginType]);
 
-    // Handle existing session actions
     const handleUseExistingSession = () => {
         const defaultPaths = {
             client: '/client/dashboard',
@@ -127,7 +122,6 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
     };
 
     const handleLoginAsNewUser = () => {
-        // Clear existing session for this role to allow new login
         localStorage.removeItem(`${loginType}Token`);
         localStorage.removeItem(`${loginType}User`);
         setShowExistingSession(false);
@@ -162,7 +156,6 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
             if (data.success) {
                 const userRole = data.user.role;
 
-                // Validate if user role matches the login interface
                 if (userRole !== loginType) {
                     const correctPath = userRole === 'client' ? '/login' : `/login/${userRole}`;
                     toast.error(`This login interface is for ${loginType}s only. Your account role is ${userRole}. Please use ${correctPath}`);
@@ -175,7 +168,6 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
                     return;
                 }
 
-                // Store token and user info in localStorage based on role
                 localStorage.setItem(`${userRole}Token`, data.token);
                 localStorage.setItem(`${userRole}User`, JSON.stringify(data.user));
 
@@ -207,12 +199,11 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
         }
     };
 
-    // Role switcher component with visibility rules
     const RoleSwitcher = () => {
         const visibleRoles = ROLE_VISIBILITY[loginType];
 
         return (
-            <div className="mb-6">
+            <div className="mb-4">
                 <div className="flex flex-wrap gap-2 justify-center">
                     {Object.entries(ROLE_CONFIG)
                         .filter(([role]) => visibleRoles.includes(role))
@@ -231,7 +222,7 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
                                     <config.icon className="w-3 h-3 mr-1" />
                                     {role}
                                     {hasSession && !isActive && (
-                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></div>
                                     )}
                                 </Button>
                             );
@@ -241,7 +232,6 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
         );
     };
 
-    // Existing Session Alert
     const ExistingSessionAlert = () => {
         if (!showExistingSession) return null;
 
@@ -249,18 +239,18 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
         const user = userStr ? JSON.parse(userStr) : null;
 
         return (
-            <Alert className="mb-6 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+            <Alert className="mb-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
                 <UserCheck className="h-4 w-4 text-blue-600" />
                 <div className="ml-2">
                     <AlertDescription className="text-blue-800 dark:text-blue-200">
-                        <div className="font-medium mb-2">
-                            You're already logged in as: <strong>{user?.firstname} {user?.lastname}</strong>
+                        <div className="text-sm font-medium mb-2">
+                            Already logged in as: <strong>{user?.firstname} {user?.lastname}</strong>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Button
                                 size="sm"
                                 onClick={handleUseExistingSession}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
                             >
                                 Continue as {user?.firstname}
                             </Button>
@@ -268,7 +258,7 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
                                 size="sm"
                                 variant="outline"
                                 onClick={handleLoginAsNewUser}
-                                className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                                className="h-7 text-xs border-blue-600 text-blue-600 hover:bg-blue-50"
                             >
                                 Login as Different User
                             </Button>
@@ -276,7 +266,7 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
                                 size="sm"
                                 variant="outline"
                                 onClick={handleLogoutFromRole}
-                                className="border-red-600 text-red-600 hover:bg-red-50"
+                                className="h-7 text-xs border-red-600 text-red-600 hover:bg-red-50"
                             >
                                 <X className="w-3 h-3 mr-1" />
                                 Logout
@@ -291,78 +281,86 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
     return (
         <>
             <Card className="w-full max-w-md shadow-2xl border-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
-                <CardHeader className="text-center space-y-4 pb-8">
-                    <div className="mx-auto rounded-full flex items-center justify-center mb-4">
+                <CardHeader className="text-center space-y-2 pb-4 pt-6">
+                    {/* Logo */}
+                    <div className="mx-auto flex items-center justify-center -my-6">
                         <img
                             src="/favicon.png"
                             alt="Logo"
-                            className="w-24 h-20"
+                            className="w-40 h-40 object-contain"
                         />
                     </div>
-                    <CardTitle className={`text-3xl font-bold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent`}>
+
+                    {/* Title */}
+                    <CardTitle className={`text-2xl font-bold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent`}>
                         {roleConfig.title}
                     </CardTitle>
-                    <CardDescription className="text-lg text-muted-foreground">
+
+                    {/* Description */}
+                    <CardDescription className="text-sm text-muted-foreground">
                         {roleConfig.description}
                     </CardDescription>
                 </CardHeader>
 
-                <CardContent className="px-8 pb-8">
+                <CardContent className="px-6 pb-6">
                     {/* Role Switcher */}
                     <RoleSwitcher />
 
                     {/* Existing Session Alert */}
                     <ExistingSessionAlert />
 
-                    {/* Active Sessions Info - Only show other sessions, not current */}
+                    {/* Other active sessions info */}
                     {activeSessions.filter(session => session !== loginType).length > 0 && (
-                        <Alert className="mb-6 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
-                            <AlertDescription className="text-green-800 dark:text-green-200">
+                        <Alert className="mb-4 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
+                            <AlertDescription className="text-xs text-green-800 dark:text-green-200">
                                 Other active sessions: {activeSessions.filter(session => session !== loginType).join(', ')}
                             </AlertDescription>
                         </Alert>
                     )}
 
-                    {/* Login Form - Show if no existing session OR user chose to login as different user */}
+                    {/* Login Form */}
                     {!showExistingSession && (
                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+                                {/* Email */}
                                 <FormField
                                     control={form.control}
                                     name="email"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="flex items-center gap-2">
-                                                <Mail className="w-4 h-4" />
+                                            <FormLabel className="text-sm flex items-center gap-1.5">
+                                                <Mail className="w-3.5 h-3.5" />
                                                 Email Address
                                             </FormLabel>
                                             <FormControl>
                                                 <Input
                                                     placeholder="Enter your email"
                                                     type="email"
-                                                    className="h-12 bg-background/50"
+                                                    className="h-10 text-sm bg-background/50"
                                                     {...field}
                                                 />
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage className="text-xs" />
                                         </FormItem>
                                     )}
                                 />
 
+                                {/* Password */}
                                 <FormField
                                     control={form.control}
                                     name="password"
                                     render={({ field }) => (
                                         <FormItem>
                                             <div className="flex items-center justify-between">
-                                                <FormLabel className="flex items-center gap-2">
-                                                    <Lock className="w-4 h-4" />
+                                                <FormLabel className="text-sm flex items-center gap-1.5">
+                                                    <Lock className="w-3.5 h-3.5" />
                                                     Password
                                                 </FormLabel>
                                                 <Button
                                                     type="button"
                                                     variant="link"
-                                                    className={`p-0 h-auto text-sm font-medium bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
+                                                    className={`p-0 h-auto text-xs font-medium bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
                                                     onClick={() => setShowForgotPassword(true)}
                                                 >
                                                     Forgot password?
@@ -373,7 +371,7 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
                                                     <Input
                                                         placeholder="Enter your password"
                                                         type={showPassword ? "text" : "password"}
-                                                        className="h-12 bg-background/50 pr-10"
+                                                        className="h-10 text-sm bg-background/50 pr-10"
                                                         {...field}
                                                     />
                                                     <Button
@@ -384,67 +382,68 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
                                                         onClick={() => setShowPassword(!showPassword)}
                                                     >
                                                         {showPassword ? (
-                                                            <EyeOff className="h-4 w-4" />
+                                                            <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
                                                         ) : (
-                                                            <Eye className="h-4 w-4" />
+                                                            <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                                                         )}
                                                     </Button>
                                                 </div>
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage className="text-xs" />
                                         </FormItem>
                                     )}
                                 />
 
+                                {/* Remember Me */}
                                 <FormField
                                     control={form.control}
                                     name="rememberMe"
                                     render={({ field }) => (
-                                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                                             <FormControl>
                                                 <Checkbox
                                                     checked={field.value}
                                                     onCheckedChange={field.onChange}
+                                                    className="w-4 h-4"
                                                 />
                                             </FormControl>
-                                            <div className="space-y-1 leading-none">
-                                                <FormLabel className="text-sm font-medium">
-                                                    Remember me
-                                                </FormLabel>
-                                            </div>
+                                            <FormLabel className="text-sm font-medium cursor-pointer">
+                                                Remember me
+                                            </FormLabel>
                                         </FormItem>
                                     )}
                                 />
 
+                                {/* Submit Button */}
                                 <Button
                                     type="submit"
-                                    className={`w-full h-12 text-lg font-semibold bg-gradient-to-r ${roleConfig.gradient} hover:opacity-90 shadow-lg hover:shadow-xl transition-all duration-300`}
+                                    className={`w-full h-10 text-sm font-semibold bg-gradient-to-r ${roleConfig.gradient} hover:opacity-90 shadow-md hover:shadow-lg transition-all duration-300`}
                                     disabled={isSubmitting}
                                 >
                                     {isSubmitting ? (
                                         <div className="flex items-center gap-2">
-                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                             Signing in...
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-2">
-                                            <LogIn className="w-4 h-4" />
+                                            <LogIn className="w-3.5 h-3.5" />
                                             Sign In as {loginType.charAt(0).toUpperCase() + loginType.slice(1)}
                                         </div>
                                     )}
                                 </Button>
 
-                                {/* Only show signup link for client login */}
+                                {/* Signup link — clients only */}
                                 {loginType === 'client' && (
-                                    <div className="text-center pt-4">
-                                        <p className="text-muted-foreground">
+                                    <div className="text-center pt-1">
+                                        <p className="text-sm text-muted-foreground">
                                             Don't have an account?{" "}
                                             <Button
                                                 variant="link"
-                                                className={`p-0 h-auto font-semibold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
+                                                className={`p-0 h-auto text-sm font-semibold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
                                                 onClick={() => navigate('/signup')}
                                             >
-                                                <UserPlus className="w-4 h-4 mr-1" />
+                                                <UserPlus className="w-3.5 h-3.5 mr-1" />
                                                 Create account
                                             </Button>
                                         </p>

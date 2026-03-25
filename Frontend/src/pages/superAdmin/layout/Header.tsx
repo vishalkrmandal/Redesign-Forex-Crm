@@ -12,12 +12,12 @@ import {
   Moon,
   Sun,
   Bell,
-  User,
+  // User,
   Search,
-  Settings,
+  // Settings,
   LogOut,
   Shield,
-  Clock,
+  // Clock,
   ChevronDown,
   X,
 } from "lucide-react"
@@ -126,10 +126,10 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
     setShowUserMenu(false)
   }
 
-  const handleNavigateToProfile = () => {
-    navigate('profile/my-profile')
-    setShowUserMenu(false)
-  }
+  // const handleNavigateToProfile = () => {
+  //   navigate('profile/my-profile')
+  //   setShowUserMenu(false)
+  // }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -160,9 +160,9 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
 
           {!isMobile && (
             <div className="hidden md:block">
-              <h1 className="text-xl font-semibold">
+              {/* <h1 className="text-xl font-semibold">
                 Test CRM SuperAdmin
-              </h1>
+              </h1> */}
             </div>
           )}
         </div>
@@ -300,7 +300,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
 
                 {/* Menu Items */}
                 <div className="p-2">
-                  <button
+                  {/* <button
                     onClick={handleNavigateToProfile}
                     className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground"
                   >
@@ -318,7 +318,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                     <span>Activity Log</span>
                   </button>
 
-                  <div className="my-2 border-t border-border/50" />
+                  <div className="my-2 border-t border-border/50" /> */}
 
                   <button
                     onClick={handleLogout}
