@@ -70,7 +70,7 @@ const getDashboardOverview = async (req, res) => {
                 totalDeposits: totalDeposits.toFixed(2),
                 totalWithdrawals: totalWithdrawals.toFixed(2),
                 totalMt5Accounts,
-                netBalance: (totalBalance + totalEquity).toFixed(2)
+                netBalance: (totalDeposits - totalWithdrawals).toFixed(2)
             }
         });
 

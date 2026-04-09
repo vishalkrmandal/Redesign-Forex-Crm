@@ -51,6 +51,9 @@ const otpRoutes = require('./routes/client/otpRoutes');
 // Import the new commission routes
 const commissionRoutes = require('./routes/client/commissionRoutes');
 
+// Import market data routes
+const marketRoutes = require('./routes/marketRoutes');
+
 // Import notification routes
 const { addNotificationTriggers } = require('./middlewares/notificationMiddleware');
 const notificationRoutes = require('./routes/notificationRoutes');
@@ -201,6 +204,9 @@ app.use('/api/copy', copyRoutes);
 
 // Commission Routes - NEW
 app.use('/api/ibclients/commission', commissionRoutes);
+
+// Market Data Routes
+app.use('/api/market', marketRoutes);
 
 // Ticket routes
 app.use('/api/tickets', ticketRoutes);
