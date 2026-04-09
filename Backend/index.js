@@ -55,6 +55,9 @@ const commissionRoutes = require('./routes/client/commissionRoutes');
 const { addNotificationTriggers } = require('./middlewares/notificationMiddleware');
 const notificationRoutes = require('./routes/notificationRoutes');
 
+// Import theme routes
+const themeRoutes = require('./routes/themeRoutes');
+
 
 
 
@@ -204,6 +207,9 @@ app.use('/api/tickets', ticketRoutes);
 
 // Add this route after existing routes:
 app.use('/api/notifications', notificationRoutes);
+
+// Theme routes
+app.use('/api/theme', themeRoutes);
 
 // Schedule notification cleanup (runs daily at 2 AM)
 cron.schedule('0 2 * * * * *', async () => {
