@@ -8,6 +8,8 @@ import {
   Home, ArrowDownCircle, ArrowUpCircle, ArrowRightLeft, History,
   PlusCircle, CreditCard, Trophy, Monitor, UserPlus, Link2, DollarSign,
 } from "lucide-react"
+import { useNotifications } from "@/context/NotificationContext"
+import NotificationDropdown from "@/components/notifications/NotificationDropdown"
 
 interface HeaderProps {
   toggleSidebar: () => void
@@ -47,28 +49,32 @@ interface SearchPage {
 }
 
 const PAGES: SearchPage[] = [
-  { label: "Dashboard",           path: "/client/dashboard",               section: "Main",      icon: Home            },
-  { label: "Deposit",             path: "/client/financial/deposit",        section: "Financial", icon: ArrowDownCircle },
-  { label: "Withdrawal",          path: "/client/financial/withdrawal",     section: "Financial", icon: ArrowUpCircle   },
-  { label: "Transfer",            path: "/client/financial/transfer",       section: "Financial", icon: ArrowRightLeft  },
-  { label: "Transaction History", path: "/client/financial/history",        section: "Financial", icon: History         },
-  { label: "Open New Account",    path: "/client/account/new",             section: "Account",   icon: PlusCircle      },
-  { label: "Account List",        path: "/client/account/list",            section: "Account",   icon: CreditCard      },
-  { label: "Trading Contest",     path: "/client/account/trading-contest", section: "Trading",   icon: Trophy          },
-  { label: "Trading Platforms",   path: "/client/trading-platforms",       section: "Trading",   icon: Monitor         },
-  { label: "Refer A Friend",      path: "/client/refer-friend",            section: "Growth",    icon: UserPlus        },
-  { label: "Create IB Account",   path: "/client/partner/new-account",    section: "Partner",   icon: Link2           },
-  { label: "Partner Dashboard",   path: "/client/partner/dashboard",       section: "Partner",   icon: Home            },
-  { label: "IB Commission",       path: "/client/partner/ib-commission",   section: "Partner",   icon: DollarSign      },
-  { label: "IB Withdrawal",       path: "/client/partner/ib-withdrawal",   section: "Partner",   icon: ArrowUpCircle   },
-  { label: "My Profile",          path: "/client/profile/my-profile",      section: "Account",   icon: User            },
+  { label: "Dashboard", path: "/client/dashboard", section: "Main", icon: Home },
+  { label: "Deposit", path: "/client/financial/deposit", section: "Financial", icon: ArrowDownCircle },
+  { label: "Withdrawal", path: "/client/financial/withdrawal", section: "Financial", icon: ArrowUpCircle },
+  { label: "Transfer", path: "/client/financial/transfer", section: "Financial", icon: ArrowRightLeft },
+  { label: "Transaction History", path: "/client/financial/history", section: "Financial", icon: History },
+  { label: "Open New Account", path: "/client/account/new", section: "Account", icon: PlusCircle },
+  { label: "Account List", path: "/client/account/list", section: "Account", icon: CreditCard },
+  { label: "Trading Contest", path: "/client/account/trading-contest", section: "Trading", icon: Trophy },
+  { label: "Trading Platforms", path: "/client/trading-platforms", section: "Trading", icon: Monitor },
+  { label: "Refer A Friend", path: "/client/refer-friend", section: "Growth", icon: UserPlus },
+  { label: "Create IB Account", path: "/client/partner/new-account", section: "Partner", icon: Link2 },
+  { label: "Partner Dashboard", path: "/client/partner/dashboard", section: "Partner", icon: Home },
+  { label: "IB Commission", path: "/client/partner/ib-commission", section: "Partner", icon: DollarSign },
+  { label: "IB Withdrawal", path: "/client/partner/ib-withdrawal", section: "Partner", icon: ArrowUpCircle },
+  { label: "My Profile", path: "/client/profile/my-profile", section: "Account", icon: User },
 ]
 
 export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
   const { user, logout, activeRole } = useAuth()
+  const {
+    notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, loading, isConnected,
+  } = useNotifications()
   const navigate = useNavigate()
   const location = useLocation()
 
+  const [showNotifications, setShowNotifications] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -80,6 +86,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
     email: "user@example.com",
   })
 
+  const notificationRef = useRef<HTMLDivElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const searchContainerRef = useRef<HTMLDivElement>(null)
@@ -88,9 +95,9 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
 
   const searchResults = searchQuery.trim()
     ? PAGES.filter((p) => {
-        const q = searchQuery.toLowerCase()
-        return p.label.toLowerCase().includes(q) || p.section.toLowerCase().includes(q)
-      })
+      const q = searchQuery.toLowerCase()
+      return p.label.toLowerCase().includes(q) || p.section.toLowerCase().includes(q)
+    })
     : []
 
   useEffect(() => {
@@ -114,6 +121,8 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(e.target as Node))
+        setShowNotifications(false)
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node))
         setShowUserMenu(false)
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
@@ -188,12 +197,12 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
           className="rounded-lg p-2 transition-all duration-200 active:scale-95"
           style={{ color: "var(--theme-text-muted)" }}
           onMouseEnter={(e) => {
-            ;(e.currentTarget as HTMLElement).style.backgroundColor = "color-mix(in srgb, var(--theme-primary) 10%, transparent)"
-            ;(e.currentTarget as HTMLElement).style.color = "var(--theme-primary)"
+            ; (e.currentTarget as HTMLElement).style.backgroundColor = "color-mix(in srgb, var(--theme-primary) 10%, transparent)"
+              ; (e.currentTarget as HTMLElement).style.color = "var(--theme-primary)"
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLElement).style.backgroundColor = ""
-            ;(e.currentTarget as HTMLElement).style.color = "var(--theme-text-muted)"
+            ; (e.currentTarget as HTMLElement).style.backgroundColor = ""
+              ; (e.currentTarget as HTMLElement).style.color = "var(--theme-text-muted)"
           }}
           aria-label="Toggle sidebar"
         >
@@ -372,21 +381,39 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
           </div>
         )}
 
-        {/* Notifications placeholder */}
-        <button
-          className="relative rounded-lg p-2 transition-all duration-200"
-          style={{ color: "var(--theme-text-muted)" }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--theme-primary)" }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--theme-text-muted)" }}
-          aria-label="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-        </button>
+        <div className="relative" ref={notificationRef}>
+          <button
+            onClick={() => { setShowNotifications((v) => !v); setShowUserMenu(false) }}
+            className="relative rounded-lg p-2 transition-all duration-200"
+            style={{ color: "var(--theme-text-muted)" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--theme-primary)" }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--theme-text-muted)" }}
+            aria-label="Notifications"
+          >
+            <Bell className={`h-5 w-5 ${!isConnected ? "opacity-50" : ""}`} />
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "var(--theme-danger)" }}>
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+          {showNotifications && (
+            <NotificationDropdown
+              notifications={notifications}
+              onClose={() => setShowNotifications(false)}
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={markAllAsRead}
+              onDeleteNotification={deleteNotification}
+              loading={loading}
+              unreadCount={unreadCount}
+            />
+          )}
+        </div>
 
         {/* User Menu */}
         <div className="relative" ref={userMenuRef}>
           <button
-            onClick={() => setShowUserMenu((v) => !v)}
+            onClick={() => { setShowUserMenu((v) => !v); setShowNotifications(false) }}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-all duration-200 active:scale-95"
             style={{ color: "var(--theme-text-muted)" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "color-mix(in srgb, var(--theme-primary) 8%, transparent)" }}

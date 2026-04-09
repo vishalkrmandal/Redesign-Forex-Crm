@@ -1,58 +1,144 @@
-// Frontend\src\pages\client\financial\Deposit.tsx
-
+// Frontend/src/pages/client/financial/Deposit.tsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
-import { DollarSign, Wallet, ArrowRight, ChevronLeft, Upload, X, Loader } from "lucide-react";
+import {
+  DollarSign, Wallet, Upload, X, Loader, CheckCircle2,
+  Building2, Bitcoin, CreditCard, Copy, ExternalLink,
+  ChevronRight, AlertCircle, Shield
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Import UI components (assuming you're using shadcn/ui)
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Base API URL for dynamic environment support
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface PaymentMethod {
-  _id: string;
-  type: string;
-  active: boolean;
-  bankName?: string;
-  accountHolderName?: string;
-  accountNumber?: string;
-  ifsc_swift?: string;
-  walletName?: string;
-  walletAddress?: string;
-  qrCode?: string;
-  paymentLink?: string;
+  _id: string; type: string; active: boolean;
+  bankName?: string; accountHolderName?: string; accountNumber?: string; ifsc_swift?: string;
+  walletName?: string; walletAddress?: string; qrCode?: string; paymentLink?: string;
 }
-
-interface Account {
-  _id: string;
-  mt5Account: string;
-  accountType: string;
-}
-
+interface Account { _id: string; mt5Account: string; accountType: string; }
 interface Deposit {
-  _id: string;
-  account?: Account;
-  amount: number;
-  status: string;
-  paymentMethod?: PaymentMethod;
-  paymentType?: string;
-  createdAt: string;
+  _id: string; account?: Account; amount: number; status: string;
+  paymentMethod?: PaymentMethod; paymentType?: string; createdAt: string;
 }
+interface PaymentMethods { [key: string]: PaymentMethod[]; }
 
-interface PaymentMethods {
-  [key: string]: PaymentMethod[];
-}
+// ─── Step Indicator ───────────────────────────────────────────────────────────
+const StepIndicator = ({ steps, current }: { steps: string[]; current: number }) => (
+  <div className="flex items-center w-full mb-6">
+    {steps.map((label, i) => {
+      const isDone = i < current;
+      const isActive = i === current;
+      return (
+        <React.Fragment key={i}>
+          <div className="flex flex-col items-center flex-shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+              isDone ? 'text-white' : isActive ? 'text-white' : 'text-gray-400'
+            }`}
+              style={{
+                background: isDone ? '#10b981' : isActive ? 'var(--theme-primary)' : 'var(--theme-border)',
+                boxShadow: isActive ? '0 0 0 4px color-mix(in srgb, var(--theme-primary) 20%, transparent)' : 'none'
+              }}>
+              {isDone ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
+            </div>
+            <span className={`text-[10px] mt-1 font-medium whitespace-nowrap hidden sm:block ${
+              isActive ? '' : isDone ? 'text-green-600' : ''
+            }`}
+              style={{ color: isActive ? 'var(--theme-primary)' : isDone ? '#10b981' : 'var(--theme-text-disabled)' }}>
+              {label}
+            </span>
+          </div>
+          {i < steps.length - 1 && (
+            <div className="flex-1 h-0.5 mx-2 rounded-full transition-all duration-500"
+              style={{ background: i < current ? '#10b981' : 'var(--theme-border)' }} />
+          )}
+        </React.Fragment>
+      );
+    })}
+  </div>
+);
 
+// ─── Step Wrapper ─────────────────────────────────────────────────────────────
+const StepWrapper = ({ stepNum, current, title, summary, children }: {
+  stepNum: number; current: number; title: string; summary?: string; children: React.ReactNode;
+}) => {
+  const isDone = stepNum < current;
+  const isActive = stepNum === current;
+  const isLocked = stepNum > current;
+
+  return (
+    <motion.div
+      layout
+      className="rounded-2xl overflow-hidden transition-all duration-300"
+      style={{
+        border: `1px solid ${isActive ? 'var(--theme-primary)' : 'var(--theme-border)'}`,
+        backgroundColor: 'var(--theme-bg-card)',
+        opacity: isLocked ? 0.5 : 1,
+        boxShadow: isActive ? '0 0 0 2px color-mix(in srgb, var(--theme-primary) 15%, transparent)' : 'none'
+      }}
+    >
+      {/* Step Header */}
+      <div className="flex items-center gap-3 p-4" style={{
+        borderBottom: isActive ? '1px solid var(--theme-border)' : 'none',
+        background: isDone ? '#10b98108' : isActive ? 'color-mix(in srgb, var(--theme-primary) 5%, transparent)' : 'transparent'
+      }}>
+        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0`}
+          style={{
+            background: isDone ? '#10b981' : isActive ? 'var(--theme-primary)' : 'var(--theme-border)',
+            color: isDone || isActive ? 'white' : 'var(--theme-text-muted)'
+          }}>
+          {isDone ? <CheckCircle2 className="w-4 h-4" /> : stepNum + 1}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>{title}</p>
+          {isDone && summary && (
+            <p className="text-xs truncate" style={{ color: '#10b981' }}>{summary}</p>
+          )}
+          {isLocked && (
+            <p className="text-xs" style={{ color: 'var(--theme-text-disabled)' }}>Complete previous step first</p>
+          )}
+        </div>
+        {isDone && <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />}
+      </div>
+
+      {/* Step Content */}
+      <AnimatePresence initial={false}>
+        {isActive && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <div className="p-5">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+const StatusBadge = ({ status }: { status: string }) => {
+  const cfg: Record<string, { bg: string; text: string }> = {
+    approved: { bg: '#10b98120', text: '#10b981' },
+    rejected: { bg: '#ef444420', text: '#ef4444' },
+    pending: { bg: '#f59e0b20', text: '#f59e0b' },
+  };
+  const c = cfg[status.toLowerCase()] || cfg.pending;
+  return (
+    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+      style={{ background: c.bg, color: c.text }}>
+      {status}
+    </span>
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function Deposit() {
-  // State variables
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethods>({});
   const [deposits, setDeposits] = useState<Deposit[]>([]);
@@ -63,866 +149,532 @@ export default function Deposit() {
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState("");
   const [amount, setAmount] = useState("");
-  const [transactionId, settransactionId] = useState("");
+  const [transactionId, setTransactionId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState({
-    accounts: false,
-    methods: false,
-    deposits: false
-  });
+  const [isLoading, setIsLoading] = useState({ accounts: false, methods: false, deposits: false });
 
-  // Get token from localStorage
   const getToken = () => localStorage.getItem('clientToken');
+  const authHeaders = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
 
-  // API headers with auth token
-  const getAuthHeaders = () => ({
-    headers: {
-      Authorization: `Bearer ${getToken()}`
-    }
-  });
-
-  // Helper function to trigger account balance update
-  const triggerAccountBalanceUpdate = async () => {
+  const triggerBalanceUpdate = async () => {
     try {
       const token = localStorage.getItem('clientToken');
       const userData = JSON.parse(localStorage.getItem('clientUser') || '{}');
-      const userId = userData.id;
-
-      console.log('Token:', token ? 'exists' : 'missing');
-      console.log('UserId:', userId);
-
-      if (!token || !userId) return;
-
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/clients/users/${userId}/accounts`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('Response:', response.data);
-
-    } catch (error) {
-      if (error instanceof Error) {
-        console.log('Error:', error.message);
-      } else {
-        console.log('Error:', error);
-      }
-    }
+      if (!token || !userData.id) return;
+      await axios.get(`${import.meta.env.VITE_API_URL}/api/clients/users/${userData.id}/accounts`,
+        { headers: { Authorization: `Bearer ${token}` } });
+    } catch { /* silent */ }
   };
 
-  // Fetch data on component mount
   useEffect(() => {
-
-    // Trigger account balance update on initial load
-    triggerAccountBalanceUpdate();
-
+    triggerBalanceUpdate();
     fetchAccounts();
     fetchPaymentMethods();
     fetchDeposits();
   }, []);
 
-  // Fetch user accounts
   const fetchAccounts = async () => {
-    setIsLoading(prev => ({ ...prev, accounts: true }));
+    setIsLoading(p => ({ ...p, accounts: true }));
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/accounts`, getAuthHeaders());
-      const accountsData = response.data.data || [];
-      setAccounts(accountsData);
-      if (accountsData.length > 0) {
-        setSelectedAccount(accountsData[0]._id);
-      }
-    } catch (error) {
-      toast.error("Failed to fetch accounts");
-      console.error("Error fetching accounts:", error);
-    } finally {
-      setIsLoading(prev => ({ ...prev, accounts: false }));
-    }
+      const res = await axios.get(`${API_BASE_URL}/api/accounts`, authHeaders());
+      const data = res.data.data || [];
+      setAccounts(data);
+      if (data.length > 0) setSelectedAccount(data[0]._id);
+    } catch { toast.error("Failed to fetch accounts"); }
+    finally { setIsLoading(p => ({ ...p, accounts: false })); }
   };
 
-  // Fetch active payment methods
   const fetchPaymentMethods = async () => {
-    setIsLoading(prev => ({ ...prev, methods: true }));
+    setIsLoading(p => ({ ...p, methods: true }));
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/clientdeposits/payment-methods`, getAuthHeaders());
-      setPaymentMethods(response.data.data || {});
-    } catch (error) {
-      toast.error("Failed to fetch payment methods");
-      console.error("Error fetching payment methods:", error);
-    } finally {
-      setIsLoading(prev => ({ ...prev, methods: false }));
-    }
+      const res = await axios.get(`${API_BASE_URL}/api/clientdeposits/payment-methods`, authHeaders());
+      setPaymentMethods(res.data.data || {});
+    } catch { toast.error("Failed to fetch payment methods"); }
+    finally { setIsLoading(p => ({ ...p, methods: false })); }
   };
 
-  // Fetch deposit history
   const fetchDeposits = async () => {
-    setIsLoading(prev => ({ ...prev, deposits: true }));
+    setIsLoading(p => ({ ...p, deposits: true }));
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/clientdeposits`, getAuthHeaders());
-      setDeposits(response.data.data || []);
-    } catch (error) {
-      toast.error("Failed to fetch deposit history");
-      console.error("Error fetching deposits:", error);
-    } finally {
-      setIsLoading(prev => ({ ...prev, deposits: false }));
-    }
+      const res = await axios.get(`${API_BASE_URL}/api/clientdeposits`, authHeaders());
+      setDeposits(res.data.data || []);
+    } catch { /* silent */ }
+    finally { setIsLoading(p => ({ ...p, deposits: false })); }
   };
 
-  // Handle payment method selection
-  const selectPaymentType = (type: string) => {
-    setSelectedPaymentType(type);
+  const selectPaymentType = (type: string, key: string) => {
+    setSelectedPaymentType(key);
     setSelectedMethod(null);
     setSelectedMethodDetails(null);
-    setStep(2);
+    setStep(1);
   };
 
-  // Handle specific method selection
   const selectMethod = (method: PaymentMethod) => {
     setSelectedMethod(method._id);
     setSelectedMethodDetails(method);
-    setStep(3);
+    setStep(2);
   };
 
-  // Go back to previous step
-  const goBack = () => {
-    if (step === 2) {
-      setSelectedPaymentType(null);
-      setStep(1);
-    } else if (step === 3) {
-      setSelectedMethodDetails(null);
-      setStep(2);
-    }
-  };
-
-  // Reset form to initial state
-  const resetForm = () => {
-    setSelectedPaymentType(null);
-    setSelectedMethod(null);
-    setSelectedMethodDetails(null);
-    setAmount("");
-    settransactionId("");
-    setProofFile(null);
-    setProofPreview(null);
-    setStep(1);
-
-    // Reset file input
-    const fileInput = document.getElementById('proof-file-input') as HTMLInputElement;
-    if (fileInput) {
-      fileInput.value = '';
-    }
-  };
-
-  // Handle file change for proof of payment
   const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-
-      // Validate file type and size
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-      const maxSize = 5 * 1024 * 1024; // 5MB
-
-      if (!validTypes.includes(file.type)) {
-        toast.error("Invalid file type. Please upload a PDF, JPG, JPEG, or PNG file.");
-        return;
-      }
-
-      if (file.size > maxSize) {
-        toast.error("File is too large. Maximum size is 5MB.");
-        return;
-      }
-
-      // Create preview if it's an image
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-
-        reader.onloadend = () => {
-          if (typeof reader.result === "string") {
-            setProofPreview(reader.result);
-          }
-        };
-
-        reader.onerror = () => {
-          toast.error("Failed to create image preview");
-          console.error("FileReader error:", reader.error);
-        };
-
-        reader.readAsDataURL(file);
-      } else {
-        // For PDFs or other non-image files
-        setProofPreview(null);
-      }
-
-      setProofFile(file);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+      return void toast.error("Invalid file type. Use PDF, JPG or PNG.");
     }
+    if (file.size > 5 * 1024 * 1024) return void toast.error("Max file size is 5MB.");
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => setProofPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else setProofPreview(null);
+    setProofFile(file);
   };
 
-  // Remove selected file
   const removeProofFile = () => {
-    setProofFile(null);
-    setProofPreview(null);
-
-    // Reset file input
-    const fileInput = document.getElementById('proof-file-input') as HTMLInputElement;
-    if (fileInput) {
-      fileInput.value = '';
-    }
+    setProofFile(null); setProofPreview(null);
+    const el = document.getElementById('proof-file-input') as HTMLInputElement;
+    if (el) el.value = '';
   };
 
-  // Validate form before submission
-  const validateForm = () => {
-    if (!selectedAccount) {
-      toast.error("Please select an account");
-      return false;
-    }
-
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) < 0) {
-      toast.error("Please enter a valid amount");
-      return false;
-    }
-
-    if (!transactionId || transactionId.trim() === "") {
-      toast.error("Please enter transaction ID");
-      return false;
-    }
-
-    if (!proofFile) {
-      toast.error("Please upload proof of payment");
-      return false;
-    }
-
-    if (!selectedMethod || !selectedPaymentType) {
-      toast.error("Please select a payment method");
-      return false;
-    }
-
-    return true;
+  const resetForm = () => {
+    setSelectedPaymentType(null); setSelectedMethod(null); setSelectedMethodDetails(null);
+    setAmount(""); setTransactionId(""); setProofFile(null); setProofPreview(null); setStep(0);
+    const el = document.getElementById('proof-file-input') as HTMLInputElement;
+    if (el) el.value = '';
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!selectedAccount) return void toast.error("Please select an account");
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) return void toast.error("Enter a valid amount");
+    if (!transactionId.trim()) return void toast.error("Enter a transaction ID");
+    if (!proofFile) return void toast.error("Upload proof of payment");
+    if (!selectedMethod || !selectedPaymentType) return void toast.error("Select a payment method");
 
     setIsSubmitting(true);
-
     try {
-      const formData = new FormData();
-      formData.append('accountId', selectedAccount);
-      formData.append('amount', amount);
-
-      if (selectedMethod) {
-        formData.append('paymentMethodId', selectedMethod);
-      }
-
-      if (selectedPaymentType) {
-        formData.append('paymentType', selectedPaymentType);
-      }
-
-      if (proofFile) {
-        formData.append('proofOfPayment', proofFile);
-      }
-
-      if (transactionId) {
-        formData.append('transactionId', transactionId);
-      }
-
-      await axios.post(`${API_BASE_URL}/api/clientdeposits`, formData, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-          'Content-Type': 'multipart/form-data'
-        }
+      const fd = new FormData();
+      fd.append('accountId', selectedAccount);
+      fd.append('amount', amount);
+      fd.append('paymentMethodId', selectedMethod);
+      fd.append('paymentType', selectedPaymentType);
+      fd.append('proofOfPayment', proofFile);
+      fd.append('transactionId', transactionId);
+      await axios.post(`${API_BASE_URL}/api/clientdeposits`, fd, {
+        headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'multipart/form-data' }
       });
-
-
-      setTimeout(() => {
-        toast.success("Deposit request submitted successfully");
-
-        // Reset form and refresh deposits list
-        fetchDeposits();
-        setIsSubmitting(false);
-      }, 1500);
+      toast.success("Deposit request submitted successfully!");
       resetForm();
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.data?.message) {
-        toast.error(error.response.data.message);
-      } else {
-        toast.error("Failed to submit deposit request");
-      }
-      console.error('Error submitting deposit:', error);
+      fetchDeposits();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to submit deposit request");
     } finally {
-      setTimeout(() => {
-        setIsSubmitting(false);
-      }, 1000);
+      setIsSubmitting(false);
     }
   };
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+  // Payment type options derived from methods
+  const paymentTypeOptions: { key: string; label: string; desc: string; icon: React.ElementType; methods: PaymentMethod[] }[] = [];
+  if (paymentMethods['Bank Account']?.length > 0) {
+    paymentTypeOptions.push({ key: 'Bank Account', label: 'Bank Transfer', desc: '1-3 business days', icon: Building2, methods: paymentMethods['Bank Account'] });
+  }
+  if (paymentMethods['Crypto Wallet']?.length > 0) {
+    paymentTypeOptions.push({ key: 'Crypto Wallet', label: 'Crypto / E-Wallet', desc: 'Near-instant', icon: Bitcoin, methods: paymentMethods['Crypto Wallet'] });
+  }
+  Object.entries(paymentMethods)
+    .filter(([k]) => k !== 'Bank Account' && k !== 'Crypto Wallet')
+    .forEach(([k, methods]) => {
+      if (methods?.length > 0)
+        paymentTypeOptions.push({ key: k, label: k, desc: 'Select to deposit', icon: CreditCard, methods });
     });
-  };
 
-  // Get status badge class
-  const getStatusBadgeClass = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400';
-      case 'rejected':
-        return 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400';
-      default:
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/20 dark:text-yellow-400';
-    }
-  };
+  const activeMethods = selectedPaymentType ? (paymentMethods[selectedPaymentType] || []) : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl mx-auto">
+      {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Deposit Funds</h1>
-        <p className="text-muted-foreground">
-          Add funds to your trading account using one of the available payment methods.
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--theme-text-primary)' }}>Deposit Funds</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--theme-text-muted)' }}>
+          Add funds to your trading account in a few simple steps.
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <AnimatePresence mode="wait">
-          {step === 1 && (
-            <motion.div
-              key="payment-types"
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -20, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="rounded-lg border bg-card p-6 shadow-sm"
-            >
-              <h2 className="text-lg font-medium">Select Payment Method</h2>
+      {/* Step Indicator */}
+      <StepIndicator steps={['Choose Type', 'Select Method', 'Payment Info', 'Submit']} current={step} />
 
-              {isLoading.methods ? (
-                <div className="flex justify-center items-center py-12">
-                  <Loader className="h-8 w-8 animate-spin text-muted-foreground" />
+      {/* ── STEP 0: Choose Payment Type ─────────────────────────────────── */}
+      <StepWrapper stepNum={0} current={step} title="Choose Payment Type"
+        summary={selectedPaymentType ? `Selected: ${selectedPaymentType === 'Bank Account' ? 'Bank Transfer' : selectedPaymentType === 'Crypto Wallet' ? 'Crypto / E-Wallet' : selectedPaymentType}` : undefined}>
+        {isLoading.methods ? (
+          <div className="flex justify-center py-8"><Loader className="h-8 w-8 animate-spin" style={{ color: 'var(--theme-primary)' }} /></div>
+        ) : paymentTypeOptions.length === 0 ? (
+          <div className="text-center py-8" style={{ color: 'var(--theme-text-muted)' }}>
+            <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-50" />
+            <p>No payment methods configured.</p>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-3">
+            {paymentTypeOptions.map(opt => (
+              <motion.button
+                key={opt.key}
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => selectPaymentType(opt.label, opt.key)}
+                className="flex items-center gap-4 p-4 rounded-xl text-left transition-all duration-200"
+                style={{
+                  border: `1px solid ${selectedPaymentType === opt.key ? 'var(--theme-primary)' : 'var(--theme-border)'}`,
+                  background: selectedPaymentType === opt.key ? 'color-mix(in srgb, var(--theme-primary) 8%, transparent)' : 'transparent'
+                }}
+              >
+                <div className="rounded-xl p-3 flex-shrink-0"
+                  style={{ background: 'color-mix(in srgb, var(--theme-primary) 12%, transparent)' }}>
+                  <opt.icon className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm" style={{ color: 'var(--theme-text-primary)' }}>{opt.label}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--theme-text-muted)' }}>{opt.desc}</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--theme-text-disabled)' }}>
+                    {opt.methods.length} method{opt.methods.length !== 1 ? 's' : ''} available
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--theme-text-muted)' }} />
+              </motion.button>
+            ))}
+          </div>
+        )}
+      </StepWrapper>
+
+      {/* ── STEP 1: Select Specific Method ──────────────────────────────── */}
+      <StepWrapper stepNum={1} current={step} title="Select Method"
+        summary={selectedMethodDetails
+          ? selectedMethodDetails.type === 'Bank Account'
+            ? `${selectedMethodDetails.bankName} — ${selectedMethodDetails.accountHolderName}`
+            : `${selectedMethodDetails.walletName}`
+          : undefined}>
+        <div className="space-y-2">
+          {activeMethods.map(method => (
+            <motion.button
+              key={method._id}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => selectMethod(method)}
+              className="w-full flex items-center gap-4 p-4 rounded-xl text-left transition-all duration-200"
+              style={{
+                border: `1px solid ${selectedMethod === method._id ? 'var(--theme-primary)' : 'var(--theme-border)'}`,
+                background: selectedMethod === method._id ? 'color-mix(in srgb, var(--theme-primary) 8%, transparent)' : 'transparent'
+              }}
+            >
+              <div className="rounded-xl p-2.5 flex-shrink-0"
+                style={{ background: 'color-mix(in srgb, var(--theme-primary) 12%, transparent)' }}>
+                {method.type === 'Bank Account' ? (
+                  <Building2 className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
+                ) : (
+                  <Wallet className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm" style={{ color: 'var(--theme-text-primary)' }}>
+                  {method.bankName || method.walletName || method.accountHolderName || method.type}
+                </p>
+                <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--theme-text-muted)' }}>
+                  {method.accountNumber
+                    ? `Acc: ****${String(method.accountNumber).slice(-4)}`
+                    : method.walletAddress
+                      ? `${String(method.walletAddress).slice(0, 12)}…`
+                      : method.type}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-[10px] px-2 py-0.5 rounded-full"
+                  style={{
+                    background: method.active ? '#10b98120' : '#ef444420',
+                    color: method.active ? '#10b981' : '#ef4444'
+                  }}>
+                  {method.active ? 'Active' : 'Inactive'}
+                </span>
+                <ChevronRight className="w-4 h-4" style={{ color: 'var(--theme-text-muted)' }} />
+              </div>
+            </motion.button>
+          ))}
+        </div>
+      </StepWrapper>
+
+      {/* ── STEP 2: Payment Info ─────────────────────────────────────────── */}
+      <StepWrapper stepNum={2} current={step} title="Payment Information"
+        summary={selectedMethodDetails ? "Method details shown below" : undefined}>
+        {selectedMethodDetails && (
+          <div className="space-y-4">
+            {/* Bank Account Details */}
+            {selectedMethodDetails.type === 'Bank Account' && (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {[
+                  { label: 'Bank Name', value: selectedMethodDetails.bankName },
+                  { label: 'Account Holder', value: selectedMethodDetails.accountHolderName },
+                  { label: 'Account Number', value: selectedMethodDetails.accountNumber },
+                  { label: 'IFSC / SWIFT', value: selectedMethodDetails.ifsc_swift },
+                ].map(item => item.value ? (
+                  <div key={item.label} className="rounded-xl p-3" style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)' }}>
+                    <p className="text-[10px] font-medium mb-1" style={{ color: 'var(--theme-text-disabled)' }}>{item.label}</p>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>{item.value}</p>
+                  </div>
+                ) : null)}
+              </div>
+            )}
+
+            {/* Crypto Wallet Details */}
+            {selectedMethodDetails.type === 'Crypto Wallet' && (
+              <div className="space-y-3">
+                <div className="rounded-xl p-4" style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)' }}>
+                  <p className="text-[10px] font-medium mb-1" style={{ color: 'var(--theme-text-disabled)' }}>Wallet Name</p>
+                  <p className="text-sm font-semibold mb-3" style={{ color: 'var(--theme-text-primary)' }}>{selectedMethodDetails.walletName}</p>
+                  <p className="text-[10px] font-medium mb-1" style={{ color: 'var(--theme-text-disabled)' }}>Wallet Address</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-mono flex-1 break-all" style={{ color: 'var(--theme-text-primary)' }}>
+                      {selectedMethodDetails.walletAddress}
+                    </p>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedMethodDetails.walletAddress || '');
+                        toast.success('Address copied!');
+                      }}
+                      className="flex-shrink-0 rounded-lg p-2 transition-colors hover:opacity-70"
+                      style={{ background: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)' }}>
+                      <Copy className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* QR Code */}
+            {selectedMethodDetails.qrCode && (
+              <div className="flex flex-col items-center gap-3 p-4 rounded-xl"
+                style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)' }}>
+                <p className="text-xs font-medium" style={{ color: 'var(--theme-text-muted)' }}>Scan QR Code to Pay</p>
+                <img
+                  src={`${API_BASE_URL.replace('/api', '')}${selectedMethodDetails.qrCode}`}
+                  alt="QR Code" crossOrigin="anonymous"
+                  className="w-40 h-40 object-contain rounded-xl"
+                  style={{ border: '1px solid var(--theme-border)' }}
+                />
+                <a href={`${API_BASE_URL.replace('/api', '')}${selectedMethodDetails.qrCode}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs"
+                  style={{ color: 'var(--theme-primary)' }}>
+                  <ExternalLink className="w-3.5 h-3.5" />View full image
+                </a>
+              </div>
+            )}
+
+            {/* Confirm Info Read */}
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setStep(3)}
+              className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 70%, #000))' }}>
+              I've noted the payment details — Continue
+            </motion.button>
+          </div>
+        )}
+      </StepWrapper>
+
+      {/* ── STEP 3: Transaction Details ──────────────────────────────────── */}
+      <StepWrapper stepNum={3} current={step} title="Transaction Details">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Selected method summary */}
+          {selectedMethodDetails && (
+            <div className="rounded-xl p-3 flex items-center gap-3"
+              style={{ background: '#10b98110', border: '1px solid #10b98140' }}>
+              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+              <div className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
+                <span className="font-semibold" style={{ color: '#10b981' }}>
+                  {selectedMethodDetails.bankName || selectedMethodDetails.walletName || selectedPaymentType}
+                </span>
+                {' '}selected for this deposit
+              </div>
+            </div>
+          )}
+
+          {/* Account Selection */}
+          <div>
+            <label className="text-sm font-medium block mb-1.5" style={{ color: 'var(--theme-text-primary)' }}>
+              Deposit To Account
+            </label>
+            {isLoading.accounts ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader className="h-4 w-4 animate-spin" style={{ color: 'var(--theme-primary)' }} />
+                <span className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>Loading accounts…</span>
+              </div>
+            ) : (
+              <Select value={selectedAccount} onValueChange={setSelectedAccount} disabled={accounts.length === 0}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select an account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map(a => (
+                    <SelectItem key={a._id} value={a._id}>
+                      {a.mt5Account} ({a.accountType})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Amount */}
+          <div>
+            <label className="text-sm font-medium block mb-1.5" style={{ color: 'var(--theme-text-primary)' }}>Amount (USD)</label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-bold"
+                style={{ color: 'var(--theme-text-muted)' }}>$</span>
+              <input
+                type="number" placeholder="0.00" min="0" value={amount}
+                onChange={e => setAmount(e.target.value)}
+                className="w-full pl-8 pr-4 py-2.5 rounded-xl text-sm outline-none focus:ring-2 transition-all"
+                style={{
+                  background: 'var(--theme-bg-main)',
+                  border: '1px solid var(--theme-border)',
+                  color: 'var(--theme-text-primary)',
+                  '--tw-ring-color': 'var(--theme-primary)'
+                } as any}
+              />
+            </div>
+            <p className="text-[10px] mt-1" style={{ color: 'var(--theme-text-disabled)' }}>No minimum deposit required</p>
+          </div>
+
+          {/* Transaction ID */}
+          <div>
+            <label className="text-sm font-medium block mb-1.5" style={{ color: 'var(--theme-text-primary)' }}>Transaction ID / Reference</label>
+            <input
+              type="text" placeholder="Enter your transaction reference" value={transactionId}
+              onChange={e => setTransactionId(e.target.value)} required
+              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none focus:ring-2 transition-all"
+              style={{
+                background: 'var(--theme-bg-main)',
+                border: '1px solid var(--theme-border)',
+                color: 'var(--theme-text-primary)'
+              }}
+            />
+          </div>
+
+          {/* Proof Upload */}
+          <div>
+            <label className="text-sm font-medium block mb-1.5" style={{ color: 'var(--theme-text-primary)' }}>
+              Proof of Payment
+            </label>
+            <div className="relative">
+              {!proofFile ? (
+                <label htmlFor="proof-file-input"
+                  className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl cursor-pointer transition-all duration-200 hover:opacity-80"
+                  style={{ border: '2px dashed var(--theme-border)', background: 'var(--theme-bg-main)' }}>
+                  <Upload className="w-8 h-8" style={{ color: 'var(--theme-text-muted)' }} />
+                  <p className="text-sm font-medium" style={{ color: 'var(--theme-text-primary)' }}>Click to upload proof</p>
+                  <p className="text-xs" style={{ color: 'var(--theme-text-disabled)' }}>PDF, JPG, PNG — max 5MB</p>
+                  <input id="proof-file-input" type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleProofFileChange} />
+                </label>
               ) : (
-                <div className="mt-4 grid gap-4">
-                  {paymentMethods['Bank Account'] && paymentMethods['Bank Account'].length > 0 && (
-                    <div
-                      className="flex cursor-pointer items-center rounded-lg border p-4 hover:border-primary"
-                      onClick={() => selectPaymentType('Bank Transfer')}
-                    >
-                      <div className="mr-4 rounded-full bg-primary/10 p-2 text-primary">
-                        <DollarSign className="h-6 w-6" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">Bank Transfer</h3>
-                        <p className="text-sm text-muted-foreground">Direct bank transfer (1-3 business days)</p>
-                      </div>
-                      <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                <div className="rounded-xl p-4 flex items-center gap-4"
+                  style={{ border: '1px solid #10b98140', background: '#10b98108' }}>
+                  {proofPreview ? (
+                    <img src={proofPreview} alt="Preview" className="w-16 h-16 object-cover rounded-lg flex-shrink-0" />
+                  ) : (
+                    <div className="w-16 h-16 flex items-center justify-center rounded-lg flex-shrink-0"
+                      style={{ background: '#10b98120' }}>
+                      <Upload className="w-6 h-6 text-green-500" />
                     </div>
                   )}
-
-                  {paymentMethods['Crypto Wallet'] && paymentMethods['Crypto Wallet'].length > 0 && (
-                    <div
-                      className="flex cursor-pointer items-center rounded-lg border p-4 hover:border-primary"
-                      onClick={() => selectPaymentType('E-Wallet')}
-                    >
-                      <div className="mr-4 rounded-full bg-primary/10 p-2 text-primary">
-                        <Wallet className="h-6 w-6" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">E-Wallet</h3>
-                        <p className="text-sm text-muted-foreground">Deposit using crypto or digital wallets</p>
-                      </div>
-                      <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                  )}
-
-                  {Object.keys(paymentMethods)
-                    .filter(key => key !== 'Bank Account' && key !== 'Crypto Wallet')
-                    .map(type =>
-                      paymentMethods[type] && paymentMethods[type].length > 0 ? (
-                        <div key={type} className="space-y-3">
-                          <h3 className="font-medium">{type}</h3>
-                          {paymentMethods[type].map(method => (
-                            <div
-                              key={method._id}
-                              className="p-4 border rounded-lg"
-                            >
-                              <h4 className="font-medium">{method.accountHolderName || type}</h4>
-                              {/* Add QR Code display for other payment types */}
-                              {method.qrCode && (
-                                <div className="mt-4 space-y-2">
-                                  <Label className="text-sm text-muted-foreground">QR Code</Label>
-                                  <div className="flex flex-col items-start">
-                                    <img
-                                      src={`${API_BASE_URL.replace('/api', '')}${method.qrCode}`}
-                                      alt="Payment QR Code"
-                                      className="object-contain h-auto max-h-32"
-                                      crossOrigin="anonymous"
-                                    />
-                                    <div className="mt-2">
-                                      <a
-                                        href={`${API_BASE_URL.replace('/api', '')}${method.qrCode}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-primary hover:underline text-sm flex items-center"
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
-                                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                          <polyline points="15 3 21 3 21 9"></polyline>
-                                          <line x1="10" y1="14" x2="21" y2="3"></line>
-                                        </svg>
-                                        View full image
-                                      </a>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              <Button
-                                className="mt-4"
-                                onClick={() => selectMethod(method)}
-                              >
-                                Select this method
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null
-                    )
-                  }
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate" style={{ color: '#10b981' }}>{proofFile.name}</p>
+                    <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
+                      {(proofFile.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                  <button type="button" onClick={removeProofFile}
+                    className="rounded-lg p-1.5 hover:opacity-70"
+                    style={{ background: '#ef444420' }}>
+                    <X className="w-4 h-4 text-red-500" />
+                  </button>
                 </div>
               )}
-            </motion.div>
-          )}
+            </div>
+          </div>
 
-          {step === 2 && (
-            <motion.div
-              key="payment-methods"
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 20, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="rounded-lg border bg-card p-6 shadow-sm"
-            >
-              <div className="flex items-center mb-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={goBack}
-                  className="mr-2"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h2 className="text-lg font-medium">
-                  {selectedPaymentType === 'Bank Transfer' ? 'Select Bank Account' : 'Select Wallet'}
-                </h2>
-              </div>
+          {/* Security Notice */}
+          <div className="flex items-start gap-3 rounded-xl p-3"
+            style={{ background: 'color-mix(in srgb, var(--theme-primary) 5%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-primary) 20%, transparent)' }}>
+            <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--theme-primary)' }} />
+            <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
+              Your deposit will be reviewed and credited within 1-3 business hours after verification.
+            </p>
+          </div>
 
-              <div className="mt-4">
-                {selectedPaymentType === 'Bank Transfer' && paymentMethods['Bank Account']?.map(method => (
-                  <div
-                    key={method._id}
-                    className="flex cursor-pointer items-center rounded-lg border p-4 hover:border-primary mb-3"
-                    onClick={() => selectMethod(method)}
-                  >
-                    <div className="flex-1">
-                      <h3 className="font-medium">{method.bankName}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {method.accountHolderName} • {method.accountNumber}
-                      </p>
-                    </div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                ))}
-
-                {selectedPaymentType === 'E-Wallet' && paymentMethods['Crypto Wallet']?.length > 0 && (
-                  <Tabs defaultValue={paymentMethods['Crypto Wallet'][0]._id}>
-                    <TabsList className="flex flex-nowrap mb-4 px-4 justify-between">
-                      {paymentMethods['Crypto Wallet'].map(wallet => (
-                        <TabsTrigger
-                          key={wallet._id}
-                          value={wallet._id}
-                          onClick={() => selectMethod(wallet)}
-                          className="data-[state=active]:bg-card px-4"
-                        >
-                          {wallet.walletName}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-
-                    {paymentMethods['Crypto Wallet'].map(wallet => (
-                      <TabsContent key={wallet._id} value={wallet._id}>
-                        <div className="p-4 border rounded-lg">
-                          <h3 className="font-medium">{wallet.walletName}</h3>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Wallet Address: {wallet.walletAddress}
-                          </p>
-
-                          {/* Add QR Code display for wallet */}
-                          {/* {wallet.qrCode && (
-                            <div className="mt-4 space-y-2">
-                              <Label className="text-sm text-muted-foreground">QR Code</Label>
-                              <div className="flex flex-col items-start">
-                                <img
-                                  src={`${API_BASE_URL.replace('/api', '')}${wallet.qrCode}`}
-                                  alt="Wallet QR Code"
-                                  className="object-contain h-auto max-h-32"
-                                  crossOrigin="anonymous"
-                                />
-                                <div className="mt-2">
-                                  <a
-                                    href={`${API_BASE_URL.replace('/api', '')}${wallet.qrCode}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary hover:underline text-sm flex items-center"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
-                                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                      <polyline points="15 3 21 3 21 9"></polyline>
-                                      <line x1="10" y1="14" x2="21" y2="3"></line>
-                                    </svg>
-                                    View full image
-                                  </a>
-                                </div>
-                              </div>
-                            </div>
-                          )} */}
-
-                          <Button
-                            className="mt-4"
-                            onClick={() => selectMethod(wallet)}
-                          >
-                            Select this wallet
-                          </Button>
-                        </div>
-                      </TabsContent>
-                    ))}
-                  </Tabs>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {step === 3 && (
-            <motion.div
-              key="payment-details"
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 20, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="rounded-lg border bg-card p-6 shadow-sm"
-            >
-              <div className="flex items-center mb-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={goBack}
-                  className="mr-2"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h2 className="text-lg font-medium">Payment Method Details</h2>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 items-start">
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Payment Type</Label>
-                    <p>{selectedMethodDetails?.type}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Active/Status</Label>
-                    <div className="flex items-center">
-                      <p className="text-sm">Account is</p>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${selectedMethodDetails?.active
-                        ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400'
-                        : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400'
-                        }`}>
-                        {selectedMethodDetails?.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedMethodDetails?.type === 'Bank Account' && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-sm text-muted-foreground">Account Holder Name</Label>
-                        <p>{selectedMethodDetails.accountHolderName}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm text-muted-foreground">Account Number</Label>
-                        <p>{selectedMethodDetails.accountNumber}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-sm text-muted-foreground">IFSC/SWIFT Code</Label>
-                        <p>{selectedMethodDetails.ifsc_swift}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm text-muted-foreground">Bank Name</Label>
-                        <p>{selectedMethodDetails.bankName}</p>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {selectedMethodDetails?.type === 'Crypto Wallet' && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-
-                      <div>
-                        <Label className="text-sm text-muted-foreground">Wallet Address</Label>
-                        <div className="flex items-center gap-2">
-                          <p className="break-all flex-1 text-sm font-mono text-gray-800 dark:text-gray-200">
-                            {selectedMethodDetails.walletAddress}
-                          </p>
-                        </div>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          title="Copy Wallet Address"
-                          className="bg-blue-700 text-white hover:bg-blue-600"
-                          onClick={() => {
-                            navigator.clipboard.writeText(selectedMethodDetails.walletAddress || '');
-                            toast.success('Wallet address copied to clipboard');
-                          }}
-                        >
-                          Copy
-                        </Button>
-                      </div>
-                      <div>
-                        <Label className="text-sm text-muted-foreground">Wallet Name</Label>
-                        <p>{selectedMethodDetails.walletName}</p>
-                      </div>
-
-                    </div>
-                  </>
-                )}
-
-                {selectedMethodDetails?.qrCode && (
-                  <div className="col-span-2 space-y-4 mt-6">
-                    <Label className="text-sm text-muted-foreground text-center block">QR Code</Label>
-                    <div className="flex flex-col items-center">
-                      <div className="w-60 max-w-md">
-                        <img
-                          src={`${API_BASE_URL.replace('/api', '')}${selectedMethodDetails.qrCode}`}
-                          alt="QR Code"
-                          className="w-60 h-auto object-contain"
-                          crossOrigin="anonymous"
-                        />
-                      </div>
-                      <div className="mt-4">
-                        <a
-                          href={`${API_BASE_URL.replace('/api', '')}${selectedMethodDetails.qrCode}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline text-sm flex items-center"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                            <polyline points="15 3 21 3 21 9"></polyline>
-                            <line x1="10" y1="14" x2="21" y2="3"></line>
-                          </svg>
-                          View full image
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {selectedMethodDetails?.paymentLink && (
-                  <div className="space-y-2">
-                    <Label className="text-sm text-muted-foreground">Payment Link</Label>
-                    <a
-                      href={selectedMethodDetails.paymentLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {selectedMethodDetails.paymentLink}
-                    </a>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          <motion.div
-            key="deposit-form"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="rounded-lg border bg-card p-6 shadow-sm"
+          {/* Submit */}
+          <motion.button
+            type="submit"
+            whileTap={{ scale: 0.97 }}
+            disabled={isSubmitting || !selectedAccount || !amount || !transactionId || !selectedMethod || !proofFile}
+            className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: 'linear-gradient(135deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 60%, #000))' }}
           >
-            <h2 className="text-lg font-medium">Deposit Details</h2>
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-              <div>
-                <Label htmlFor="account">Select Account</Label>
-                {isLoading.accounts ? (
-                  <div className="flex items-center space-x-2 mt-2">
-                    <Loader className="h-4 w-4 animate-spin" />
-                    <span className="text-sm text-muted-foreground">Loading accounts...</span>
-                  </div>
-                ) : (
-                  <Select
-                    value={selectedAccount}
-                    onValueChange={setSelectedAccount}
-                    disabled={accounts.length === 0}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select an account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map(account => (
-                        <SelectItem key={account._id} value={account._id}>
-                          {account.mt5Account} ({account.accountType})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader className="w-4 h-4 animate-spin" />Processing…
+              </span>
+            ) : 'Submit Deposit Request'}
+          </motion.button>
+        </form>
+      </StepWrapper>
 
-              <div>
-                <Label htmlFor="amount">Amount</Label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                  <Input
-                    id="amount"
-                    type="number"
-                    placeholder="Enter amount"
-                    min="0"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">No Minimum deposit</p>
-              </div>
-
-              <div>
-                <Label htmlFor="transactionId">Transaction ID *</Label>
-                <Input
-                  id="transactionId"
-                  placeholder="Enter your transaction ID"
-                  value={transactionId}
-                  onChange={(e) => settransactionId(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="proof-file-input">
-                  Upload Proof of Payment (PDF, JPG, JPEG, PNG)
-                </Label>
-                <div className="flex items-center space-x-2 mt-2">
-                  <Input
-                    id="proof-file-input"
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleProofFileChange}
-                    className="cursor-pointer"
-                  />
-                  {proofFile && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={removeProofFile}
-                      title="Remove file"
-                      type="button"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-
-                {proofPreview && (
-                  <div className="mt-2 relative">
-                    <img
-                      src={proofPreview}
-                      alt="Proof Preview"
-                      className="max-w-full h-auto max-h-48 object-contain border rounded"
-                      crossOrigin="anonymous"
-                    />
-                  </div>
-                )}
-
-                {proofFile && !proofPreview && (
-                  <div className="mt-2 p-3 border rounded flex items-center">
-                    <Upload className="h-5 w-5 mr-2" />
-                    <span>{proofFile.name}</span>
-                  </div>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-blue-800 hover:bg-blue-800 disabled:bg-blue-600 disabled:opacity-100 disabled:pointer-events-auto disabled:cursor-not-allowed text-white"
-                disabled={
-                  isSubmitting ||
-                  !selectedAccount ||
-                  !amount ||
-                  !transactionId ||
-                  !selectedMethod ||
-                  !proofFile
-                }
-              >
-                {isSubmitting ? "Processing..." : "Submit Deposit Request"}
-              </Button>
-            </form>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      <div className="rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-medium">Recent Deposits</h2>
-        <div className="mt-4 overflow-x-auto">
+      {/* ── Recent Deposits ──────────────────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden"
+        style={{ backgroundColor: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+        <div className="p-5 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>Recent Deposits</h2>
+        </div>
+        <div className="overflow-x-auto">
           {isLoading.deposits ? (
-            <div className="flex justify-center items-center py-8">
-              <Loader className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex justify-center py-8">
+              <Loader className="h-6 w-6 animate-spin" style={{ color: 'var(--theme-primary)' }} />
+            </div>
+          ) : deposits.length === 0 ? (
+            <div className="py-10 text-center">
+              <DollarSign className="w-10 h-10 mx-auto mb-2 opacity-20" style={{ color: 'var(--theme-text-muted)' }} />
+              <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>No deposits yet</p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b">
-                  <th className="pb-2 text-left font-medium">Account</th>
-                  <th className="pb-2 text-left font-medium">Method</th>
-                  <th className="pb-2 text-left font-medium">Amount</th>
-                  <th className="pb-2 text-left font-medium">Date</th>
-                  <th className="pb-2 px-2 text-left font-medium">Status</th>
+                <tr style={{ borderBottom: '1px solid var(--theme-border)' }}>
+                  {['Account', 'Method', 'Amount', 'Date', 'Status'].map(h => (
+                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                      style={{ color: 'var(--theme-text-muted)' }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {deposits.length > 0 ? (
-                  deposits.map((deposit) => (
-                    <tr key={deposit._id} className="border-b last:border-0">
-                      <td className="py-3 text-sm">{deposit.account?.mt5Account}</td>
-                      <td className="py-3 text-sm">
-                        {deposit.paymentMethod?.type || deposit.paymentType}
-                      </td>
-                      <td className="py-3 text-sm">${deposit.amount.toFixed(2)}</td>
-                      <td className="py-3 text-sm">{formatDate(deposit.createdAt)}</td>
-                      <td className="py-3 text-sm">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(deposit.status)}`}>
-                          {deposit.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="py-4 text-center text-muted-foreground">
-                      No deposit history found
+                {deposits.map(d => (
+                  <tr key={d._id} className="transition-colors hover:opacity-80"
+                    style={{ borderBottom: '1px solid var(--theme-border)' }}>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--theme-text-primary)' }}>
+                      {d.account?.mt5Account || '—'}
+                    </td>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--theme-text-muted)' }}>
+                      {d.paymentMethod?.type || d.paymentType || '—'}
+                    </td>
+                    <td className="px-5 py-3 text-sm font-semibold text-green-600">
+                      +${d.amount.toFixed(2)}
+                    </td>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--theme-text-muted)' }}>
+                      {formatDate(d.createdAt)}
+                    </td>
+                    <td className="px-5 py-3">
+                      <StatusBadge status={d.status} />
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           )}

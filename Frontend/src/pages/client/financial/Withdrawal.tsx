@@ -1,890 +1,652 @@
+// Frontend/src/pages/client/financial/Withdrawal.tsx
 import { useState, useEffect } from "react";
-import { Wallet, AlertCircle, ChevronLeft, ArrowRight, Loader } from "lucide-react";
+import { Wallet, AlertCircle, Loader, CheckCircle2, Building2, Bitcoin, Shield, ChevronRight, ChevronDown, Copy } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Import UI components
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Base API URL for dynamic environment support
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-interface Account {
-  _id: string;
-  mt5Account: string;
-  accountType: string;
-  balance: number;
-  name: string;
-}
+interface Account { _id: string; mt5Account: string; accountType: string; balance: number; name: string; }
+interface BankDetails { bankName: string; accountHolderName: string; accountNumber: string; ifscCode: string; }
+interface EWalletDetails { walletId: string; type: string; }
+interface WithdrawalHistory { _id: string; createdAt: string; paymentMethod: string; amount: number; accountNumber: string; status: "Pending" | "Approved" | "Rejected"; }
+interface PaymentMethod { paymentMethod: string; paymentDetails: BankDetails | EWalletDetails; }
 
-interface BankDetails {
-  bankName: string;
-  accountHolderName: string;
-  accountNumber: string;
-  ifscCode: string;
-}
+// ─── Step Indicator ───────────────────────────────────────────────────────────
+const StepIndicator = ({ steps, current }: { steps: string[]; current: number }) => (
+  <div className="flex items-center w-full mb-6">
+    {steps.map((label, i) => {
+      const isDone = i < current;
+      const isActive = i === current;
+      return (
+        <div key={i} className="flex items-center flex-1">
+          <div className="flex flex-col items-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300"
+              style={{
+                background: isDone ? '#10b981' : isActive ? 'var(--theme-primary)' : 'var(--theme-border)',
+                color: isDone || isActive ? 'white' : 'var(--theme-text-muted)',
+                boxShadow: isActive ? '0 0 0 4px color-mix(in srgb, var(--theme-primary) 20%, transparent)' : 'none'
+              }}>
+              {isDone ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
+            </div>
+            <span className="text-[10px] mt-1 font-medium whitespace-nowrap hidden sm:block"
+              style={{ color: isActive ? 'var(--theme-primary)' : isDone ? '#10b981' : 'var(--theme-text-disabled)' }}>
+              {label}
+            </span>
+          </div>
+          {i < steps.length - 1 && (
+            <div className="flex-1 h-0.5 mx-2 rounded-full transition-all duration-500"
+              style={{ background: i < current ? '#10b981' : 'var(--theme-border)' }} />
+          )}
+        </div>
+      );
+    })}
+  </div>
+);
 
-interface EWalletDetails {
-  walletId: string;
-  type: string;
-}
+// ─── Step Wrapper ─────────────────────────────────────────────────────────────
+const StepWrapper = ({ stepNum, current, title, summary, children }: {
+  stepNum: number; current: number; title: string; summary?: string; children: React.ReactNode;
+}) => {
+  const isDone = stepNum < current;
+  const isActive = stepNum === current;
+  const isLocked = stepNum > current;
 
-interface WithdrawalHistory {
-  _id: string;
-  createdAt: string;
-  paymentMethod: string;
-  amount: number;
-  accountNumber: string;
-  status: "Pending" | "Approved" | "Rejected";
-}
+  return (
+    <motion.div layout className="rounded-2xl overflow-hidden transition-all duration-300"
+      style={{
+        border: `1px solid ${isActive ? 'var(--theme-primary)' : 'var(--theme-border)'}`,
+        backgroundColor: 'var(--theme-bg-card)',
+        opacity: isLocked ? 0.5 : 1,
+        boxShadow: isActive ? '0 0 0 2px color-mix(in srgb, var(--theme-primary) 15%, transparent)' : 'none'
+      }}>
+      <div className="flex items-center gap-3 p-4"
+        style={{
+          borderBottom: isActive ? '1px solid var(--theme-border)' : 'none',
+          background: isDone ? '#10b98108' : isActive ? 'color-mix(in srgb, var(--theme-primary) 5%, transparent)' : 'transparent'
+        }}>
+        <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+          style={{
+            background: isDone ? '#10b981' : isActive ? 'var(--theme-primary)' : 'var(--theme-border)',
+            color: isDone || isActive ? 'white' : 'var(--theme-text-muted)'
+          }}>
+          {isDone ? <CheckCircle2 className="w-4 h-4" /> : stepNum + 1}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>{title}</p>
+          {isDone && summary && <p className="text-xs truncate" style={{ color: '#10b981' }}>{summary}</p>}
+          {isLocked && <p className="text-xs" style={{ color: 'var(--theme-text-disabled)' }}>Complete previous step first</p>}
+        </div>
+        {isDone && <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />}
+      </div>
+      <AnimatePresence initial={false}>
+        {isActive && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3 }} className="overflow-hidden">
+            <div className="p-5">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
 
-interface PaymentMethod {
-  paymentMethod: string;
-  paymentDetails: BankDetails | EWalletDetails;
-}
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+const StatusBadge = ({ status }: { status: string }) => {
+  const cfg: Record<string, { bg: string; text: string }> = {
+    approved: { bg: '#10b98120', text: '#10b981' },
+    rejected: { bg: '#ef444420', text: '#ef4444' },
+    pending: { bg: '#f59e0b20', text: '#f59e0b' },
+  };
+  const c = cfg[status.toLowerCase()] || cfg.pending;
+  return (
+    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+      style={{ background: c.bg, color: c.text }}>{status}</span>
+  );
+};
 
+// ─── Inline Input ─────────────────────────────────────────────────────────────
+const FormInput = ({ label, name, value, onChange, placeholder, readOnly = false, required = false }: {
+  label: string; name: string; value: string; onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string; readOnly?: boolean; required?: boolean;
+}) => (
+  <div>
+    <label className="text-xs font-medium block mb-1" style={{ color: 'var(--theme-text-muted)' }}>{label}</label>
+    <input
+      name={name} value={value} onChange={onChange} placeholder={placeholder}
+      readOnly={readOnly} required={required}
+      className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
+      style={{
+        background: readOnly ? 'var(--theme-bg-main)' : 'var(--theme-bg-main)',
+        border: '1px solid var(--theme-border)',
+        color: 'var(--theme-text-primary)',
+        opacity: readOnly ? 0.7 : 1
+      }}
+    />
+  </div>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function Withdrawal() {
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState<string>("");
-  const [method, setMethod] = useState<string>("");
+  const [selectedAccount, setSelectedAccount] = useState("");
+  const [method, setMethod] = useState("");
   const [withdrawalHistory, setWithdrawalHistory] = useState<WithdrawalHistory[]>([]);
-  const [amount, setAmount] = useState<string>("");
+  const [amount, setAmount] = useState("");
   const [lastPaymentMethod, setLastPaymentMethod] = useState<PaymentMethod | null>(null);
-  const [step, setStep] = useState(1); // Step 1: Account selection, Step 2: Payment method, Step 3: Amount and confirmation
-  const [eWalletType, setEWalletType] = useState<string>("");
-  const [isLoading, setIsLoading] = useState({
-    accounts: false,
-    withdrawals: false
-  });
+  const [step, setStep] = useState(0);
+  const [eWalletType, setEWalletType] = useState("");
+  const [isLoading, setIsLoading] = useState({ accounts: false, withdrawals: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasOpenTrades, setHasOpenTrades] = useState(false);
   const [profilePaymentMethods, setProfilePaymentMethods] = useState<any>(null);
   const [availableWallets, setAvailableWallets] = useState<any[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<any>(null);
+  const [bankDetails, setBankDetails] = useState<BankDetails>({ bankName: "", accountHolderName: "", accountNumber: "", ifscCode: "" });
+  const [eWalletDetails, setEWalletDetails] = useState<EWalletDetails>({ walletId: "", type: "" });
 
-  // Bank details state
-  const [bankDetails, setBankDetails] = useState<BankDetails>({
-    bankName: "",
-    accountHolderName: "",
-    accountNumber: "",
-    ifscCode: ""
-  });
-
-  // E-Wallet details state
-  const [eWalletDetails, setEWalletDetails] = useState<EWalletDetails>({
-    walletId: "",
-    type: ""
-  });
-
-  // Get token from localStorage
   const getToken = () => localStorage.getItem("clientToken");
+  const authHeaders = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
 
-  // API headers with auth token
-  const getAuthHeaders = () => ({
-    headers: {
-      Authorization: `Bearer ${getToken()}`
-    }
-  });
-
-  // Helper function to trigger account balance update
-  const triggerAccountBalanceUpdate = async () => {
+  const triggerBalanceUpdate = async () => {
     try {
       const token = localStorage.getItem('clientToken');
       const userData = JSON.parse(localStorage.getItem('clientUser') || '{}');
-      const userId = userData.id;
-
-      console.log('Token:', token ? 'exists' : 'missing');
-      console.log('UserId:', userId);
-
-      if (!token || !userId) return;
-
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/clients/users/${userId}/accounts`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('Response:', response.data);
-
-    } catch (error) {
-      if (error instanceof Error) {
-        console.log('Error:', error.message);
-      } else {
-        console.log('Error:', error);
-      }
-    }
+      if (!token || !userData.id) return;
+      await axios.get(`${import.meta.env.VITE_API_URL}/api/clients/users/${userData.id}/accounts`,
+        { headers: { Authorization: `Bearer ${token}` } });
+    } catch { /* silent */ }
   };
 
-  // Fetch user accounts
   useEffect(() => {
-    const fetchAccounts = async () => {
+    triggerBalanceUpdate();
+    setIsLoading(p => ({ ...p, accounts: true }));
+    axios.get(`${API_BASE_URL}/api/accounts`, authHeaders())
+      .then(res => {
+        const data = res.data.data || [];
+        setAccounts(data);
+        if (data.length > 0) setSelectedAccount(data[0]._id);
+      })
+      .catch(() => { /* silent */ })
+      .finally(() => setIsLoading(p => ({ ...p, accounts: false })));
+  }, []);
 
-      // Trigger account balance update on initial load
-      triggerAccountBalanceUpdate();
+  useEffect(() => {
+    setIsLoading(p => ({ ...p, withdrawals: true }));
+    axios.get(`${API_BASE_URL}/api/withdrawals/user`, authHeaders())
+      .then(res => setWithdrawalHistory(res.data.data || []))
+      .catch(() => { /* silent */ })
+      .finally(() => setIsLoading(p => ({ ...p, withdrawals: false })));
+  }, []);
 
-      setIsLoading(prev => ({ ...prev, accounts: true }));
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/accounts`, getAuthHeaders());
-        setAccounts(response.data.data || []);
-        console.log("Accounts fetched:", response.data.data);
-        if (response.data.data.length > 0) {
-          setSelectedAccount(response.data.data[0]._id);
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/api/withdrawals/last-method`, authHeaders())
+      .then(res => {
+        if (res.data.data?.source === 'profile') {
+          setProfilePaymentMethods(res.data.data.paymentMethods);
+          const ewalletMethod = res.data.data.paymentMethods.find((m: any) => m.type === 'ewallet');
+          if (ewalletMethod) setAvailableWallets(ewalletMethod.wallets);
+        } else if (res.data.data) {
+          setLastPaymentMethod(res.data.data);
         }
-      } catch (error) {
-        console.error("Error fetching accounts:", error);
-        // toast.error("Failed to fetch accounts");
-      } finally {
-        setIsLoading(prev => ({ ...prev, accounts: false }));
-      }
-    };
-
-    fetchAccounts();
+      })
+      .catch(() => { /* silent */ });
   }, []);
 
-  // Fetch withdrawal history
-  useEffect(() => {
-    const fetchWithdrawalHistory = async () => {
-      setIsLoading(prev => ({ ...prev, withdrawals: true }));
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/withdrawals/user`, getAuthHeaders());
-        setWithdrawalHistory(response.data.data || []);
-      } catch (error) {
-        console.error("Error fetching withdrawal history:", error);
-        // toast.error("Failed to fetch withdrawal history");
-      } finally {
-        setIsLoading(prev => ({ ...prev, withdrawals: false }));
-      }
-    };
-
-    fetchWithdrawalHistory();
-  }, []);
-
-  // Fetch last used payment method
-  useEffect(() => {
-    const fetchLastPaymentMethod = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/withdrawals/last-method`, getAuthHeaders());
-        if (response.data.data) {
-          if (response.data.data.source === 'profile') {
-            setProfilePaymentMethods(response.data.data.paymentMethods);
-            // Find ewallet methods
-            const ewalletMethod = response.data.data.paymentMethods.find((method: any) => method.type === 'ewallet');
-            if (ewalletMethod) {
-              setAvailableWallets(ewalletMethod.wallets);
-            }
-          } else {
-            setLastPaymentMethod(response.data.data);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching last payment method:", error);
-      }
-    };
-
-    fetchLastPaymentMethod();
-  }, []);
+  const selectedAccountDetails = accounts.find(a => a._id === selectedAccount);
 
   const selectPaymentMethod = (methodType: string) => {
     setMethod(methodType);
-
     if (profilePaymentMethods) {
-      // Handle profile-based payment methods
       if (methodType === "bank") {
-        const bankMethod = profilePaymentMethods.find((method: any) => method.type === 'bank');
-        if (bankMethod) {
-          setBankDetails(bankMethod.details);
-        }
-      } else if (methodType === "ewallet") {
-        // Don't pre-fill anything for ewallet, let user select wallet type first
+        const bankMethod = profilePaymentMethods.find((m: any) => m.type === 'bank');
+        if (bankMethod) setBankDetails(bankMethod.details);
       }
-    } else if (lastPaymentMethod && lastPaymentMethod.paymentMethod === methodType) {
-      // Handle withdrawal history based payment methods (existing logic)
+    } else if (lastPaymentMethod?.paymentMethod === methodType) {
       if (methodType === "bank" && "bankName" in lastPaymentMethod.paymentDetails) {
         setBankDetails(lastPaymentMethod.paymentDetails as BankDetails);
-      } else if ((methodType === "ewallet") &&
-        "walletId" in lastPaymentMethod.paymentDetails) {
-        setEWalletDetails({
-          ...lastPaymentMethod.paymentDetails as EWalletDetails,
-          type: lastPaymentMethod.paymentDetails.type
-        });
-        setEWalletType(lastPaymentMethod.paymentDetails.type);
+      } else if (methodType === "ewallet" && "walletId" in lastPaymentMethod.paymentDetails) {
+        setEWalletDetails({ ...(lastPaymentMethod.paymentDetails as EWalletDetails), type: (lastPaymentMethod.paymentDetails as any).type });
+        setEWalletType((lastPaymentMethod.paymentDetails as any).type);
       }
     }
   };
 
   const selectEWalletType = (type: string) => {
     setEWalletType(type);
-
     if (profilePaymentMethods && availableWallets.length > 0) {
-      // Find the selected wallet and pre-fill the address
-      const selectedWallet = availableWallets.find(wallet => wallet.type === type);
-      if (selectedWallet) {
-        setEWalletDetails({
-          walletId: selectedWallet.address,
-          type: type
-        });
-        setSelectedWallet(selectedWallet);
+      const wallet = availableWallets.find(w => w.type === type);
+      if (wallet) {
+        setEWalletDetails({ walletId: wallet.address, type });
+        setSelectedWallet(wallet);
       }
     } else {
-      setEWalletDetails({
-        ...eWalletDetails,
-        type: type
-      });
+      setEWalletDetails(p => ({ ...p, type }));
     }
   };
 
-  const handleBankDetailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setBankDetails({
-      ...bankDetails,
-      [event.target.name]: event.target.value
-    });
+  const handleBankChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setBankDetails(p => ({ ...p, [e.target.name]: e.target.value }));
+  };
+  const handleEWalletChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEWalletDetails(p => ({ ...p, [e.target.name]: e.target.value, type: eWalletType }));
   };
 
-  const handleEWalletDetailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setEWalletDetails({
-      ...eWalletDetails,
-      [event.target.name]: event.target.value,
-      type: eWalletType
-    });
-  };
-
-  const goBack = () => {
-    if (step === 2) {
-      setStep(1); // Go back to account selection
-    } else if (step === 3) {
-      setMethod("");
-      setEWalletType("");
-      setStep(2); // Go back to payment method selection
-    }
-  };
-
-  const handleNextToPaymentMethod = () => {
-    if (!selectedAccount) {
-      toast.error("Please select an account");
-      return;
-    }
-    setStep(2);
-  };
-
-  const handleNextToConfirmation = () => {
-    // Validate fields before proceeding
-    if (method === "bank") {
-      if (!bankDetails.bankName || !bankDetails.accountHolderName || !bankDetails.accountNumber || !bankDetails.ifscCode) {
-        toast.error("Please fill all bank details");
-        return;
-      }
-    } else if (method === "ewallet") {
-      if (!eWalletType) {
-        toast.error("Please select an e-wallet type");
-        return;
-      }
-      if (!eWalletDetails.walletId) {
-        toast.error("Please enter wallet ID");
-        return;
-      }
-    }
-
-    setStep(3);
-  };
-
-  const handleAmountChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setAmount(event.target.value);
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (!amount || Number(amount) < 1) {
-      toast.error("Minimum withdrawal amount is $1");
-      return;
-    }
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!amount || Number(amount) < 1) return void toast.error("Minimum withdrawal is $1");
     setIsSubmitting(true);
-
     try {
-      const selectedAccObj = accounts.find(acc => acc._id === selectedAccount);
-      if (!selectedAccObj) {
-        toast.error("Please select an account");
-        setIsSubmitting(false);
-        return;
-      }
+      const acc = accounts.find(a => a._id === selectedAccount);
+      if (!acc) return void toast.error("Select an account");
+      if (Number(amount) > acc.balance) return void toast.error("Amount exceeds available balance");
 
-      if (Number(amount) > selectedAccObj.balance) {
-        toast.error("Withdrawal amount exceeds available balance");
-        setIsSubmitting(false);
-        return;
-      }
-
-      const withdrawalData = {
+      await axios.post(`${API_BASE_URL}/api/withdrawals`, {
         accountId: selectedAccount,
-        accountNumber: selectedAccObj.mt5Account,
-        accountType: selectedAccObj.accountType,
-        amount: amount,
+        accountNumber: acc.mt5Account,
+        accountType: acc.accountType,
+        amount,
         paymentMethod: method === "ewallet" ? eWalletType : method,
         bankDetails: method === "bank" ? bankDetails : undefined,
         eWalletDetails: method === "ewallet" ? eWalletDetails : undefined
-      };
+      }, authHeaders());
 
-      console.log("Submitting withdrawal request:", withdrawalData);
-
-      await axios.post(`${API_BASE_URL}/api/withdrawals`, withdrawalData, getAuthHeaders());
-
-      // Refresh withdrawal history
-      const response = await axios.get(`${API_BASE_URL}/api/withdrawals/user`, getAuthHeaders());
-      setWithdrawalHistory(response.data.data);
-
-      // Reset form
-      setAmount("");
-      setMethod("");
-      setEWalletType("");
-      setHasOpenTrades(false);
-      setStep(1);
+      const res = await axios.get(`${API_BASE_URL}/api/withdrawals/user`, authHeaders());
+      setWithdrawalHistory(res.data.data);
+      setAmount(""); setMethod(""); setEWalletType(""); setHasOpenTrades(false); setStep(0);
       toast.success("Withdrawal request submitted successfully!");
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Failed to submit withdrawal request";
-      toast.error(errorMessage);
-
-      // If there are open trades, also update the warning message
-      if (error.response?.data?.hasOpenTrades) {
-        setHasOpenTrades(true);
-      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Failed to submit withdrawal request";
+      toast.error(msg);
+      if (err.response?.data?.hasOpenTrades) setHasOpenTrades(true);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Format date to readable format
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric"
-    });
-  };
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
-  // Find selected account details
-  const selectedAccountDetails = accounts.find(acc => acc._id === selectedAccount);
-
-  // Sort accounts by balance (highest first)
   const sortedAccounts = [...accounts].sort((a, b) => b.balance - a.balance);
-  const topAccounts = sortedAccounts.slice(0, 5);
-  const remainingAccounts = sortedAccounts.slice(5);
-
-  // Get status badge class
-  const getStatusBadgeClass = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400';
-      case 'rejected':
-        return 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400';
-      default:
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/20 dark:text-yellow-400';
-    }
-  };
+  const fmtCurrency = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(v);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl mx-auto">
+      {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Withdraw Funds</h1>
-        <p className="text-muted-foreground">
-          Withdraw funds from your trading account to your preferred payment method.
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--theme-text-primary)' }}>Withdraw Funds</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--theme-text-muted)' }}>
+          Request a withdrawal from your trading account.
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <AnimatePresence mode="wait">
-          {step === 1 && (
-            <motion.div
-              key="account-selection"
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -20, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="rounded-lg border bg-card p-6 shadow-sm"
-            >
-              <h2 className="text-lg font-medium mb-4">Select Account</h2>
+      {/* Step Indicator */}
+      <StepIndicator steps={['Select Account', 'Choose Method', 'Method Details', 'Confirm']} current={step} />
 
-              <div className="mt-2 space-y-4">
-                <div>
-                  <Label htmlFor="account">Select Account to Withdraw From</Label>
-                  <Select
-                    value={selectedAccount}
-                    onValueChange={setSelectedAccount}
-                    disabled={accounts.length === 0 || isLoading.accounts}
-                  >
-                    <SelectTrigger id="account">
-                      <SelectValue placeholder="Select an account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts
-                        .sort((a, b) => b.balance - a.balance) // Sort accounts by balance in descending order
-                        .map(account => (
-                          <SelectItem key={account._id} value={account._id}>
-                            {account.mt5Account} ({account.accountType}) - ${account.balance.toFixed(2)}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+      {/* ── STEP 0: Select Account ────────────────────────────────────────── */}
+      <StepWrapper stepNum={0} current={step} title="Select Account"
+        summary={selectedAccountDetails
+          ? `${selectedAccountDetails.mt5Account} — ${fmtCurrency(selectedAccountDetails.balance)} available`
+          : undefined}>
+        {isLoading.accounts ? (
+          <div className="flex justify-center py-6"><Loader className="h-6 w-6 animate-spin" style={{ color: 'var(--theme-primary)' }} /></div>
+        ) : (
+          <div className="space-y-4">
+            <Select value={selectedAccount} onValueChange={setSelectedAccount} disabled={accounts.length === 0}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Choose trading account" />
+              </SelectTrigger>
+              <SelectContent>
+                {sortedAccounts.map(a => (
+                  <SelectItem key={a._id} value={a._id}>
+                    {a.mt5Account} ({a.accountType}) — {fmtCurrency(a.balance)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-                {selectedAccountDetails && (
-                  <div className="p-4 rounded-lg border mt-4">
-                    <h3 className="font-medium mb-2">Selected Account Details</h3>
-                    <div className="space-y-1">
-                      <p><strong>Account ID:</strong> {selectedAccountDetails.mt5Account}</p>
-                      <p><strong>Account Type:</strong> {selectedAccountDetails.accountType}</p>
-                      <p><strong>Available Balance:</strong> ${selectedAccountDetails.balance.toFixed(2)}</p>
-                    </div>
+            {selectedAccountDetails && (
+              <div className="grid sm:grid-cols-3 gap-3">
+                {[
+                  { label: 'Account ID', value: selectedAccountDetails.mt5Account },
+                  { label: 'Account Type', value: selectedAccountDetails.accountType },
+                  { label: 'Available Balance', value: fmtCurrency(selectedAccountDetails.balance) },
+                ].map(item => (
+                  <div key={item.label} className="rounded-xl p-3 text-center"
+                    style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)' }}>
+                    <p className="text-[10px] font-medium mb-1" style={{ color: 'var(--theme-text-disabled)' }}>{item.label}</p>
+                    <p className="text-sm font-bold" style={{ color: 'var(--theme-text-primary)' }}>{item.value}</p>
                   </div>
-                )}
-
-                <Button
-                  className="w-full mt-6"
-                  onClick={handleNextToPaymentMethod}
-                  disabled={!selectedAccount}
-                >
-                  Next
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+                ))}
               </div>
-            </motion.div>
-          )}
+            )}
 
-          {step === 2 && (
-            <motion.div
-              key="payment-methods"
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -20, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="rounded-lg border bg-card p-6 shadow-sm"
-            >
-              <div className="flex items-center mb-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={goBack}
-                  className="mr-2"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h2 className="text-lg font-medium">Select Withdrawal Method</h2>
-              </div>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              disabled={!selectedAccount}
+              onClick={() => setStep(1)}
+              className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
+              style={{ background: 'linear-gradient(135deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 70%, #000))' }}>
+              Continue with this account
+            </motion.button>
+          </div>
+        )}
+      </StepWrapper>
 
-              <div className="mt-2 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div
-                    className={`flex cursor-pointer flex-col items-center rounded-lg border p-3 hover:border-primary ${method === 'bank' ? 'border-primary bg-primary/10' : ''}`}
-                    onClick={() => selectPaymentMethod("bank")}
-                  >
-                    <div className="rounded-full bg-primary/10 p-2 text-primary">
-                      <Wallet className="h-6 w-6" />
-                    </div>
-                    <h3 className="mt-2 font-medium">Bank Account</h3>
-                  </div>
-
-                  <div
-                    className={`flex cursor-pointer flex-col items-center rounded-lg border p-3 hover:border-primary ${method === 'ewallet' ? 'border-primary bg-primary/10' : ''}`}
-                    onClick={() => selectPaymentMethod("ewallet")}
-                  >
-                    <div className="rounded-full bg-primary/10 p-2 text-primary">
-                      <Wallet className="h-6 w-6" />
-                    </div>
-                    <h3 className="mt-2 font-medium">E-Wallet</h3>
-                  </div>
+      {/* ── STEP 1: Choose Withdrawal Method ─────────────────────────────── */}
+      <StepWrapper stepNum={1} current={step} title="Choose Withdrawal Method"
+        summary={method ? (method === 'bank' ? 'Bank Transfer' : `E-Wallet${eWalletType ? ` (${eWalletType})` : ''}`) : undefined}>
+        <div className="space-y-4">
+          <div className="grid sm:grid-cols-2 gap-3">
+            {[
+              { key: 'bank', label: 'Bank Transfer', desc: '1-3 business days processing', icon: Building2 },
+              { key: 'ewallet', label: 'E-Wallet / Crypto', desc: 'Select wallet below', icon: Bitcoin },
+            ].map(opt => (
+              <motion.button
+                key={opt.key}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => selectPaymentMethod(opt.key)}
+                className="flex items-center gap-4 p-4 rounded-xl text-left transition-all duration-200"
+                style={{
+                  border: `1px solid ${method === opt.key ? 'var(--theme-primary)' : 'var(--theme-border)'}`,
+                  background: method === opt.key ? 'color-mix(in srgb, var(--theme-primary) 8%, transparent)' : 'transparent'
+                }}>
+                <div className="rounded-xl p-3 flex-shrink-0"
+                  style={{ background: 'color-mix(in srgb, var(--theme-primary) 12%, transparent)' }}>
+                  <opt.icon className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
                 </div>
-
-                <AnimatePresence>
-                  {method === "bank" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="space-y-3 overflow-hidden"
-                    >
-                      <div>
-                        <Label htmlFor="bankName">Bank Name</Label>
-                        <Input
-                          id="bankName"
-                          name="bankName"
-                          value={bankDetails.bankName}
-                          onChange={handleBankDetailChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="accountHolderName">Account Holder Name</Label>
-                        <Input
-                          id="accountHolderName"
-                          name="accountHolderName"
-                          value={bankDetails.accountHolderName}
-                          onChange={handleBankDetailChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="accountNumber">Account Number</Label>
-                        <Input
-                          id="accountNumber"
-                          name="accountNumber"
-                          value={bankDetails.accountNumber}
-                          onChange={handleBankDetailChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="ifscCode">IFSC Code</Label>
-                        <Input
-                          id="ifscCode"
-                          name="ifscCode"
-                          value={bankDetails.ifscCode}
-                          onChange={handleBankDetailChange}
-                          required
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {method === "ewallet" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="space-y-4 overflow-hidden"
-                    >
-                      <div className="grid grid-cols-3 gap-3">
-                        {profilePaymentMethods && availableWallets.length > 0 ? (
-                          // Show wallets from profile
-                          availableWallets.map((wallet) => (
-                            <div
-                              key={wallet.type}
-                              className={`p-3 border rounded-md text-center cursor-pointer hover:border-primary ${eWalletType === wallet.type ? "border-primary bg-primary/10" : ""}`}
-                              onClick={() => selectEWalletType(wallet.type)}
-                            >
-                              {wallet.name}
-                            </div>
-                          ))
-                        ) : (
-                          // Show default wallets (existing logic)
-                          <>
-                            <div
-                              className={`p-3 border rounded-md text-center cursor-pointer hover:border-primary ${eWalletType === "bitcoin" ? "border-primary bg-primary/10" : ""}`}
-                              onClick={() => selectEWalletType("bitcoin")}
-                            >
-                              Bitcoin
-                            </div>
-                            <div
-                              className={`p-3 border rounded-md text-center cursor-pointer hover:border-primary ${eWalletType === "ethereum" ? "border-primary bg-primary/10" : ""}`}
-                              onClick={() => selectEWalletType("ethereum")}
-                            >
-                              Ethereum
-                            </div>
-                            <div
-                              className={`p-3 border rounded-md text-center cursor-pointer hover:border-primary ${eWalletType === "usdt" ? "border-primary bg-primary/10" : ""}`}
-                              onClick={() => selectEWalletType("usdt")}
-                            >
-                              USDT
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      {eWalletType && (
-                        <div>
-                          <Label htmlFor="walletId">
-                            {profilePaymentMethods && selectedWallet ? `${selectedWallet.name} Address` : 'Wallet ID'}
-                          </Label>
-                          <Input
-                            id="walletId"
-                            name="walletId"
-                            value={eWalletDetails.walletId}
-                            onChange={handleEWalletDetailChange}
-                            placeholder={profilePaymentMethods && selectedWallet ? selectedWallet.address : ''}
-                            readOnly={profilePaymentMethods && selectedWallet ? true : false}
-                            required
-                          />
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {method && (
-                  <Button
-                    className="w-full mt-6"
-                    onClick={handleNextToConfirmation}
-                  >
-                    Next
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {step === 3 && (
-            <motion.div
-              key="withdrawal-form"
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 20, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="rounded-lg border bg-card p-6 shadow-sm"
-            >
-              <div className="flex items-center mb-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={goBack}
-                  className="mr-2"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h2 className="text-lg font-medium">Withdrawal Form</h2>
-              </div>
-
-              <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
                 <div>
-                  <Label>From Account</Label>
-                  <div className="p-3 rounded-lg border mt-2">
-                    {selectedAccountDetails && (
-                      <div className="space-y-1">
-                        <p><strong>Account ID:</strong> {selectedAccountDetails.mt5Account}</p>
-                        <p><strong>Account Type:</strong> {selectedAccountDetails.accountType}</p>
-                        <p><strong>Available Balance:</strong> ${selectedAccountDetails.balance.toFixed(2)}</p>
-                      </div>
-                    )}
-                  </div>
+                  <p className="font-semibold text-sm" style={{ color: 'var(--theme-text-primary)' }}>{opt.label}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--theme-text-muted)' }}>{opt.desc}</p>
                 </div>
+                {method === opt.key && <CheckCircle2 className="w-5 h-5 ml-auto text-green-500 flex-shrink-0" />}
+              </motion.button>
+            ))}
+          </div>
 
-                <div>
-                  <Label>Withdrawal Method</Label>
-                  <div className="p-3 rounded-lg border mt-2">
-                    {method === "bank" && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="space-y-3 overflow-hidden"
-                      >
-                        <div>
-                          <Label htmlFor="bankName">Bank Name</Label>
-                          <Input
-                            id="bankName"
-                            name="bankName"
-                            value={bankDetails.bankName}
-                            onChange={handleBankDetailChange}
-                            readOnly={profilePaymentMethods ? true : false}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="accountHolderName">Account Holder Name</Label>
-                          <Input
-                            id="accountHolderName"
-                            name="accountHolderName"
-                            value={bankDetails.accountHolderName}
-                            onChange={handleBankDetailChange}
-                            readOnly={profilePaymentMethods ? true : false}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="accountNumber">Account Number</Label>
-                          <Input
-                            id="accountNumber"
-                            name="accountNumber"
-                            value={bankDetails.accountNumber}
-                            onChange={handleBankDetailChange}
-                            readOnly={profilePaymentMethods ? true : false}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="ifscCode">IFSC Code</Label>
-                          <Input
-                            id="ifscCode"
-                            name="ifscCode"
-                            value={bankDetails.ifscCode}
-                            onChange={handleBankDetailChange}
-                            readOnly={profilePaymentMethods ? true : false}
-                            required
-                          />
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {method === "ewallet" && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="space-y-3 overflow-hidden"
-                      >
-                        <div>
-                          <Label>E-Wallet Type</Label>
-                          <div className="p-2 bg-muted rounded">
-                            {eWalletType ? eWalletType.toUpperCase() : 'Not selected'}
-                          </div>
-                        </div>
-                        <div>
-                          <Label htmlFor="walletAddress">
-                            {profilePaymentMethods && selectedWallet ? `${selectedWallet.name} Address` : 'Wallet Address'}
-                          </Label>
-                          <Input
-                            id="walletAddress"
-                            name="walletId"
-                            value={eWalletDetails.walletId}
-                            onChange={handleEWalletDetailChange}
-                            readOnly={profilePaymentMethods && selectedWallet ? true : false}
-                            required
-                          />
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
+          {/* E-Wallet type selector */}
+          <AnimatePresence>
+            {method === 'ewallet' && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                <p className="text-xs font-medium mb-2" style={{ color: 'var(--theme-text-muted)' }}>Select Wallet Type</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {profilePaymentMethods && availableWallets.length > 0
+                    ? availableWallets.map((w: any) => (
+                      <button key={w.type} onClick={() => selectEWalletType(w.type)}
+                        className="py-2 px-3 rounded-xl text-xs font-medium transition-all"
+                        style={{
+                          border: `1px solid ${eWalletType === w.type ? 'var(--theme-primary)' : 'var(--theme-border)'}`,
+                          background: eWalletType === w.type ? 'color-mix(in srgb, var(--theme-primary) 10%, transparent)' : 'transparent',
+                          color: 'var(--theme-text-primary)'
+                        }}>
+                        {w.name}
+                      </button>
+                    ))
+                    : ['Bitcoin', 'Ethereum', 'USDT'].map(wallet => (
+                      <button key={wallet} onClick={() => selectEWalletType(wallet.toLowerCase())}
+                        className="py-2 px-3 rounded-xl text-xs font-medium transition-all"
+                        style={{
+                          border: `1px solid ${eWalletType === wallet.toLowerCase() ? 'var(--theme-primary)' : 'var(--theme-border)'}`,
+                          background: eWalletType === wallet.toLowerCase() ? 'color-mix(in srgb, var(--theme-primary) 10%, transparent)' : 'transparent',
+                          color: 'var(--theme-text-primary)'
+                        }}>
+                        {wallet}
+                      </button>
+                    ))
+                  }
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                <div>
-                  <Label htmlFor="amount">Amount</Label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                    <Input
-                      id="amount"
-                      type="number"
-                      placeholder="Enter amount"
-                      min="1"
-                      value={amount}
-                      onChange={handleAmountChange}
-                      className="pl-8"
-                      required
-                    />
-                  </div>
-                  <div className="mt-1 flex justify-between">
-                    <p className="text-xs text-muted-foreground">Minimum withdrawal: $1</p>
-                    {selectedAccountDetails && (
-                      <p className="text-xs text-muted-foreground">Available: ${selectedAccountDetails.balance.toFixed(2)}</p>
-                    )}
-                  </div>
-                </div>
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            disabled={!method || (method === 'ewallet' && !eWalletType)}
+            onClick={() => setStep(2)}
+            className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 70%, #000))' }}>
+            Continue with {method === 'bank' ? 'Bank Transfer' : method === 'ewallet' ? 'E-Wallet' : 'selected method'}
+          </motion.button>
+        </div>
+      </StepWrapper>
 
-                <div className={`rounded-md p-3 ${hasOpenTrades ? 'bg-red-50 dark:bg-red-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
-                  <div className="flex">
-                    <AlertCircle className={`h-5 w-5 ${hasOpenTrades ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`} />
-                    <div className="ml-3">
-                      <p className={`text-sm ${hasOpenTrades ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                        {hasOpenTrades
-                          ? "Your trade is open. If you want to withdraw money, first close all your trades."
-                          : "Withdrawals are processed within 1-3 business days. Bank transfers may take additional time."
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isSubmitting || !amount || Number(amount) < 1 || !selectedAccount}
-                >
-                  {isSubmitting ? "Processing..." : "Request Withdrawal"}
-                </Button>
-              </form>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-medium">Available Balance</h2>
-
-          {isLoading.accounts ? (
-            <div className="flex justify-center items-center py-12">
-              <Loader className="h-8 w-8 animate-spin text-muted-foreground" />
+      {/* ── STEP 2: Method Details ────────────────────────────────────────── */}
+      <StepWrapper stepNum={2} current={step} title="Enter Payment Details"
+        summary={method === 'bank' ? `Bank: ${bankDetails.bankName || 'Not set'}` : `Wallet: ${eWalletType}`}>
+        <div className="space-y-4">
+          {method === 'bank' && (
+            <div className="grid sm:grid-cols-2 gap-3">
+              <FormInput label="Bank Name" name="bankName" value={bankDetails.bankName}
+                onChange={handleBankChange} placeholder="e.g. HDFC Bank"
+                readOnly={!!profilePaymentMethods} required />
+              <FormInput label="Account Holder Name" name="accountHolderName" value={bankDetails.accountHolderName}
+                onChange={handleBankChange} placeholder="Full name"
+                readOnly={!!profilePaymentMethods} required />
+              <FormInput label="Account Number" name="accountNumber" value={bankDetails.accountNumber}
+                onChange={handleBankChange} placeholder="Account number"
+                readOnly={!!profilePaymentMethods} required />
+              <FormInput label="IFSC / SWIFT Code" name="ifscCode" value={bankDetails.ifscCode}
+                onChange={handleBankChange} placeholder="e.g. HDFC0001234"
+                readOnly={!!profilePaymentMethods} required />
             </div>
-          ) : (
-            <div className="mt-4 space-y-4">
-              {/* Combined account list with scroll if needed */}
-              <div className="max-h-full">
-                <div className={`space-y-2 ${remainingAccounts.length > 0 ? 'max-h-96 overflow-y-auto pr-2' : ''}`}>
-                  {[...topAccounts, ...remainingAccounts].map(account => (
-                    <div key={account._id} className="flex items-center justify-between rounded-lg border p-4">
-                      <div className="flex items-center">
-                        <div className="mr-4 rounded-full bg-primary/10 p-2 text-primary">
-                          <Wallet className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <h3 className="font-medium">{account.mt5Account} ({account.accountType})</h3>
-                          <p className="text-sm text-muted-foreground">Available for withdrawal</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold">${account.balance.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          )}
+
+          {method === 'ewallet' && (
+            <div className="space-y-3">
+              <div className="rounded-xl p-3 flex items-center gap-3"
+                style={{ background: 'color-mix(in srgb, var(--theme-primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-primary) 25%, transparent)' }}>
+                <Bitcoin className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                <p className="text-sm font-medium" style={{ color: 'var(--theme-text-primary)' }}>
+                  {eWalletType ? eWalletType.toUpperCase() : 'No type selected'}
+                </p>
               </div>
+              <FormInput
+                label={profilePaymentMethods && selectedWallet ? `${selectedWallet.name} Address` : 'Wallet Address / ID'}
+                name="walletId" value={eWalletDetails.walletId}
+                onChange={handleEWalletChange}
+                placeholder={profilePaymentMethods && selectedWallet ? selectedWallet.address : 'Enter wallet address'}
+                readOnly={!!(profilePaymentMethods && selectedWallet)} required />
+              {profilePaymentMethods && selectedWallet && selectedWallet.address && (
+                <button
+                  onClick={() => { navigator.clipboard.writeText(selectedWallet.address); toast.success('Address copied!'); }}
+                  className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg transition-opacity hover:opacity-70"
+                  style={{ background: 'color-mix(in srgb, var(--theme-primary) 12%, transparent)', color: 'var(--theme-primary)' }}>
+                  <Copy className="w-3 h-3" />Copy address
+                </button>
+              )}
+            </div>
+          )}
+
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => {
+              if (method === 'bank' && (!bankDetails.bankName || !bankDetails.accountHolderName || !bankDetails.accountNumber || !bankDetails.ifscCode)) {
+                return void toast.error("Fill all bank details");
+              }
+              if (method === 'ewallet' && !eWalletDetails.walletId) {
+                return void toast.error("Enter wallet ID");
+              }
+              setStep(3);
+            }}
+            className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 70%, #000))' }}>
+            Confirm Details — Continue
+          </motion.button>
+        </div>
+      </StepWrapper>
+
+      {/* ── STEP 3: Amount & Confirm ──────────────────────────────────────── */}
+      <StepWrapper stepNum={3} current={step} title="Enter Amount & Confirm">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Summary of previous steps */}
+          <div className="grid sm:grid-cols-2 gap-3">
+            {selectedAccountDetails && (
+              <div className="rounded-xl p-3"
+                style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)' }}>
+                <p className="text-[10px] font-medium mb-1" style={{ color: 'var(--theme-text-disabled)' }}>From Account</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>{selectedAccountDetails.mt5Account}</p>
+                <p className="text-xs" style={{ color: '#10b981' }}>Available: {fmtCurrency(selectedAccountDetails.balance)}</p>
+              </div>
+            )}
+            <div className="rounded-xl p-3"
+              style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)' }}>
+              <p className="text-[10px] font-medium mb-1" style={{ color: 'var(--theme-text-disabled)' }}>Payment Method</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>
+                {method === 'bank' ? `${bankDetails.bankName || 'Bank Transfer'}` : `${eWalletType || 'E-Wallet'}`}
+              </p>
+              {method === 'bank' && bankDetails.accountNumber && (
+                <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
+                  ****{String(bankDetails.accountNumber).slice(-4)}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Amount */}
+          <div>
+            <label className="text-sm font-medium block mb-1.5" style={{ color: 'var(--theme-text-primary)' }}>
+              Withdrawal Amount (USD)
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-bold"
+                style={{ color: 'var(--theme-text-muted)' }}>$</span>
+              <input
+                type="number" min="1" value={amount} onChange={e => setAmount(e.target.value)}
+                placeholder="0.00" required
+                className="w-full pl-8 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+                style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)', color: 'var(--theme-text-primary)' }}
+              />
+            </div>
+            <div className="flex justify-between mt-1">
+              <p className="text-[10px]" style={{ color: 'var(--theme-text-disabled)' }}>Minimum: $1</p>
+              {selectedAccountDetails && (
+                <button type="button"
+                  onClick={() => setAmount(String(selectedAccountDetails.balance))}
+                  className="text-[10px] font-medium transition-opacity hover:opacity-70"
+                  style={{ color: 'var(--theme-primary)' }}>
+                  Use max: {fmtCurrency(selectedAccountDetails.balance)}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Warning */}
+          <div className="flex items-start gap-3 rounded-xl p-3"
+            style={{
+              background: hasOpenTrades ? '#ef444415' : '#f59e0b12',
+              border: `1px solid ${hasOpenTrades ? '#ef444440' : '#f59e0b40'}`
+            }}>
+            <AlertCircle className={`h-4 w-4 flex-shrink-0 mt-0.5 ${hasOpenTrades ? 'text-red-500' : 'text-amber-500'}`} />
+            <p className={`text-xs ${hasOpenTrades ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              {hasOpenTrades
+                ? "You have open trades. Close all positions before withdrawing."
+                : "Withdrawals are processed within 1-3 business days after verification."}
+            </p>
+          </div>
+
+          {/* Security Notice */}
+          <div className="flex items-start gap-3 rounded-xl p-3"
+            style={{ background: 'color-mix(in srgb, var(--theme-primary) 5%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-primary) 20%, transparent)' }}>
+            <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--theme-primary)' }} />
+            <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
+              All withdrawals are secured and reviewed by our compliance team before processing.
+            </p>
+          </div>
+
+          <motion.button
+            type="submit"
+            whileTap={{ scale: 0.97 }}
+            disabled={isSubmitting || !amount || Number(amount) < 1}
+            className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader className="w-4 h-4 animate-spin" />Processing…
+              </span>
+            ) : 'Confirm Withdrawal Request'}
+          </motion.button>
+        </form>
+      </StepWrapper>
+
+      {/* ── Account Balances ─────────────────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden"
+        style={{ backgroundColor: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+        <div className="p-5 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>Account Balances</h2>
+        </div>
+        <div className="p-4">
+          {isLoading.accounts ? (
+            <div className="flex justify-center py-4"><Loader className="h-5 w-5 animate-spin" style={{ color: 'var(--theme-primary)' }} /></div>
+          ) : sortedAccounts.length === 0 ? (
+            <p className="text-center py-4 text-sm" style={{ color: 'var(--theme-text-muted)' }}>No accounts found</p>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-3">
+              {sortedAccounts.map(acc => (
+                <div key={acc._id} className="flex items-center justify-between rounded-xl p-3"
+                  style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-lg p-2" style={{ background: 'color-mix(in srgb, var(--theme-primary) 12%, transparent)' }}>
+                      <Wallet className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: 'var(--theme-text-primary)' }}>{acc.mt5Account}</p>
+                      <p className="text-[10px]" style={{ color: 'var(--theme-text-muted)' }}>{acc.accountType}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm font-bold" style={{ color: acc.balance > 0 ? '#10b981' : 'var(--theme-text-muted)' }}>
+                    {fmtCurrency(acc.balance)}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
         </div>
-
-
       </div>
 
-      <div className="rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-medium">Recent Withdrawals</h2>
-        <div className="mt-4 overflow-x-auto">
+      {/* ── Recent Withdrawals ───────────────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden"
+        style={{ backgroundColor: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+        <div className="p-5 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>Recent Withdrawals</h2>
+        </div>
+        <div className="overflow-x-auto">
           {isLoading.withdrawals ? (
-            <div className="flex justify-center items-center py-8">
-              <Loader className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex justify-center py-8"><Loader className="h-6 w-6 animate-spin" style={{ color: 'var(--theme-primary)' }} /></div>
+          ) : withdrawalHistory.length === 0 ? (
+            <div className="py-10 text-center">
+              <Wallet className="w-10 h-10 mx-auto mb-2 opacity-20" style={{ color: 'var(--theme-text-muted)' }} />
+              <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>No withdrawal history</p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b">
-                  <th className="pb-2 text-left font-medium">Account</th>
-                  <th className="pb-2 text-left font-medium">Method</th>
-                  <th className="pb-2 text-left font-medium">Amount</th>
-                  <th className="pb-2 text-left font-medium">Date</th>
-                  <th className="pb-2 px-2 text-left font-medium">Status</th>
+                <tr style={{ borderBottom: '1px solid var(--theme-border)' }}>
+                  {['Account', 'Method', 'Amount', 'Date', 'Status'].map(h => (
+                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                      style={{ color: 'var(--theme-text-muted)' }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {withdrawalHistory.length > 0 ? (
-                  withdrawalHistory.map((withdrawal) => (
-                    <tr key={withdrawal._id} className="border-b last:border-0">
-                      <td className="py-3 text-sm">{withdrawal.accountNumber}</td>
-                      <td className="py-3 text-sm">{withdrawal.paymentMethod === "bank" ? "Bank Transfer" :
-                        withdrawal.paymentMethod === "card" ? "Credit Card" :
-                          `E-Wallet (${withdrawal.paymentMethod})`}</td>
-                      <td className="py-3 text-sm">${withdrawal.amount.toFixed(2)}</td>
-                      <td className="py-3 text-sm">{formatDate(withdrawal.createdAt)}</td>
-                      <td className="py-3 text-sm">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(withdrawal.status)}`}
-                        >
-                          {withdrawal.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="py-3 text-center text-sm text-muted-foreground">
-                      No withdrawal history found
+                {withdrawalHistory.map(w => (
+                  <tr key={w._id} className="transition-colors hover:opacity-80"
+                    style={{ borderBottom: '1px solid var(--theme-border)' }}>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--theme-text-primary)' }}>{w.accountNumber}</td>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--theme-text-muted)' }}>
+                      {w.paymentMethod === 'bank' ? 'Bank Transfer'
+                        : w.paymentMethod === 'card' ? 'Credit Card'
+                          : `E-Wallet (${w.paymentMethod})`}
                     </td>
+                    <td className="px-5 py-3 text-sm font-semibold text-red-500">
+                      -{fmtCurrency(w.amount)}
+                    </td>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--theme-text-muted)' }}>{formatDate(w.createdAt)}</td>
+                    <td className="px-5 py-3"><StatusBadge status={w.status} /></td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           )}

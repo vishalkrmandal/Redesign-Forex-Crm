@@ -1,376 +1,401 @@
-// Frontend\src\pages\client\financial\Transfer.tsx
+// Frontend/src/pages/client/financial/Transfer.tsx
 import { useState, useEffect } from "react";
-import { ArrowLeftRight, AlertCircle } from "lucide-react";
+import { ArrowLeftRight, AlertCircle, Loader, Wallet, CheckCircle2, TrendingUp, ArrowRight } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+interface Account {
+  _id: string; mt5Account: string; accountType: string; balance: number;
+}
+interface Transfer {
+  _id: string;
+  fromAccount?: { mt5Account: string };
+  toAccount?: { mt5Account: string };
+  amount: number; status: string; createdAt: string;
+}
+
+const fmtCurrency = (v: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(v);
+
+const fmtCompact = (v: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(v);
+
+const StatusBadge = ({ status }: { status: string }) => {
+  const cfg: Record<string, { bg: string; text: string }> = {
+    completed: { bg: '#10b98120', text: '#10b981' },
+    failed: { bg: '#ef444420', text: '#ef4444' },
+    pending: { bg: '#f59e0b20', text: '#f59e0b' },
+  };
+  const c = cfg[status.toLowerCase()] || cfg.pending;
+  return (
+    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+      style={{ background: c.bg, color: c.text }}>{status}</span>
+  );
+};
 
 export default function Transfer() {
-  const [accounts, setAccounts] = useState<{ _id: string; mt5Account: string; accountType: string; balance: number }[]>([]);
-  const [transfers, setTransfers] = useState<{ _id: string; fromAccount?: { mt5Account: string }; toAccount?: { mt5Account: string }; amount: number; status: string; createdAt: string }[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [transferring, setTransferring] = useState(false);
-  const [formData, setFormData] = useState({
-    fromAccountId: "",
-    toAccountId: "",
-    amount: ""
-  });
+  const [formData, setFormData] = useState({ fromAccountId: "", toAccountId: "", amount: "" });
+  const [swapping, setSwapping] = useState(false);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-  // Helper function to trigger account balance update
-  const triggerAccountBalanceUpdate = async () => {
+  const triggerBalanceUpdate = async () => {
     try {
       const token = localStorage.getItem('clientToken');
       const userData = JSON.parse(localStorage.getItem('clientUser') || '{}');
-      const userId = userData.id;
-
-      console.log('Token:', token ? 'exists' : 'missing');
-      console.log('UserId:', userId);
-
-      if (!token || !userId) return;
-
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/clients/users/${userId}/accounts`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('Response:', response.data);
-
-    } catch (error) {
-      if (error instanceof Error) {
-        console.log('Error:', error.message);
-      } else {
-        console.log('Error:', error);
-      }
-    }
+      if (!token || !userData.id) return;
+      await axios.get(`${import.meta.env.VITE_API_URL}/api/clients/users/${userData.id}/accounts`,
+        { headers: { Authorization: `Bearer ${token}` } });
+    } catch { /* silent */ }
   };
-
-
-  useEffect(() => {
-    // Fetch user accounts and recent transfers on component mount
-    fetchUserData();
-  }, []);
 
   const fetchUserData = async () => {
     try {
       setLoading(true);
-
-      // Trigger account balance update on initial load
-      triggerAccountBalanceUpdate();
-
-      // Fetch accounts
-      const accountsResponse = await axios.get(
-        `${API_BASE_URL}/api/transfers/accounts`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("clientToken")}`,
-          },
-        }
-      );
-
-      // Fetch transfers
-      const transfersResponse = await axios.get(
-        `${API_BASE_URL}/api/transfers`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("clientToken")}`,
-          },
-        }
-      );
-
-      // Ensure we're setting arrays (even if empty) rather than undefined
-      setAccounts(accountsResponse.data?.data || []);
-      setTransfers(transfersResponse.data?.data || []);
-
-      // Set default from and to accounts if accounts are available
-      if (accountsResponse.data?.data?.length >= 2) {
-        setFormData({
-          fromAccountId: accountsResponse.data.data[0]._id,
-          toAccountId: accountsResponse.data.data[1]._id,
-          amount: ""
-        });
+      triggerBalanceUpdate();
+      const token = localStorage.getItem("clientToken");
+      const [accountsRes, transfersRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/api/transfers/accounts`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/api/transfers`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const accs = accountsRes.data?.data || [];
+      setAccounts(accs);
+      setTransfers(transfersRes.data?.data || []);
+      if (accs.length >= 2) {
+        setFormData({ fromAccountId: accs[0]._id, toAccountId: accs[1]._id, amount: "" });
       }
-
-    } catch (error) {
-      console.error("Error fetching data:", error);
+    } catch {
       toast.error("Failed to fetch account data");
-      // Ensure we set empty arrays in case of error
-      setAccounts([]);
-      setTransfers([]);
-    } finally {
-      setLoading(false);
-    }
+      setAccounts([]); setTransfers([]);
+    } finally { setLoading(false); }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  useEffect(() => { fetchUserData(); }, []);
 
-  // Function to swap from and to accounts
-  const handleSwapAccounts = () => {
-    setFormData({
-      ...formData,
-      fromAccountId: formData.toAccountId,
-      toAccountId: formData.fromAccountId
-    });
+  const fromAccount = accounts.find(a => a._id === formData.fromAccountId);
+  const toAccount = accounts.find(a => a._id === formData.toAccountId);
 
-    // Show feedback to the user
+  const handleSwap = async () => {
+    setSwapping(true);
+    await new Promise(r => setTimeout(r, 300));
+    setFormData(p => ({ ...p, fromAccountId: p.toAccountId, toAccountId: p.fromAccountId }));
+    setSwapping(false);
     toast.info("Accounts swapped");
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Basic validation
-    if (formData.fromAccountId === formData.toAccountId) {
-      toast.error("Cannot transfer to the same account");
-      return;
-    }
-
-    if (parseFloat(formData.amount) < 10) {
-      toast.error("Minimum transfer amount is $10");
-      return;
-    }
-
+    if (formData.fromAccountId === formData.toAccountId) return void toast.error("Cannot transfer to the same account");
+    if (parseFloat(formData.amount) < 10) return void toast.error("Minimum transfer amount is $10");
+    if (fromAccount && parseFloat(formData.amount) > fromAccount.balance) return void toast.error("Insufficient balance");
     try {
       setTransferring(true);
-
-      await axios.post(
-        `${API_BASE_URL}/api/transfers`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("clientToken")}`,
-          },
-        }
-      );
-
-      toast.success("Funds transferred successfully");
-
-      // Refresh data after successful transfer
-      fetchUserData();
-
-      // Reset amount field
-      setFormData({
-        ...formData,
-        amount: ""
+      await axios.post(`${API_BASE_URL}/api/transfers`, formData, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("clientToken")}` }
       });
-
-    } catch (error) {
-      console.error("Transfer error:", error);
-      if (axios.isAxiosError(error) && error.response?.data?.message) {
-        toast.error(error.response.data.message);
-      } else {
-        toast.error("Transfer failed");
-      }
-    } finally {
-      setTransferring(false);
-    }
+      toast.success("Transfer completed successfully!");
+      fetchUserData();
+      setFormData(p => ({ ...p, amount: "" }));
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Transfer failed");
+    } finally { setTransferring(false); }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
-
-  // Show loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4">Loading account information...</p>
+          <Loader className="w-10 h-10 animate-spin mx-auto mb-3" style={{ color: 'var(--theme-primary)' }} />
+          <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>Loading accounts…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl mx-auto">
+      {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Transfer Funds</h1>
-        <p className="text-muted-foreground">Transfer funds between your trading accounts.</p>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--theme-text-primary)' }}>Transfer Funds</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--theme-text-muted)' }}>
+          Move funds between your trading accounts instantly.
+        </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-medium">Transfer Form</h2>
-          <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label className="mb-2 block text-sm font-medium" htmlFor="fromAccountId">
-                From Account
-              </label>
+      {/* Transfer Form Card */}
+      <div className="rounded-2xl p-6"
+        style={{ backgroundColor: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="rounded-xl p-2.5" style={{ background: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)' }}>
+            <ArrowLeftRight className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>Internal Transfer</h2>
+            <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>Instant, no fees</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* From Account */}
+          <div>
+            <label className="text-xs font-medium block mb-2" style={{ color: 'var(--theme-text-muted)' }}>FROM ACCOUNT</label>
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--theme-border)' }}>
               <select
-                id="fromAccountId"
-                name="fromAccountId"
                 value={formData.fromAccountId}
-                onChange={handleChange}
-                className="w-full rounded-md border border-input bg-background px-3 py-2"
+                onChange={e => setFormData(p => ({ ...p, fromAccountId: e.target.value }))}
+                className="w-full px-4 py-3 text-sm outline-none"
+                style={{ background: 'var(--theme-bg-main)', color: 'var(--theme-text-primary)', border: 'none' }}
                 required
               >
                 <option value="">Select source account</option>
-                {accounts && accounts.map((account) => (
-                  <option key={`from-${account._id}`} value={account._id}>
-                    {account.mt5Account} ({account.accountType}) - {formatCurrency(account.balance)}
+                {accounts.map(a => (
+                  <option key={a._id} value={a._id}>
+                    {a.mt5Account} ({a.accountType}) — {fmtCurrency(a.balance)}
                   </option>
                 ))}
               </select>
             </div>
+            {fromAccount && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                className="mt-2 rounded-xl p-3 flex items-center justify-between"
+                style={{ background: 'color-mix(in srgb, var(--theme-primary) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-primary) 20%, transparent)' }}>
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
+                  <span className="text-xs font-medium" style={{ color: 'var(--theme-text-primary)' }}>{fromAccount.accountType}</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>Available</p>
+                  <p className="text-sm font-bold" style={{ color: '#10b981' }}>{fmtCurrency(fromAccount.balance)}</p>
+                </div>
+              </motion.div>
+            )}
+          </div>
 
-            {/* Make the arrow button clickable */}
-            <div className="flex items-center justify-center">
-              <button
-                type="button"
-                onClick={handleSwapAccounts}
-                className="rounded-full border p-2 hover:bg-secondary transition-colors"
-                aria-label="Swap accounts"
-              >
-                <ArrowLeftRight className="h-5 w-5 text-muted-foreground" />
-              </button>
-            </div>
+          {/* Swap Button */}
+          <div className="flex items-center justify-center">
+            <motion.button
+              type="button"
+              onClick={handleSwap}
+              whileTap={{ scale: 0.9 }}
+              animate={{ rotate: swapping ? 180 : 0 }}
+              transition={{ duration: 0.3 }}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:opacity-80"
+              style={{
+                background: 'linear-gradient(135deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 60%, #000))',
+                boxShadow: '0 4px 12px color-mix(in srgb, var(--theme-primary) 30%, transparent)'
+              }}>
+              <ArrowLeftRight className="w-4 h-4 text-white" />
+            </motion.button>
+          </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium" htmlFor="toAccountId">
-                To Account
-              </label>
+          {/* To Account */}
+          <div>
+            <label className="text-xs font-medium block mb-2" style={{ color: 'var(--theme-text-muted)' }}>TO ACCOUNT</label>
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--theme-border)' }}>
               <select
-                id="toAccountId"
-                name="toAccountId"
                 value={formData.toAccountId}
-                onChange={handleChange}
-                className="w-full rounded-md border border-input bg-background px-3 py-2"
+                onChange={e => setFormData(p => ({ ...p, toAccountId: e.target.value }))}
+                className="w-full px-4 py-3 text-sm outline-none"
+                style={{ background: 'var(--theme-bg-main)', color: 'var(--theme-text-primary)', border: 'none' }}
                 required
               >
                 <option value="">Select destination account</option>
-                {accounts && accounts.map((account) => (
-                  <option key={`to-${account._id}`} value={account._id}>
-                    {account.mt5Account} ({account.accountType}) - {formatCurrency(account.balance)}
+                {accounts.map(a => (
+                  <option key={a._id} value={a._id}>
+                    {a.mt5Account} ({a.accountType}) — {fmtCurrency(a.balance)}
                   </option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium" htmlFor="amount">
-                Amount
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                <input
-                  id="amount"
-                  name="amount"
-                  type="number"
-                  className="w-full rounded-md border border-input bg-background pl-8 pr-3 py-2"
-                  placeholder="Enter amount"
-                  min="10"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">Minimum transfer: $10</p>
-            </div>
-            <div className="rounded-md bg-blue-50 p-3 dark:bg-blue-900/20">
-              <div className="flex">
-                <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <div className="ml-3">
-                  <p className="text-sm text-blue-600 dark:text-blue-400">
-                    Transfers between accounts are processed instantly.
-                  </p>
+            {toAccount && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                className="mt-2 rounded-xl p-3 flex items-center justify-between"
+                style={{ background: '#10b98108', border: '1px solid #10b98130' }}>
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-green-500" />
+                  <span className="text-xs font-medium" style={{ color: 'var(--theme-text-primary)' }}>{toAccount.accountType}</span>
                 </div>
-              </div>
-            </div>
-            <button
-              type="submit"
-              className="w-full rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              disabled={transferring}
-            >
-              {transferring ? "Processing..." : "Transfer Funds"}
-            </button>
-          </form>
-        </div>
-
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-medium">Account Balances</h2>
-          <div className="mt-4 space-y-4 max-h-96 overflow-y-auto">
-            {accounts && accounts.length > 0 ? accounts.map((account) => (
-              <div className="rounded-lg border p-4" key={account._id}>
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">{account.mt5Account}</h3>
-                  <span className="rounded-md bg-secondary px-2 py-1 text-xs">{account.accountType}</span>
+                <div className="text-right">
+                  <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>Current balance</p>
+                  <p className="text-sm font-bold text-green-600">{fmtCurrency(toAccount.balance)}</p>
                 </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">Available Balance</p>
-                  <p className="text-lg font-bold">{formatCurrency(account.balance)}</p>
-                </div>
-              </div>
-            )) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No trading accounts found.
-              </div>
+              </motion.div>
             )}
           </div>
+
+          {/* Amount */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-medium" style={{ color: 'var(--theme-text-muted)' }}>AMOUNT</label>
+              {fromAccount && (
+                <button type="button"
+                  onClick={() => setFormData(p => ({ ...p, amount: String(fromAccount.balance) }))}
+                  className="text-[10px] font-medium transition-opacity hover:opacity-70"
+                  style={{ color: 'var(--theme-primary)' }}>
+                  Transfer max
+                </button>
+              )}
+            </div>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-3 flex items-center text-sm font-bold"
+                style={{ color: 'var(--theme-text-muted)' }}>$</span>
+              <input
+                type="number" min="10" step="0.01" value={formData.amount}
+                onChange={e => setFormData(p => ({ ...p, amount: e.target.value }))}
+                placeholder="0.00" required
+                className="w-full pl-8 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+                style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)', color: 'var(--theme-text-primary)' }}
+              />
+            </div>
+            <p className="text-[10px] mt-1" style={{ color: 'var(--theme-text-disabled)' }}>Minimum transfer: $10</p>
+          </div>
+
+          {/* Transfer Preview */}
+          <AnimatePresence>
+            {fromAccount && toAccount && formData.amount && parseFloat(formData.amount) >= 10 && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                className="rounded-xl p-4"
+                style={{ background: 'color-mix(in srgb, var(--theme-primary) 5%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-primary) 20%, transparent)' }}>
+                <p className="text-xs font-semibold mb-3" style={{ color: 'var(--theme-text-primary)' }}>Transfer Preview</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 text-center rounded-lg p-2" style={{ background: 'var(--theme-bg-card)' }}>
+                    <p className="text-[10px]" style={{ color: 'var(--theme-text-muted)' }}>{fromAccount.mt5Account}</p>
+                    <p className="text-sm font-bold text-red-500">-{fmtCurrency(parseFloat(formData.amount))}</p>
+                    <p className="text-[10px]" style={{ color: 'var(--theme-text-disabled)' }}>
+                      After: {fmtCurrency(fromAccount.balance - parseFloat(formData.amount))}
+                    </p>
+                  </div>
+                  <ArrowRight className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                  <div className="flex-1 text-center rounded-lg p-2" style={{ background: 'var(--theme-bg-card)' }}>
+                    <p className="text-[10px]" style={{ color: 'var(--theme-text-muted)' }}>{toAccount.mt5Account}</p>
+                    <p className="text-sm font-bold text-green-500">+{fmtCurrency(parseFloat(formData.amount))}</p>
+                    <p className="text-[10px]" style={{ color: 'var(--theme-text-disabled)' }}>
+                      After: {fmtCurrency(toAccount.balance + parseFloat(formData.amount))}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Info */}
+          <div className="flex items-center gap-3 rounded-xl p-3"
+            style={{ background: '#3b82f612', border: '1px solid #3b82f640' }}>
+            <AlertCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              Transfers are processed instantly between your accounts. No fees apply.
+            </p>
+          </div>
+
+          <motion.button
+            type="submit"
+            whileTap={{ scale: 0.97 }}
+            disabled={transferring || !formData.fromAccountId || !formData.toAccountId || !formData.amount}
+            className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 60%, #000))' }}>
+            {transferring ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader className="w-4 h-4 animate-spin" />Transferring…
+              </span>
+            ) : 'Transfer Funds'}
+          </motion.button>
+        </form>
+      </div>
+
+      {/* Account Balances */}
+      <div className="rounded-2xl p-5"
+        style={{ backgroundColor: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="rounded-xl p-2" style={{ background: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)' }}>
+            <TrendingUp className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
+          </div>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>Account Balances</h2>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {accounts.length === 0 ? (
+            <p className="col-span-2 text-center py-4 text-sm" style={{ color: 'var(--theme-text-muted)' }}>No accounts found</p>
+          ) : accounts.map(acc => (
+            <div key={acc._id} className="rounded-xl p-4 flex items-center justify-between"
+              style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)' }}>
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg p-2" style={{ background: 'color-mix(in srgb, var(--theme-primary) 12%, transparent)' }}>
+                  <Wallet className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--theme-text-primary)' }}>{acc.mt5Account}</p>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full"
+                    style={{ background: 'color-mix(in srgb, var(--theme-primary) 12%, transparent)', color: 'var(--theme-primary)' }}>
+                    {acc.accountType}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>Balance</p>
+                <p className="text-base font-bold" style={{ color: acc.balance > 0 ? '#10b981' : 'var(--theme-text-muted)' }}>
+                  {fmtCurrency(acc.balance)}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-medium">Recent Transfers</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="pb-2 text-left font-medium">From</th>
-                <th className="pb-2 text-left font-medium">To</th>
-                <th className="pb-2 text-left font-medium">Amount</th>
-                <th className="pb-2 text-left font-medium">Date</th>
-                <th className="pb-2 text-left font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transfers && transfers.length > 0 ? (
-                transfers.map((transfer) => (
-                  <tr key={transfer._id} className="border-b last:border-0">
-                    <td className="py-3 text-sm">{transfer.fromAccount?.mt5Account || "Unknown"}</td>
-                    <td className="py-3 text-sm">{transfer.toAccount?.mt5Account || "Unknown"}</td>
-                    <td className="py-3 text-sm">{formatCurrency(transfer.amount)}</td>
-                    <td className="py-3 text-sm">{formatDate(transfer.createdAt)}</td>
-                    <td className="py-3 text-sm">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${transfer.status === 'Completed'
-                        ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400'
-                        : transfer.status === 'Failed'
-                          ? 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400'
-                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/20 dark:text-yellow-400'
-                        }`}>
-                        {transfer.status}
-                      </span>
+      {/* Recent Transfers */}
+      <div className="rounded-2xl overflow-hidden"
+        style={{ backgroundColor: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+        <div className="p-5 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>Recent Transfers</h2>
+        </div>
+        <div className="overflow-x-auto">
+          {transfers.length === 0 ? (
+            <div className="py-10 text-center">
+              <ArrowLeftRight className="w-10 h-10 mx-auto mb-2 opacity-20" style={{ color: 'var(--theme-text-muted)' }} />
+              <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>No transfers yet</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--theme-border)' }}>
+                  {['From', 'To', 'Amount', 'Date', 'Status'].map(h => (
+                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                      style={{ color: 'var(--theme-text-muted)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {transfers.map(t => (
+                  <tr key={t._id} style={{ borderBottom: '1px solid var(--theme-border)' }}>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--theme-text-primary)' }}>
+                      {t.fromAccount?.mt5Account || '—'}
+                    </td>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--theme-text-primary)' }}>
+                      {t.toAccount?.mt5Account || '—'}
+                    </td>
+                    <td className="px-5 py-3 text-sm font-semibold" style={{ color: 'var(--theme-primary)' }}>
+                      {fmtCurrency(t.amount)}
+                    </td>
+                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--theme-text-muted)' }}>
+                      {formatDate(t.createdAt)}
+                    </td>
+                    <td className="px-5 py-3">
+                      <StatusBadge status={t.status} />
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="py-6 text-center text-muted-foreground">
-                    No recent transfers found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

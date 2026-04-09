@@ -1,1014 +1,380 @@
-// Frontend/src/pages/client/Partner/TradeCommission.tsx - Enhanced Version
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
-import {
-    FileSpreadsheet,
-    FileText,
-    Download,
-    TrendingUp,
-    DollarSign,
-    BarChart3,
-    CheckCircle,
-    RefreshCw,
-    Clock,
-    Users,
-    ChevronDown,
-    ChevronUp,
-    Eye,
-    Mail,
-    Globe
-} from "lucide-react";
-import ExcelJS from 'exceljs';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import { motion, AnimatePresence } from 'framer-motion';
-import * as React from 'react';
+// Frontend/src/pages/client/Partner/TradeCommission.tsx
+import { useState, useEffect } from 'react'
+import axios from 'axios'
+import { toast } from 'sonner'
+import { RefreshCw, TrendingUp, BarChart2, DollarSign, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Users, Zap, Clock } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import * as React from 'react'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
-interface TradeCommission {
-    acNo: string;
-    openTime: string;
-    closeTime: string;
-    openPrice: string;
-    closePrice: string;
-    symbol: string;
-    profit: number;
-    volume: number;
-    rebate: number;
-    status: string;
-    level?: number;
-}
+interface TradeCommission { acNo: string; openTime: string; closeTime: string; openPrice: string; closePrice: string; symbol: string; profit: number; volume: number; rebate: number; status: string; level?: number }
+interface IBPartner { _id: string; userId: { _id: string; firstname: string; lastname: string; email: string } | null; referralCode: string; level: number; totalVolume: number; totalEarned: number; totalTrades?: number }
+interface CommissionTotals { totalProfit: number; totalVolume: number; totalRebate: number }
+interface CommissionSummary { totalCommission: number; totalTrades: number; totalVolume: number; totalProfit: number; avgCommissionPerTrade: number; period: number }
 
-interface IBPartner {
-    _id: string;
-    userId: {
-        _id: string;
-        firstname: string;
-        lastname: string;
-        email: string;
-    } | null;
-    referralCode: string;
-    level: number;
-    totalVolume: number;
-    totalEarned: number;
-    totalTrades?: number;
-    country?: string;
-    mt5Account?: string;
-}
-
-interface CommissionTotals {
-    totalProfit: number;
-    totalVolume: number;
-    totalRebate: number;
-}
-
-interface CommissionSummary {
-    totalCommission: number;
-    totalTrades: number;
-    totalVolume: number;
-    totalProfit: number;
-    avgCommissionPerTrade: number;
-    period: number;
-}
-
-interface SyncStatus {
-    isProcessing: boolean;
-    lastSyncTime: string;
-    nextSyncIn: string;
+const fmt = (v: number) => `$${v.toFixed(2)}`
+const fmtDate = (s: string) => {
+  if (!s || s === 'N/A') return '—'
+  try {
+    const d = new Date(s.includes(' ') ? s.replace(/\./g, '-').replace(' ', 'T') : s)
+    return isNaN(d.getTime()) ? s : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch { return s }
 }
 
 const TradeCommission = () => {
-    const [trades, setTrades] = useState<TradeCommission[]>([]);
-    const [partners, setPartners] = useState<IBPartner[]>([]);
-    const [totals, setTotals] = useState<CommissionTotals>({
-        totalProfit: 0,
-        totalVolume: 0,
-        totalRebate: 0
-    });
-    const [summary, setSummary] = useState<CommissionSummary | null>(null);
-    const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [refreshing, setRefreshing] = useState<boolean>(false);
-    const [exporting, setExporting] = useState<{ excel: boolean; pdf: boolean }>({
-        excel: false,
-        pdf: false
-    });
-    const [expandedPartner, setExpandedPartner] = useState<string | null>(null);
-    const [partnerTrades, setPartnerTrades] = useState<{ [key: string]: TradeCommission[] }>({});
-    const [loadingPartnerTrades, setLoadingPartnerTrades] = useState<{ [key: string]: boolean }>({});
+  const [trades, setTrades] = useState<TradeCommission[]>([])
+  const [partners, setPartners] = useState<IBPartner[]>([])
+  const [totals, setTotals] = useState<CommissionTotals>({ totalProfit: 0, totalVolume: 0, totalRebate: 0 })
+  const [summary, setSummary] = useState<CommissionSummary | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [expandedPartner, setExpandedPartner] = useState<string | null>(null)
+  const [partnerTrades, setPartnerTrades] = useState<{ [k: string]: TradeCommission[] }>({})
+  const [loadingPartnerTrades, setLoadingPartnerTrades] = useState<{ [k: string]: boolean }>({})
+  const [tradesPage, setTradesPage] = useState(1)
+  const PER_PAGE = 10
 
-    useEffect(() => {
-        fetchInitialData();
-        // Check sync status periodically
-        const statusInterval = setInterval(fetchSyncStatus, 5000);
-        return () => clearInterval(statusInterval);
-    }, []);
+  const fetchAll = async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true); else setRefreshing(true)
+    try {
+      const token = localStorage.getItem('clientToken')
+      if (!token) return
+      const [tradesRes, partnersRes, summaryRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/api/ibclients/commission/trade-commissions`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/api/ibclients/commission/partners`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/api/ibclients/commission/summary?period=30`, { headers: { Authorization: `Bearer ${token}` } }),
+      ])
+      if (tradesRes.data.success) { setTrades(tradesRes.data.trades); setTotals(tradesRes.data.totals) }
+      if (partnersRes.data.success) setPartners(partnersRes.data.partners)
+      if (summaryRes.data.success) setSummary(summaryRes.data.summary)
+    } catch (err: any) {
+      if (err?.response?.status === 404) toast.info("No IB configuration found.")
+      else if (!isRefresh) toast.error("Failed to load commission data")
+    } finally { setLoading(false); setRefreshing(false) }
+  }
 
-    useEffect(() => {
-        // Auto-load trades for all partners when partners data is available
-        if (partners.length > 0) {
-            partners.forEach(partner => {
-                fetchPartnerTrades(partner._id);
-            });
-        }
-    }, [partners]);
+  const fetchPartnerTrades = async (partnerId: string) => {
+    if (partnerTrades[partnerId]) return
+    setLoadingPartnerTrades(p => ({ ...p, [partnerId]: true }))
+    try {
+      const token = localStorage.getItem('clientToken')
+      if (!token) return
+      const res = await axios.get(`${API_BASE_URL}/api/ibclients/commission/partner/${partnerId}`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.data.success) setPartnerTrades(p => ({ ...p, [partnerId]: res.data.trades }))
+    } catch { toast.error("Failed to load partner trades") }
+    finally { setLoadingPartnerTrades(p => ({ ...p, [partnerId]: false })) }
+  }
 
-    const fetchInitialData = async () => {
-        await Promise.all([
-            fetchTradeCommissions(),
-            fetchCommissionSummary(),
-            fetchSyncStatus(),
-            fetchPartnersWithCommissions()
-        ]);
-    };
+  useEffect(() => { fetchAll() }, [])
 
-    const fetchTradeCommissions = async () => {
-        try {
-            setLoading(true);
-            const token = localStorage.getItem('clientToken');
+  const handleExpandPartner = async (id: string) => {
+    setExpandedPartner(prev => prev === id ? null : id)
+    if (expandedPartner !== id) await fetchPartnerTrades(id)
+  }
 
-            if (!token) {
-                toast.error('Authentication token not found');
-                return;
-            }
+  const paginatedTrades = trades.slice((tradesPage - 1) * PER_PAGE, tradesPage * PER_PAGE)
+  const totalPages = Math.max(1, Math.ceil(trades.length / PER_PAGE))
 
-            const response = await axios.get(`${API_BASE_URL}/api/ibclients/commission/trade-commissions`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+  const summaryItems = [
+    { label: 'Total Rebate', value: fmt(totals.totalRebate), icon: DollarSign, color: '#10b981' },
+    { label: 'Total Volume', value: totals.totalVolume.toFixed(2), icon: BarChart2, color: '#6366f1' },
+    { label: 'Total Profit', value: fmt(totals.totalProfit), icon: TrendingUp, color: '#f59e0b' },
+    { label: '30-Day Commission', value: fmt(summary?.totalCommission || 0), icon: Zap, color: '#ec4899' },
+  ]
 
-            if (response.data.success) {
-                setTrades(response.data.trades);
-                setTotals(response.data.totals);
-            }
-        } catch (error) {
-            console.error("Error fetching trade commissions:", error);
-            if (typeof error === "object" && error !== null && "response" in error && (error as any).response?.status === 404) {
-                toast.info("No IB configuration found. Please set up your referral system first.");
-            } else {
-                toast.error("Failed to load trade commission data");
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-10 h-10 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+        <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>Loading commissions…</p>
+      </div>
+    </div>
+  )
 
-    const fetchPartnersWithCommissions = async () => {
-        try {
-            const token = localStorage.getItem('clientToken');
-            if (!token) return;
+  return (
+    <div className="space-y-6 pb-8">
 
-            const response = await axios.get(`${API_BASE_URL}/api/ibclients/commission/partners`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-
-            if (response.data.success) {
-                setPartners(response.data.partners);
-            }
-        } catch (error) {
-            console.error("Error fetching partners with commissions:", error);
-        }
-    };
-
-    const fetchPartnerTrades = async (partnerId: string) => {
-        if (partnerTrades[partnerId]) {
-            return; // Already loaded
-        }
-
-        try {
-            setLoadingPartnerTrades(prev => ({ ...prev, [partnerId]: true }));
-            const token = localStorage.getItem('clientToken');
-            if (!token) return;
-
-            const response = await axios.get(`${API_BASE_URL}/api/ibclients/commission/partner/${partnerId}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-
-            if (response.data.success) {
-                setPartnerTrades(prev => ({
-                    ...prev,
-                    [partnerId]: response.data.trades
-                }));
-            }
-        } catch (error) {
-            console.error("Error fetching partner trades:", error);
-            toast.error("Failed to load partner trade details");
-        } finally {
-            setLoadingPartnerTrades(prev => ({ ...prev, [partnerId]: false }));
-        }
-    };
-
-    const handlePartnerExpand = async (partnerId: string) => {
-        if (expandedPartner === partnerId) {
-            setExpandedPartner(null);
-        } else {
-            setExpandedPartner(partnerId);
-            await fetchPartnerTrades(partnerId);
-        }
-    };
-
-    const fetchCommissionSummary = async () => {
-        try {
-            const token = localStorage.getItem('clientToken');
-            if (!token) return;
-
-            const response = await axios.get(`${API_BASE_URL}/api/ibclients/commission/summary?period=30`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-
-            if (response.data.success) {
-                setSummary(response.data.summary);
-            }
-        } catch (error) {
-            console.error("Error fetching commission summary:", error);
-        }
-    };
-
-    const fetchSyncStatus = async () => {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/api/sync/status`);
-            if (response.data.success) {
-                setSyncStatus(response.data.syncStatus);
-            }
-        } catch (error) {
-            console.error("Error fetching sync status:", error);
-        }
-    };
-
-    const handleRefresh = async () => {
-        setRefreshing(true);
-        await fetchInitialData();
-        setRefreshing(false);
-        toast.success("Data refreshed successfully!");
-    };
-
-    const formatDateTime = (dateString: string) => {
-        return new Date(dateString).toLocaleString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-    };
-
-    const formatCurrency = (amount: number) => {
-        return amount.toFixed(4);
-    };
-
-    const exportToExcel = async () => {
-        try {
-            setExporting(prev => ({ ...prev, excel: true }));
-
-            const exportData = trades.map(trade => ({
-                'AC NO': trade.acNo,
-                'Open Time': formatDateTime(trade.openTime),
-                'Close Time': formatDateTime(trade.closeTime),
-                'Open Price': trade.openPrice,
-                'Close Price': trade.closePrice,
-                'Symbol': trade.symbol,
-                'Profit': trade.profit,
-                'Volume': trade.volume,
-                'Commission': trade.rebate,
-                'Status': trade.status,
-                'Level': trade.level || 'N/A'
-            }));
-
-            // Add totals row
-            exportData.push({
-                'AC NO': '',
-                'Open Time': '',
-                'Close Time': '',
-                'Open Price': '',
-                'Close Price': '',
-                'Symbol': '',
-                'Profit': totals.totalProfit,
-                'Volume': totals.totalVolume,
-                'Commission': totals.totalRebate,
-                'Status': 'TOTAL',
-                'Level': ''
-            });
-
-            // Use exceljs for Excel export
-            const workbook = new ExcelJS.Workbook();
-            const worksheet = workbook.addWorksheet('Commission Trades');
-
-            // Define columns
-            worksheet.columns = [
-                { header: 'AC NO', key: 'acNo', width: 12 },
-                { header: 'Open Time', key: 'openTime', width: 20 },
-                { header: 'Close Time', key: 'closeTime', width: 20 },
-                { header: 'Open Price', key: 'openPrice', width: 12 },
-                { header: 'Close Price', key: 'closePrice', width: 12 },
-                { header: 'Symbol', key: 'symbol', width: 12 },
-                { header: 'Profit', key: 'profit', width: 12 },
-                { header: 'Volume', key: 'volume', width: 10 },
-                { header: 'Commission', key: 'commission', width: 12 },
-                { header: 'Status', key: 'status', width: 10 },
-                { header: 'Level', key: 'level', width: 8 },
-            ];
-
-            // Add trade rows
-            trades.forEach(trade => {
-                worksheet.addRow({
-                    acNo: trade.acNo,
-                    openTime: formatDateTime(trade.openTime),
-                    closeTime: formatDateTime(trade.closeTime),
-                    openPrice: trade.openPrice,
-                    closePrice: trade.closePrice,
-                    symbol: trade.symbol,
-                    profit: trade.profit,
-                    volume: trade.volume,
-                    commission: trade.rebate,
-                    status: trade.status,
-                    level: trade.level || 'N/A'
-                });
-            });
-
-            // Add totals row
-            worksheet.addRow({
-                acNo: '',
-                openTime: '',
-                closeTime: '',
-                openPrice: '',
-                closePrice: '',
-                symbol: '',
-                profit: totals.totalProfit,
-                volume: totals.totalVolume,
-                commission: totals.totalRebate,
-                status: 'TOTAL',
-                level: ''
-            });
-
-            // Style header row
-            worksheet.getRow(1).font = { bold: true };
-
-            // Download file
-            const buffer = await workbook.xlsx.writeBuffer();
-            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            const fileName = `commission_trades_${new Date().toISOString().split('T')[0]}.xlsx`;
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = fileName;
-            link.click();
-            URL.revokeObjectURL(link.href);
-
-            // Set column widths
-            const colWidths = [
-                { wch: 10 }, // AC NO
-                { wch: 20 }, // Open Time
-                { wch: 20 }, // Close Time
-                { wch: 12 }, // Open Price
-                { wch: 12 }, // Close Price
-                { wch: 12 }, // Symbol
-                { wch: 12 }, // Profit
-                { wch: 10 }, // Volume
-                { wch: 12 }, // Commission
-                { wch: 10 }, // Status
-                { wch: 8 }   // Level
-            ];
-            worksheet.columns.forEach((_, i) => {
-                worksheet.getColumn(i + 1).width = colWidths[i].wch;
-            });
-
-            toast.success("Excel file exported successfully!");
-        } catch (error) {
-            console.error("Error exporting to Excel:", error);
-            toast.error("Failed to export Excel file");
-        } finally {
-            setExporting(prev => ({ ...prev, excel: false }));
-        }
-    };
-
-    const exportToPDF = async () => {
-        try {
-            setExporting(prev => ({ ...prev, pdf: true }));
-
-            const pdf = new jsPDF();
-
-            // Add title
-            pdf.setFontSize(20);
-            pdf.text('Commission Trades Report', 20, 20);
-
-            // Add date and summary
-            pdf.setFontSize(12);
-            pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 35);
-            if (summary) {
-                pdf.text(`Total Commission (30 days): $${summary.totalCommission.toFixed(4)}`, 20, 45);
-                pdf.text(`Total Trades: ${summary.totalTrades}`, 20, 55);
-            }
-
-            // Prepare table data
-            const tableData = trades.map(trade => [
-                trade.acNo,
-                formatDateTime(trade.openTime),
-                formatDateTime(trade.closeTime),
-                trade.openPrice,
-                trade.closePrice,
-                trade.symbol,
-                formatCurrency(trade.profit),
-                trade.volume.toFixed(4),
-                formatCurrency(trade.rebate),
-                trade.status,
-                trade.level?.toString() || 'N/A'
-            ]);
-
-            // Add totals row
-            tableData.push([
-                '',
-                '',
-                '',
-                '',
-                '',
-                'Total:',
-                formatCurrency(totals.totalProfit),
-                totals.totalVolume.toFixed(4),
-                formatCurrency(totals.totalRebate),
-                '',
-                ''
-            ]);
-
-            // Create table
-            (pdf as any).autoTable({
-                startY: summary ? 65 : 55,
-                head: [['AC NO', 'Open Time', 'Close Time', 'Open Price', 'Close Price', 'Symbol', 'Profit', 'Volume', 'Commission', 'Status', 'Level']],
-                body: tableData,
-                styles: {
-                    fontSize: 7,
-                    cellPadding: 1
-                },
-                headStyles: {
-                    fillColor: [59, 130, 246],
-                    textColor: [255, 255, 255]
-                },
-                footStyles: {
-                    fillColor: [243, 244, 246],
-                    textColor: [0, 0, 0],
-                    fontStyle: 'bold'
-                }
-            });
-
-            const fileName = `commission_trades_${new Date().toISOString().split('T')[0]}.pdf`;
-            pdf.save(fileName);
-
-            toast.success("PDF file exported successfully!");
-        } catch (error) {
-            console.error("Error exporting to PDF:", error);
-            toast.error("Failed to export PDF file");
-        } finally {
-            setExporting(prev => ({ ...prev, pdf: false }));
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="w-full space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {[1, 2, 3, 4].map((i) => (
-                        <Skeleton key={i} className="h-32 w-full rounded-lg" />
-                    ))}
-                </div>
-                <Skeleton className="h-[400px] w-full rounded-lg" />
-            </div>
-        );
-    }
-
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex justify-between items-center">
-                <div className="text-center flex-1">
-                    <h2 className="text-3xl font-bold flex items-center justify-center gap-2">
-                        <TrendingUp className="h-8 w-8" />
-                        Commission Trades
-                    </h2>
-                    <p className="text-muted-foreground">
-                        Track your commission earnings from referred client trades
-                    </p>
-                </div>
-
-                {/* Refresh Button and Sync Status */}
-                <div className="flex items-center gap-3">
-                    {syncStatus && (
-                        <div className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {syncStatus.isProcessing ? (
-                                <span className="text-blue-600">Syncing...</span>
-                            ) : (
-                                <span>Last sync: {new Date(syncStatus.lastSyncTime).toLocaleTimeString()}</span>
-                            )}
-                        </div>
-                    )}
-                    <Button
-                        onClick={handleRefresh}
-                        disabled={refreshing}
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                    >
-                        <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                </div>
-            </div>
-
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total Commission
-                        </CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-green-600">
-                            ${formatCurrency(totals.totalRebate)}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            From {trades.length} trades
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total Volume
-                        </CardTitle>
-                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">
-                            {totals.totalVolume.toFixed(4)}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Total lots traded
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Active Partners
-                        </CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-purple-600">
-                            {partners.length}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Total IB partners
-                        </p>
-                    </CardContent>
-                </Card>
-
-                {/* 30-Day Summary Card */}
-                {summary && (
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                30-Day Summary
-                            </CardTitle>
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-lg font-bold text-orange-600">
-                                ${formatCurrency(summary.totalCommission)}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Avg: ${formatCurrency(summary.avgCommissionPerTrade)}/trade
-                            </p>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
-
-            {/* Export Buttons */}
-            <div className="flex justify-end gap-3">
-                <Button
-                    onClick={exportToExcel}
-                    disabled={exporting.excel || trades.length === 0}
-                    variant="outline"
-                    className="gap-2"
-                >
-                    {exporting.excel ? (
-                        <>
-                            <Download className="h-4 w-4 animate-spin" />
-                            Exporting...
-                        </>
-                    ) : (
-                        <>
-                            <FileSpreadsheet className="h-4 w-4" />
-                            Export Excel
-                        </>
-                    )}
-                </Button>
-
-                <Button
-                    onClick={exportToPDF}
-                    disabled={exporting.pdf || trades.length === 0}
-                    variant="outline"
-                    className="gap-2"
-                >
-                    {exporting.pdf ? (
-                        <>
-                            <Download className="h-4 w-4 animate-spin" />
-                            Exporting...
-                        </>
-                    ) : (
-                        <>
-                            <FileText className="h-4 w-4" />
-                            Export PDF
-                        </>
-                    )}
-                </Button>
-            </div>
-
-            {/* IB Partners Table */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Users className="h-5 w-5" />
-                        IB Users Commission Details
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="overflow-x-auto rounded-sm border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
-                                    <TableHead className="font-semibold">Name/Email</TableHead>
-                                    <TableHead className="font-semibold">Country</TableHead>
-                                    <TableHead className="font-semibold">Level</TableHead>
-                                    <TableHead className="font-semibold">Total Volume</TableHead>
-                                    <TableHead className="font-semibold">Total Earned</TableHead>
-                                    <TableHead className="font-semibold">Action</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {partners.length > 0 ? (
-                                    <>
-                                        {partners.map((partner) => (
-                                            <React.Fragment key={partner._id}>
-                                                <TableRow className="hover:bg-muted/50 transition-colors">
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-medium">
-                                                                {partner.userId ?
-                                                                    `${partner.userId.firstname?.[0] || 'N'}${partner.userId.lastname?.[0] || 'A'}`
-                                                                    : 'NA'
-                                                                }
-                                                            </div>
-                                                            <div>
-                                                                <div className="font-medium">
-                                                                    {partner.userId ?
-                                                                        `${partner.userId.firstname || 'N/A'} ${partner.userId.lastname || 'N/A'}`
-                                                                        : 'User Not Found'
-                                                                    }
-                                                                </div>
-                                                                <div className="text-sm text-muted-foreground flex items-center gap-1">
-                                                                    <Mail className="h-3 w-3" />
-                                                                    {partner.userId?.email || 'N/A'}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-1">
-                                                            <Globe className="h-4 w-4 text-muted-foreground" />
-                                                            {partner.country}
-                                                        </div>
-                                                    </TableCell>
-                                                    {/* <TableCell>
-                                                        <div className="flex items-center gap-1">
-                                                            <CreditCard className="h-4 w-4 text-muted-foreground" />
-                                                            <span className="font-mono">{partner.acNo}</span>
-                                                        </div>
-                                                    </TableCell> */}
-                                                    <TableCell>
-                                                        <Badge variant="outline" className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-700 whitespace-nowrap">
-                                                            Level {partner.level}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="font-mono">
-                                                        ${partner.totalVolume.toFixed(4)}
-                                                    </TableCell>
-                                                    <TableCell className="font-mono font-medium text-green-600">
-                                                        ${partner.totalEarned.toFixed(4)}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handlePartnerExpand(partner._id)}
-                                                            className="gap-1"
-                                                        >
-                                                            {expandedPartner === partner._id ? (
-                                                                <ChevronUp className="h-4 w-4" />
-                                                            ) : (
-                                                                <ChevronDown className="h-4 w-4" />
-                                                            )}
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-
-                                                {/* Expandable Trade Details */}
-                                                <AnimatePresence>
-                                                    {expandedPartner === partner._id && (
-                                                        <TableRow>
-                                                            <TableCell colSpan={6} className="p-0 bg-background rounded-sm">
-                                                                <motion.div
-                                                                    initial={{ height: 0, opacity: 0 }}
-                                                                    animate={{ height: "auto", opacity: 1 }}
-                                                                    exit={{ height: 0, opacity: 0 }}
-                                                                    transition={{ duration: 0.3 }}
-                                                                    className="overflow-hidden"
-                                                                >
-                                                                    <div className="p-4  border-t">
-                                                                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                                                                            <Eye className="h-4 w-4" />
-                                                                            Trade Details for {partner.userId ?
-                                                                                `${partner.userId.firstname?.[0] || 'N'}${partner.userId.lastname?.[0] || 'A'}`
-                                                                                : 'NA'
-                                                                            }
-                                                                        </h4>
-
-                                                                        {loadingPartnerTrades[partner._id] ? (
-                                                                            <div className="space-y-2">
-                                                                                <Skeleton className="h-8 w-full" />
-                                                                                <Skeleton className="h-8 w-full" />
-                                                                                <Skeleton className="h-8 w-full" />
-                                                                            </div>
-                                                                        ) : partnerTrades[partner._id] && partnerTrades[partner._id].length > 0 ? (
-                                                                            <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden">
-                                                                                <div className="max-h-96 overflow-y-auto">
-                                                                                    <Table>
-                                                                                        <TableHeader>
-                                                                                            <TableRow className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30">
-                                                                                                <TableHead className="text-xs">MT5 Account</TableHead>
-                                                                                                <TableHead className="text-xs">Symbol</TableHead>
-                                                                                                <TableHead className="text-xs">Volume</TableHead>
-                                                                                                <TableHead className="text-xs">Open Price</TableHead>
-                                                                                                <TableHead className="text-xs">Close Price</TableHead>
-                                                                                                <TableHead className="text-xs">Profit</TableHead>
-                                                                                                <TableHead className="text-xs">Commission</TableHead>
-                                                                                                <TableHead className="text-xs">Status</TableHead>
-                                                                                            </TableRow>
-                                                                                        </TableHeader>
-                                                                                        <TableBody>
-                                                                                            {partnerTrades[partner._id].map((trade, index) => (
-                                                                                                <TableRow key={index} className="hover:bg-muted/30">
-                                                                                                    <TableCell className="font-mono text-xs">{trade.acNo}</TableCell>
-                                                                                                    <TableCell className="font-mono text-xs font-medium">{trade.symbol}</TableCell>
-                                                                                                    <TableCell className="font-mono text-xs">{trade.volume.toFixed(4)}</TableCell>
-                                                                                                    <TableCell className="font-mono text-xs">{trade.openPrice}</TableCell>
-                                                                                                    <TableCell className="font-mono text-xs">{trade.closePrice}</TableCell>
-                                                                                                    <TableCell className={`font-mono text-xs ${trade.profit < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                                                                        {trade.profit < 0 ? '-' : ''}${formatCurrency(Math.abs(trade.profit))}
-                                                                                                    </TableCell>
-                                                                                                    <TableCell className="font-mono text-xs font-medium text-blue-600">
-                                                                                                        ${formatCurrency(trade.rebate)}
-                                                                                                    </TableCell>
-                                                                                                    <TableCell>
-                                                                                                        <Badge variant="outline" className="text-xs text-green-600 border-green-300">
-                                                                                                            <CheckCircle className="h-2 w-2 mr-1" />
-                                                                                                            {trade.status}
-                                                                                                        </Badge>
-                                                                                                    </TableCell>
-                                                                                                </TableRow>
-                                                                                            ))}
-                                                                                        </TableBody>
-                                                                                    </Table>
-                                                                                </div>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="text-center py-4 text-muted-foreground">
-                                                                                <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                                                                <p>No trade details found for this partner</p>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </motion.div>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </AnimatePresence>
-                                            </React.Fragment>
-                                        ))}
-                                    </>
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8">
-                                            <div className="text-muted-foreground">
-                                                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                                <div className="text-lg font-medium">No IB partners found</div>
-                                                <div className="text-sm">IB partners will appear here once you have referrals.</div>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Individual Partner Trade Sections */}
-            {partners.length > 0 && (
-                <div className="space-y-6">
-                    <h3 className="text-xl font-semibold flex items-center gap-2">
-                        <BarChart3 className="h-5 w-5" />
-                        Partner Trade Details
-                    </h3>
-
-                    {partners.map((partner) => (
-                        <Card key={partner._id} className="border-l-4 border-l-blue-500">
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
-                                            {partner.userId ?
-                                                `${partner.userId.firstname.charAt(0) || 'N/A'}${partner.userId.lastname.charAt(0) || 'N/A'}`
-                                                : 'User Not Found'
-                                            }
-                                        </div>
-                                        <div>
-                                            <div>
-                                                <CardTitle className="text-lg">
-                                                    {partner.userId ?
-                                                        `${partner.userId.firstname || 'N/A'} ${partner.userId.lastname || 'N/A'}`
-                                                        : 'User Not Found'
-                                                    }
-                                                </CardTitle>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-muted-foreground flex items-center gap-2">
-                                                    <Mail className="h-3 w-3" />
-                                                    {partner.userId?.email || 'N/A'}
-                                                    <span className="mx-0.5">•</span>
-                                                </p>
-                                                <p className="text-xs text-muted-foreground flex items-center gap-2">
-
-                                                    <Globe className="h-3 w-3" />{partner.country}
-                                                    <span className="mx-0.5">•</span>
-                                                    <Badge variant="outline">Level {partner.level}</Badge>
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="text-right">
-                                        <div className="text-lg font-bold text-green-600">
-                                            ${formatCurrency(partner.totalEarned)}
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            Total Commission
-                                        </p>
-                                    </div>
-                                </div>
-                            </CardHeader>
-
-                            <CardContent>
-                                <div className="mb-4 grid grid-cols-3 gap-4">
-                                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                                        <div className="text-sm font-medium text-blue-600">Volume</div>
-                                        <div className="text-lg font-bold">{partner.totalVolume.toFixed(4)}</div>
-                                    </div>
-                                    <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                                        <div className="text-sm font-medium text-green-600">Commission</div>
-                                        <div className="text-lg font-bold">${formatCurrency(partner.totalEarned)}</div>
-                                    </div>
-                                    <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                                        <div className="text-sm font-medium text-purple-600">Trades</div>
-                                        <div className="text-lg font-bold">{partner.totalTrades || 0}</div>
-                                    </div>
-                                </div>
-
-                                {/* Individual Partner Trade Table */}
-                                <div className="border rounded-lg overflow-hidden">
-                                    {loadingPartnerTrades[partner._id] ? (
-                                        <div className="p-6 space-y-2">
-                                            <Skeleton className="h-8 w-full" />
-                                            <Skeleton className="h-8 w-full" />
-                                            <Skeleton className="h-8 w-full" />
-                                        </div>
-                                    ) : partnerTrades[partner._id] && partnerTrades[partner._id].length > 0 ? (
-                                        <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-y-auto max-h-96">
-                                            <Table>
-                                                <TableHeader className="sticky top-0 z-10">
-                                                    <TableRow className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-800 dark:to-gray-800">
-                                                        <TableHead className="text-xs font-semibold">MT5 Account</TableHead>
-                                                        <TableHead className="text-xs font-semibold">Symbol</TableHead>
-                                                        <TableHead className="text-xs font-semibold">Volume</TableHead>
-                                                        <TableHead className="text-xs font-semibold">Open Price</TableHead>
-                                                        <TableHead className="text-xs font-semibold">Close Price</TableHead>
-                                                        <TableHead className="text-xs font-semibold">Profit</TableHead>
-                                                        <TableHead className="text-xs font-semibold">Commission</TableHead>
-                                                        <TableHead className="text-xs font-semibold">Open Time</TableHead>
-                                                        <TableHead className="text-xs font-semibold">Close Time</TableHead>
-                                                        <TableHead className="text-xs font-semibold">Status</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {partnerTrades[partner._id].map((trade, index) => (
-                                                        <TableRow key={index} className="hover:bg-muted/30">
-                                                            <TableCell className="font-mono text-xs font-medium">{trade.acNo}</TableCell>
-                                                            <TableCell className="font-mono text-xs font-bold text-blue-600">{trade.symbol}</TableCell>
-                                                            <TableCell className="font-mono text-xs">{trade.volume.toFixed(4)}</TableCell>
-                                                            <TableCell className="font-mono text-xs">{trade.openPrice}</TableCell>
-                                                            <TableCell className="font-mono text-xs">{trade.closePrice}</TableCell>
-                                                            <TableCell className={`font-mono text-xs font-medium ${trade.profit < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                                {trade.profit < 0 ? '-' : ''}${formatCurrency(Math.abs(trade.profit))}
-                                                            </TableCell>
-                                                            <TableCell className="font-mono text-xs font-bold text-green-600">
-                                                                ${formatCurrency(trade.rebate)}
-                                                            </TableCell>
-                                                            <TableCell className="text-xs">
-                                                                {formatDateTime(trade.openTime)}
-                                                            </TableCell>
-                                                            <TableCell className="text-xs">
-                                                                {formatDateTime(trade.closeTime)}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Badge variant="outline" className="text-xs text-green-600 border-green-300">
-                                                                    <CheckCircle className="h-2 w-2 mr-1" />
-                                                                    {trade.status}
-                                                                </Badge>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-
-                                                    {/* Individual Partner Totals Row */}
-                                                    <TableRow className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/30 dark:to-green-900/30 font-bold border-t-2">
-                                                        <TableCell colSpan={2} className="text-right font-bold text-sm">
-                                                            Partner Total:
-                                                        </TableCell>
-                                                        <TableCell className="font-mono font-bold text-blue-600 text-sm">
-                                                            {partnerTrades[partner._id].reduce((sum, trade) => sum + trade.volume, 0).toFixed(4)}
-                                                        </TableCell>
-                                                        <TableCell></TableCell>
-                                                        <TableCell></TableCell>
-                                                        <TableCell className={`font-mono font-bold text-sm ${partnerTrades[partner._id].reduce((sum, trade) => sum + trade.profit, 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                            {partnerTrades[partner._id].reduce((sum, trade) => sum + trade.profit, 0) < 0 ? '-' : ''}${formatCurrency(Math.abs(partnerTrades[partner._id].reduce((sum, trade) => sum + trade.profit, 0)))}
-                                                        </TableCell>
-                                                        <TableCell className="font-mono font-bold text-green-600 text-sm">
-                                                            ${formatCurrency(partnerTrades[partner._id].reduce((sum, trade) => sum + trade.rebate, 0))}
-                                                        </TableCell>
-                                                        <TableCell></TableCell>
-                                                        <TableCell></TableCell>
-                                                        <TableCell></TableCell>
-                                                    </TableRow>
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-8 text-muted-foreground bg-gray-50 dark:bg-gray-900">
-                                            <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                            <p>No trade details found for this partner</p>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="mt-2"
-                                                onClick={() => fetchPartnerTrades(partner._id)}
-                                            >
-                                                <RefreshCw className="h-3 w-3 mr-1" />
-                                                Load Trades
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            )}
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black" style={{ color: 'var(--theme-text-primary)' }}>IB Commission</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--theme-text-muted)' }}>
+            Track your trade commissions and partner earnings
+          </p>
         </div>
-    );
-};
+        <motion.button whileTap={{ scale: 0.96 }}
+          onClick={() => fetchAll(true)} disabled={refreshing}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
+          style={{ background: 'rgba(99,102,241,0.12)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.2)' }}>
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </motion.button>
+      </motion.div>
 
-export default TradeCommission;
+      {/* ── Summary Cards ──────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {summaryItems.map((s, idx) => (
+          <motion.div key={s.label}
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.06 }}
+            className="relative overflow-hidden rounded-2xl p-4"
+            style={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+            <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style={{ background: s.color }} />
+            <div className="flex items-start justify-between mb-3">
+              <p className="text-[10px] font-medium" style={{ color: 'var(--theme-text-muted)' }}>{s.label}</p>
+              <div className="p-1.5 rounded-lg" style={{ background: `${s.color}18` }}>
+                <s.icon className="w-3.5 h-3.5" style={{ color: s.color }} />
+              </div>
+            </div>
+            <p className="text-xl font-black font-mono" style={{ color: s.color }}>{s.value}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ── Partners Section ───────────────────────────────────────────── */}
+      {partners.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="w-4 h-4 text-indigo-400" />
+            <h2 className="text-sm font-bold" style={{ color: 'var(--theme-text-primary)' }}>
+              Partner Commissions
+            </h2>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+              style={{ background: 'rgba(99,102,241,0.12)', color: '#6366f1' }}>
+              {partners.length}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {partners.map((partner, idx) => (
+              <motion.div key={partner._id}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + idx * 0.04 }}
+                className="rounded-2xl overflow-hidden"
+                style={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+                {/* Partner Row */}
+                <button
+                  onClick={() => handleExpandPartner(partner._id)}
+                  className="w-full flex items-center gap-4 p-4 transition-all duration-200"
+                  style={{}}
+                  onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.04)')}
+                  onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+                >
+                  {/* Avatar */}
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-xs"
+                    style={{ background: 'rgba(99,102,241,0.15)', color: '#6366f1' }}>
+                    {partner.userId ? partner.userId.firstname.charAt(0) : '?'}
+                  </div>
+                  {/* Name & email */}
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-xs font-semibold truncate" style={{ color: 'var(--theme-text-primary)' }}>
+                      {partner.userId ? `${partner.userId.firstname} ${partner.userId.lastname}` : 'Unknown'}
+                    </p>
+                    <p className="text-[10px] truncate" style={{ color: 'var(--theme-text-muted)' }}>
+                      {partner.userId?.email || partner.referralCode}
+                    </p>
+                  </div>
+                  {/* Stats */}
+                  <div className="hidden sm:flex items-center gap-6 text-right">
+                    <div>
+                      <p className="text-[9px]" style={{ color: 'var(--theme-text-muted)' }}>Volume</p>
+                      <p className="text-xs font-bold font-mono" style={{ color: 'var(--theme-text-primary)' }}>
+                        {(partner.totalVolume || 0).toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px]" style={{ color: 'var(--theme-text-muted)' }}>Earned</p>
+                      <p className="text-xs font-bold font-mono text-emerald-500">
+                        {fmt(partner.totalEarned || 0)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px]" style={{ color: 'var(--theme-text-muted)' }}>Level</p>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
+                        L{partner.level}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Expand icon */}
+                  <div className="flex-shrink-0">
+                    {loadingPartnerTrades[partner._id] ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" style={{ color: 'var(--theme-text-muted)' }} />
+                    ) : expandedPartner === partner._id ? (
+                      <ChevronUp className="w-4 h-4" style={{ color: '#6366f1' }} />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" style={{ color: 'var(--theme-text-muted)' }} />
+                    )}
+                  </div>
+                </button>
+
+                {/* Expanded Trade Details */}
+                <AnimatePresence>
+                  {expandedPartner === partner._id && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
+                      style={{ borderTop: '1px solid var(--theme-border)', overflow: 'hidden' }}>
+                      {loadingPartnerTrades[partner._id] ? (
+                        <div className="p-6 flex items-center gap-2 justify-center">
+                          <RefreshCw className="w-4 h-4 animate-spin" style={{ color: '#6366f1' }} />
+                          <span className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>Loading trades…</span>
+                        </div>
+                      ) : !partnerTrades[partner._id]?.length ? (
+                        <div className="p-6 text-center">
+                          <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>No trades found for this partner.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr style={{ background: 'rgba(99,102,241,0.04)' }}>
+                                {['Account', 'Symbol', 'Open Price', 'Close Price', 'Volume', 'Profit', 'Rebate', 'Status'].map(h => (
+                                  <th key={h} className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-wider"
+                                    style={{ color: 'var(--theme-text-muted)' }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {partnerTrades[partner._id].slice(0, 10).map((t, i) => (
+                                <tr key={i} className="transition-colors"
+                                  style={{ borderTop: '1px solid var(--theme-border)' }}
+                                  onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.03)')}
+                                  onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+                                >
+                                  <td className="px-3 py-2 text-[10px] font-mono" style={{ color: 'var(--theme-text-muted)' }}>{t.acNo}</td>
+                                  <td className="px-3 py-2">
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                                      style={{ background: 'rgba(99,102,241,0.1)', color: '#818cf8' }}>{t.symbol}</span>
+                                  </td>
+                                  <td className="px-3 py-2 text-[10px] font-mono" style={{ color: 'var(--theme-text-primary)' }}>{t.openPrice}</td>
+                                  <td className="px-3 py-2 text-[10px] font-mono" style={{ color: 'var(--theme-text-primary)' }}>{t.closePrice}</td>
+                                  <td className="px-3 py-2 text-[10px] font-mono" style={{ color: 'var(--theme-text-muted)' }}>{t.volume}</td>
+                                  <td className="px-3 py-2 text-[10px] font-bold font-mono"
+                                    style={{ color: t.profit >= 0 ? '#10b981' : '#ef4444' }}>
+                                    {t.profit >= 0 ? '+' : ''}{fmt(t.profit)}
+                                  </td>
+                                  <td className="px-3 py-2 text-[10px] font-bold font-mono text-amber-400">
+                                    {fmt(t.rebate)}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full capitalize"
+                                      style={{
+                                        background: t.status === 'closed' ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
+                                        color: t.status === 'closed' ? '#10b981' : '#f59e0b',
+                                      }}>{t.status}</span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── All Trade Commissions Table ─────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+        <div className="flex items-center gap-2 mb-3">
+          <Clock className="w-4 h-4 text-amber-400" />
+          <h2 className="text-sm font-bold" style={{ color: 'var(--theme-text-primary)' }}>
+            Commission History
+          </h2>
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+            style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
+            {trades.length}
+          </span>
+        </div>
+
+        <div className="rounded-2xl overflow-hidden"
+          style={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+          {trades.length === 0 ? (
+            <div className="p-10 text-center">
+              <BarChart2 className="w-10 h-10 mx-auto mb-3 opacity-20" style={{ color: 'var(--theme-text-muted)' }} />
+              <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>No trade commissions yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--theme-border)' }}>
+                      {['Account', 'Symbol', 'Open Price', 'Close Price', 'Volume', 'Profit', 'Rebate', 'Open Time', 'Status'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider"
+                          style={{ color: 'var(--theme-text-muted)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <AnimatePresence>
+                      {paginatedTrades.map((t, idx) => (
+                        <motion.tr key={idx}
+                          initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.03 }}
+                          className="transition-colors duration-150"
+                          style={{ borderBottom: '1px solid var(--theme-border)' }}
+                          onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.04)')}
+                          onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+                        >
+                          <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--theme-text-muted)' }}>{t.acNo}</td>
+                          <td className="px-4 py-3">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded"
+                              style={{ background: 'rgba(99,102,241,0.1)', color: '#818cf8' }}>{t.symbol}</span>
+                          </td>
+                          <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--theme-text-primary)' }}>{t.openPrice}</td>
+                          <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--theme-text-primary)' }}>{t.closePrice}</td>
+                          <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--theme-text-muted)' }}>{t.volume}</td>
+                          <td className="px-4 py-3 text-xs font-bold font-mono"
+                            style={{ color: t.profit >= 0 ? '#10b981' : '#ef4444' }}>
+                            {t.profit >= 0 ? '+' : ''}{fmt(t.profit)}
+                          </td>
+                          <td className="px-4 py-3 text-xs font-bold font-mono text-amber-400">{fmt(t.rebate)}</td>
+                          <td className="px-4 py-3 text-[10px]" style={{ color: 'var(--theme-text-muted)' }}>{fmtDate(t.openTime)}</td>
+                          <td className="px-4 py-3">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full capitalize"
+                              style={{
+                                background: t.status === 'closed' ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
+                                color: t.status === 'closed' ? '#10b981' : '#f59e0b',
+                              }}>{t.status}</span>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </AnimatePresence>
+                  </tbody>
+                </table>
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3"
+                  style={{ borderTop: '1px solid var(--theme-border)' }}>
+                  <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
+                    {trades.length} trades · Page {tradesPage} of {totalPages}
+                  </p>
+                  <div className="flex gap-1">
+                    <button onClick={() => setTradesPage(p => Math.max(1, p - 1))} disabled={tradesPage === 1}
+                      className="p-1.5 rounded-lg disabled:opacity-40" style={{ background: 'var(--theme-border)' }}>
+                      <ChevronLeft className="w-3.5 h-3.5" style={{ color: 'var(--theme-text-muted)' }} />
+                    </button>
+                    <button onClick={() => setTradesPage(p => Math.min(totalPages, p + 1))} disabled={tradesPage === totalPages}
+                      className="p-1.5 rounded-lg disabled:opacity-40" style={{ background: 'var(--theme-border)' }}>
+                      <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--theme-text-muted)' }} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+export default TradeCommission

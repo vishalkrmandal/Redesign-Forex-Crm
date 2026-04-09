@@ -1,381 +1,278 @@
-// Frontend/src/pages/client/Partner/CreatePartnerAccount.tsx - Updated
-import { useState, useEffect } from 'react';
-import { useNavigate } from "react-router-dom";
-import axios from 'axios';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Copy, Share2, Users, Crown, TrendingUp, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { toast } from "sonner";
+// Frontend/src/pages/client/Partner/CreatePartnerAccount.tsx
+import { useState, useEffect } from 'react'
+import { useNavigate } from "react-router-dom"
+import axios from 'axios'
+import { Copy, Share2, Users, Crown, TrendingUp, AlertCircle, Check, Zap, ArrowRight, Shield } from "lucide-react"
+import { toast } from "sonner"
+import { motion, AnimatePresence } from 'framer-motion'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+interface IBConfiguration { _id: string; referralCode: string | null; status: string; level: number; parentDetails?: { name: string; email: string; referralCode: string; level: number } }
 
-interface ParentDetails {
-    name: string;
-    email: string;
-    referralCode: string;
-    level: number;
-}
-
-interface IBConfiguration {
-    _id: string;
-    referralCode: string | null;
-    status: string;
-    level: number;
-    parentDetails?: ParentDetails;
-}
+const benefits = [
+  { icon: TrendingUp, title: 'Earn Commissions', desc: 'Get paid for every trade your referred clients make.', color: '#10b981' },
+  { icon: Users, title: 'Build a Network', desc: 'Grow a multi-level network of traders earning you passive income.', color: '#6366f1' },
+  { icon: Shield, title: 'Instant Payouts', desc: 'Withdraw your earned commissions at any time to your wallet.', color: '#f59e0b' },
+  { icon: Zap, title: 'Real-Time Tracking', desc: 'Monitor your partner activity and commissions live.', color: '#ec4899' },
+]
 
 const CreatePartnerAccount = () => {
-    const [ibConfig, setIbConfig] = useState<IBConfiguration | null>(null);
-    const [referralLink, setReferralLink] = useState<string>('');
-    const [activeTab, setActiveTab] = useState<string>('create');
-    const [loading, setLoading] = useState<boolean>(false);
-    const [affiliateId, setAffiliateId] = useState<string>('');
+  const [ibConfig, setIbConfig] = useState<IBConfiguration | null>(null)
+  const [referralLink, setReferralLink] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [affiliateId, setAffiliateId] = useState('')
+  const [copied, setCopied] = useState<'code' | 'link' | null>(null)
+  const navigate = useNavigate()
 
-    const navigate = useNavigate();
-
-    // Check if referral code already exists
-    useEffect(() => {
-        const checkReferralCode = async () => {
-            try {
-                const token = localStorage.getItem('clientToken');
-
-                if (!token) {
-                    navigate('/login');
-                    return;
-                }
-
-                const response = await axios.get(`${API_BASE_URL}/api/ibclients/ib-configurations/my-code`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                });
-
-                if (response.data.success && response.data.ibConfiguration) {
-                    setIbConfig(response.data.ibConfiguration);
-
-                    // Only set referral link and affiliate ID if referralCode exists
-                    if (response.data.ibConfiguration.referralCode) {
-                        const clientUrl = import.meta.env.VITE_CLIENT_URL || 'http://localhost:5173';
-                        setReferralLink(`${clientUrl}/signup/${response.data.ibConfiguration.referralCode}`);
-                        setAffiliateId(`${response.data.ibConfiguration.referralCode.toUpperCase()}`);
-                    }
-                }
-            } catch (error) {
-                console.error("Error fetching referral code:", error);
-            }
-        };
-
-        checkReferralCode();
-    }, [navigate]);
-
-    const handleCreateReferralCode = async () => {
-        try {
-            setLoading(true);
-            const token = localStorage.getItem('clientToken');
-
-            if (!token) {
-                navigate('/login');
-                return;
-            }
-
-            const response = await axios.post(
-                `${API_BASE_URL}/api/ibclients/ib-configurations/create`,
-                {},
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
-
-            if (response.data.success) {
-                setIbConfig(response.data.ibConfiguration);
-
-                if (response.data.ibConfiguration.referralCode) {
-                    const clientUrl = import.meta.env.VITE_CLIENT_URL || 'http://localhost:5173';
-                    setReferralLink(`${clientUrl}/signup/${response.data.ibConfiguration.referralCode}`);
-                    setAffiliateId(`${response.data.ibConfiguration.referralCode.toUpperCase()}`);
-                }
-
-                toast.success("Referral code created/activated successfully!");
-            }
-        } catch (error) {
-            console.error("Error creating referral code:", error);
-            toast.error("Failed to create referral code. Please try again.");
-        } finally {
-            setLoading(false);
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const token = localStorage.getItem('clientToken')
+        if (!token) { navigate('/login'); return }
+        const res = await axios.get(`${API_BASE_URL}/api/ibclients/ib-configurations/my-code`, { headers: { Authorization: `Bearer ${token}` } })
+        if (res.data.success && res.data.ibConfiguration) {
+          setIbConfig(res.data.ibConfiguration)
+          if (res.data.ibConfiguration.referralCode) {
+            const base = import.meta.env.VITE_CLIENT_URL || 'http://localhost:5173'
+            setReferralLink(`${base}/signup/${res.data.ibConfiguration.referralCode}`)
+            setAffiliateId(res.data.ibConfiguration.referralCode.toUpperCase())
+          }
         }
-    };
+      } catch { /* silent */ }
+    }
+    check()
+  }, [navigate])
 
-    const handleCopyToClipboard = (text: string, type: string) => {
-        navigator.clipboard.writeText(text);
-        toast.success(`${type} copied to clipboard!`);
-    };
-
-    const handleShareLink = async () => {
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: 'Join my network!',
-                    text: 'Sign up using my referral link',
-                    url: referralLink,
-                });
-                toast.success("Shared successfully!");
-            } catch (error) {
-                console.error('Error sharing:', error);
-                handleCopyToClipboard(referralLink, 'Link');
-            }
-        } else {
-            handleCopyToClipboard(referralLink, 'Link');
+  const handleCreate = async () => {
+    try {
+      setLoading(true)
+      const token = localStorage.getItem('clientToken')
+      if (!token) { navigate('/login'); return }
+      const res = await axios.post(`${API_BASE_URL}/api/ibclients/ib-configurations/create`, {}, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.data.success) {
+        setIbConfig(res.data.ibConfiguration)
+        if (res.data.ibConfiguration.referralCode) {
+          const base = import.meta.env.VITE_CLIENT_URL || 'http://localhost:5173'
+          setReferralLink(`${base}/signup/${res.data.ibConfiguration.referralCode}`)
+          setAffiliateId(res.data.ibConfiguration.referralCode.toUpperCase())
         }
-    };
+        toast.success("Partner account activated!")
+      }
+    } catch { toast.error("Failed to create partner account.") }
+    finally { setLoading(false) }
+  }
 
-    // Helper function to check if we should show the create button
-    const shouldShowCreateButton = () => {
-        return !ibConfig || !ibConfig.referralCode;
-    };
+  const copy = (text: string, type: 'code' | 'link') => {
+    navigator.clipboard.writeText(text)
+    setCopied(type)
+    toast.success(`${type === 'code' ? 'Code' : 'Link'} copied!`)
+    setTimeout(() => setCopied(null), 2000)
+  }
 
-    return (
-        <div className="container mx-auto py-6 max-w-6xl">
-            <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-1">
-                    <TabsTrigger value="create">Create Partner Account</TabsTrigger>
-                    {/* <TabsTrigger value="dashboard">IB Dashboard</TabsTrigger>
-                    <TabsTrigger value="commissions">Trade Commission</TabsTrigger> */}
-                </TabsList>
+  const handleShare = async () => {
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Join my network!', text: 'Sign up using my referral link', url: referralLink }); return }
+      catch { /* fallback */ }
+    }
+    copy(referralLink, 'link')
+  }
 
-                <TabsContent value="create">
-                    <div className="space-y-6">
-                        {/* Parent Referral Details */}
-                        {ibConfig?.parentDetails && (
-                            <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                                        <Crown className="h-5 w-5" />
-                                        Your Referrer Details
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <Label className="text-sm font-medium text-blue-700 dark:text-blue-300">Referrer Name</Label>
-                                            <div className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-                                                {ibConfig.parentDetails.name}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <Label className="text-sm font-medium text-blue-700 dark:text-blue-300">Referrer Email</Label>
-                                            <div className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-                                                {ibConfig.parentDetails.email}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <Label className="text-sm font-medium text-blue-700 dark:text-blue-300">Referrer Code</Label>
-                                            <div className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-                                                {ibConfig.parentDetails.referralCode}
-                                            </div>
-                                        </div>
-                                        {/* <div>
-                                            <Label className="text-sm font-medium text-blue-700 dark:text-blue-300">Your Level</Label>
-                                            <Badge variant="outline" className="text-blue-700 border-blue-300">
-                                                Level {ibConfig.level}
-                                            </Badge>
-                                        </div> */}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
+  const hasCode = ibConfig?.referralCode
 
-                        {/* Main Partner Account Card */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-2xl font-bold text-center flex items-center justify-center gap-2">
-                                    <Users className="h-6 w-6" />
-                                    Create Partner Account
-                                </CardTitle>
-                                <CardDescription className="text-center">
-                                    {ibConfig && ibConfig.referralCode
-                                        ? 'Manage your referral codes and start earning commissions'
-                                        : 'Generate your referral code and start earning commissions'
-                                    }
-                                </CardDescription>
-                            </CardHeader>
+  return (
+    <div className="space-y-6 pb-8">
 
-                            <CardContent>
-                                {shouldShowCreateButton() ? (
-                                    <div className="flex flex-col items-center space-y-4">
-                                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                                            <TrendingUp className="h-8 w-8 text-white" />
-                                        </div>
-
-                                        {ibConfig && !ibConfig.referralCode ? (
-                                            <>
-                                                <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/20">
-                                                    <AlertCircle className="h-4 w-4 text-orange-600" />
-                                                    <AlertTitle className="text-orange-800 dark:text-orange-200">
-                                                        Ready to Become an IB?
-                                                    </AlertTitle>
-                                                    <AlertDescription className="text-orange-700 dark:text-orange-300">
-                                                        Create your referral code to start earning commissions on referred accounts.
-                                                    </AlertDescription>
-                                                </Alert>
-                                                <p className="text-center text-muted-foreground">
-                                                    Join our Introducing Broker program and unlock a powerful way to earn from your network.
-                                                </p>
-                                            </>
-                                        ) : (
-                                            <p className="text-center text-muted-foreground">
-                                                Create your referral code to start earning commissions on referred accounts.
-                                            </p>
-                                        )}
-
-                                        <Button
-                                            onClick={handleCreateReferralCode}
-                                            disabled={loading}
-                                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                                        >
-                                            {loading ? 'Creating...' :
-                                                ibConfig && !ibConfig.referralCode ? 'Generate Referral Code' : 'Create Referral Code'}
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-6">
-                                        {/* Status Alert */}
-                                        {ibConfig && ibConfig.status === 'pending' && (
-                                            <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
-                                                <AlertTitle className="text-yellow-800 dark:text-yellow-200">
-                                                    Account Pending Activation
-                                                </AlertTitle>
-                                                <AlertDescription className="text-yellow-700 dark:text-yellow-300">
-                                                    Your IB account is pending activation. Contact support to activate your account.
-                                                </AlertDescription>
-                                            </Alert>
-                                        )}
-
-                                        {/* Affiliate ID */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="affiliate-id" className="flex items-center gap-2">
-                                                <Crown className="h-4 w-4" />
-                                                Affiliate ID:
-                                            </Label>
-                                            <div className="flex items-center space-x-2">
-                                                <Input
-                                                    id="affiliate-id"
-                                                    value={affiliateId}
-                                                    readOnly
-                                                    className="font-bold text-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20"
-                                                />
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={() => ibConfig && ibConfig.referralCode && handleCopyToClipboard(ibConfig.referralCode, 'Referral code')}
-                                                >
-                                                    <Copy className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        {/* Referral Link */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="referral-link" className="flex items-center gap-2">
-                                                <Share2 className="h-4 w-4" />
-                                                Your Referral Link:
-                                            </Label>
-                                            <div className="flex items-center space-x-2">
-                                                <Input
-                                                    id="referral-link"
-                                                    value={referralLink}
-                                                    readOnly
-                                                    className="font-medium"
-                                                />
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={() => handleCopyToClipboard(referralLink, 'Referral link')}
-                                                >
-                                                    <Copy className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={handleShareLink}
-                                                >
-                                                    <Share2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        {/* Level and Status Info */}
-                                        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
-                                            {/* <div className="text-center">
-                                                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                                                    Level {ibConfig ? ibConfig.level : ''}
-                                                </div>
-                                                <div className="text-sm text-muted-foreground">Your Network Level</div>
-                                            </div> */}
-                                            <div className="text-center justify-center">
-                                                <Badge
-                                                    variant={ibConfig && ibConfig.status === 'active' ? 'default' : 'secondary'}
-                                                    className="text-lg px-4 py-2"
-                                                >
-                                                    {ibConfig ? ibConfig.status.toUpperCase() : ''}
-                                                </Badge>
-                                                <div className="text-sm text-muted-foreground mt-1">Account Status</div>
-                                            </div>
-                                        </div>
-
-                                        <Alert>
-                                            <AlertTitle>💡 Tip</AlertTitle>
-                                            <AlertDescription>
-                                                Share this link with others. When they sign up, they'll automatically be added to your network and you'll start earning commissions from their trades.
-                                            </AlertDescription>
-                                        </Alert>
-                                    </div>
-                                )}
-                            </CardContent>
-
-                            {/* {ibConfig && ibConfig.referralCode && (
-                                <CardFooter className="flex justify-center gap-4">
-                                    <Button
-                                        onClick={() => setActiveTab("dashboard")}
-                                        variant="outline"
-                                    >
-                                        Go to IB Dashboard
-                                    </Button>
-                                    <Button
-                                        onClick={() => setActiveTab("commissions")}
-                                        className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                                    >
-                                        View Trade Commissions
-                                    </Button>
-                                </CardFooter>
-                            )} */}
-                        </Card>
-                    </div>
-                </TabsContent>
-
-                {/* <TabsContent value="dashboard">
-                    <IBDashboard />
-                </TabsContent>
-
-                <TabsContent value="commissions">
-                    <TradeCommission />
-                </TabsContent> */}
-            </Tabs>
+      {/* ── Hero ───────────────────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-3xl p-8 md:p-10"
+        style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.18) 0%, rgba(139,92,246,0.12) 50%, rgba(16,185,129,0.08) 100%)', border: '1px solid rgba(99,102,241,0.25)' }}>
+        <div className="absolute top-0 right-0 w-80 h-80 rounded-full opacity-8 translate-x-24 -translate-y-24"
+          style={{ background: 'radial-gradient(circle, #8b5cf6, transparent)' }} />
+        <div className="relative z-10 max-w-xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-4"
+            style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+            <Crown className="w-3.5 h-3.5" /> IB Partner Program
+          </div>
+          <h1 className="text-3xl md:text-4xl font-black mb-3 leading-tight"
+            style={{ color: 'var(--theme-text-primary)' }}>
+            Become an{' '}
+            <span style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              IB Partner
+            </span>
+          </h1>
+          <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>
+            Join our Introducing Broker program and start earning commission on every trade from clients you bring in.
+          </p>
         </div>
-    );
-};
+      </motion.div>
 
-export default CreatePartnerAccount;
+      <div className="grid lg:grid-cols-5 gap-6">
+
+        {/* ── Left: Main Action Card ─────────────────────────────────────── */}
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}
+          className="lg:col-span-3 rounded-2xl p-6"
+          style={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+
+          {/* Referrer info */}
+          {ibConfig?.parentDetails && (
+            <div className="flex items-start gap-3 p-4 rounded-xl mb-5"
+              style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)' }}>
+              <Crown className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-indigo-400 mb-1">Referred by</p>
+                <p className="text-xs font-semibold" style={{ color: 'var(--theme-text-primary)' }}>{ibConfig.parentDetails.name}</p>
+                <p className="text-[10px]" style={{ color: 'var(--theme-text-muted)' }}>{ibConfig.parentDetails.email}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 mb-5">
+            <div className="p-2 rounded-xl" style={{ background: 'rgba(99,102,241,0.12)' }}>
+              <Users className="w-4 h-4 text-indigo-400" />
+            </div>
+            <h2 className="text-sm font-bold" style={{ color: 'var(--theme-text-primary)' }}>
+              {hasCode ? 'Your Partner Details' : 'Activate Partner Account'}
+            </h2>
+          </div>
+
+          {!hasCode ? (
+            <div className="text-center py-8">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5"
+                style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))' }}>
+                <TrendingUp className="w-10 h-10 text-indigo-400" />
+              </div>
+              <p className="text-sm font-medium mb-1.5" style={{ color: 'var(--theme-text-primary)' }}>
+                Ready to start earning?
+              </p>
+              <p className="text-xs mb-6" style={{ color: 'var(--theme-text-muted)' }}>
+                Generate your unique referral code and start building your network today.
+              </p>
+              <motion.button whileHover={{ scale: 1.02, boxShadow: '0 8px 32px rgba(99,102,241,0.35)' }} whileTap={{ scale: 0.97 }}
+                onClick={handleCreate} disabled={loading}
+                className="px-8 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 inline-flex items-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                {loading ? 'Generating…' : <><Zap className="w-4 h-4" /> Activate Partner Account</>}
+              </motion.button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Status */}
+              {ibConfig?.status === 'pending' && (
+                <div className="flex items-start gap-3 p-3 rounded-xl"
+                  style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                  <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-amber-400">Account Pending</p>
+                    <p className="text-[11px]" style={{ color: 'var(--theme-text-muted)' }}>Contact support to activate your IB account.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Status badge */}
+              <div className="flex items-center justify-between p-3 rounded-xl"
+                style={{ background: 'var(--theme-border)' }}>
+                <span className="text-xs font-medium" style={{ color: 'var(--theme-text-muted)' }}>Account Status</span>
+                <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{
+                    background: ibConfig?.status === 'active' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
+                    color: ibConfig?.status === 'active' ? '#10b981' : '#f59e0b',
+                  }}>
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse"
+                    style={{ background: ibConfig?.status === 'active' ? '#10b981' : '#f59e0b' }} />
+                  {(ibConfig?.status || '').toUpperCase()}
+                </span>
+              </div>
+
+              {/* Affiliate ID */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider mb-2 block" style={{ color: 'var(--theme-text-muted)' }}>
+                  Affiliate ID
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 px-3 py-2.5 rounded-xl font-mono font-bold text-sm"
+                    style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8' }}>
+                    {affiliateId}
+                  </div>
+                  <motion.button whileTap={{ scale: 0.93 }}
+                    onClick={() => copy(ibConfig?.referralCode || '', 'code')}
+                    className="p-2.5 rounded-xl transition-all"
+                    style={{ background: copied === 'code' ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.12)', color: copied === 'code' ? '#10b981' : '#6366f1' }}>
+                    {copied === 'code' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Referral Link */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider mb-2 block" style={{ color: 'var(--theme-text-muted)' }}>
+                  Referral Link
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 px-3 py-2.5 rounded-xl text-xs font-mono truncate"
+                    style={{ background: 'var(--theme-border)', color: 'var(--theme-text-muted)' }}>
+                    {referralLink}
+                  </div>
+                  <motion.button whileTap={{ scale: 0.93 }}
+                    onClick={() => copy(referralLink, 'link')}
+                    className="p-2.5 rounded-xl transition-all flex-shrink-0"
+                    style={{ background: copied === 'link' ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.12)', color: copied === 'link' ? '#10b981' : '#6366f1' }}>
+                    {copied === 'link' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </motion.button>
+                  <motion.button whileTap={{ scale: 0.93 }}
+                    onClick={handleShare}
+                    className="p-2.5 rounded-xl transition-all flex-shrink-0"
+                    style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
+                    <Share2 className="w-4 h-4" />
+                  </motion.button>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-3 rounded-xl"
+                style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
+                <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
+                  Share this link — when people sign up through it, they'll join your network automatically.
+                </p>
+              </div>
+            </div>
+          )}
+        </motion.div>
+
+        {/* ── Right: Benefits ───────────────────────────────────────────── */}
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}
+          className="lg:col-span-2 space-y-3">
+          <h3 className="text-sm font-bold" style={{ color: 'var(--theme-text-primary)' }}>Partner Benefits</h3>
+          {benefits.map((b, idx) => (
+            <motion.div key={b.title}
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 + idx * 0.07 }}
+              className="flex items-start gap-3 p-4 rounded-2xl"
+              style={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: `${b.color}18` }}>
+                <b.icon className="w-4 h-4" style={{ color: b.color }} />
+              </div>
+              <div>
+                <p className="text-xs font-bold mb-0.5" style={{ color: 'var(--theme-text-primary)' }}>{b.title}</p>
+                <p className="text-[11px] leading-relaxed" style={{ color: 'var(--theme-text-muted)' }}>{b.desc}</p>
+              </div>
+            </motion.div>
+          ))}
+
+          {hasCode && (
+            <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+              whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/client/partner/dashboard')}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+              View IB Dashboard <ArrowRight className="w-4 h-4" />
+            </motion.button>
+          )}
+        </motion.div>
+      </div>
+    </div>
+  )
+}
+
+export default CreatePartnerAccount
