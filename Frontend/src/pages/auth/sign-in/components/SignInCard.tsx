@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import ForgotPassword from './ForgotPassword';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3210';
 
 const loginSchema = z.object({
     email: z.string().email('Please enter a valid email address'),

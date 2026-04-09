@@ -61,6 +61,7 @@ import AgentRegistration from './pages/admin/agent/AgentRegistration';
 import SuperadminLayout from './pages/superAdmin/layout/Layout';
 import AdminRegistration from './pages/superAdmin/AdminRegistration';
 import SuperadminConfigurationPage from './pages/superAdmin/configure/ConfigurePage';
+import ThemeSettingsPage from './pages/superAdmin/ThemeSettingsPage';
 import AgentLayout from './pages/agent/layout/Layout';
 import CopyPage from './pages/admin/copy/CopyPage';
 
@@ -454,6 +455,11 @@ const routes: RouteObject[] = [
           {
             path: 'admin-registration',
             element: <AdminRegistration />
+          },
+          // Theme Settings
+          {
+            path: 'theme-settings',
+            element: <ThemeSettingsPage />
           }
         ]
       }

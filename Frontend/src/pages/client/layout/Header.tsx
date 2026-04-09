@@ -1,28 +1,13 @@
-// Frontend/src/pages/client/layout/Header.tsx
-
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
-// import { useTheme } from "@/context/ThemeContext"
+import { useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
-// import { useNotifications } from "@/context/NotificationContext"
 import {
-  Menu,
-  // Moon,
-  // Sun,
-  // Bell,
-  User,
-  Search,
-  // Settings,
-  LogOut,
-  Shield,
-  // Clock,
-  ChevronDown,
-  X,
-  Mail,
+  Menu, Search, LogOut, Shield, ChevronDown, X, User, Bell, Clock,
+  Home, ArrowDownCircle, ArrowUpCircle, ArrowRightLeft, History,
+  PlusCircle, CreditCard, Trophy, Monitor, UserPlus, Link2, DollarSign,
 } from "lucide-react"
-// import NotificationDropdown from "@/components/notifications/NotificationDropdown"
 
 interface HeaderProps {
   toggleSidebar: () => void
@@ -36,369 +21,543 @@ interface UserData {
   email: string
 }
 
-export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
-  // const { theme, toggleTheme } = useTheme()
-  const { user, logout, activeRole } = useAuth()
-  // const {
-  //   notifications,
-  //   unreadCount,
-  //   markAsRead,
-  //   markAllAsRead,
-  //   deleteNotification,
-  //   loading,
-  //   isConnected
-  // } = useNotifications()
-  const navigate = useNavigate()
+const PAGE_TITLES: Record<string, string> = {
+  "/client/dashboard": "Dashboard",
+  "/client/financial/deposit": "Deposit",
+  "/client/financial/withdrawal": "Withdrawal",
+  "/client/financial/transfer": "Transfer",
+  "/client/financial/history": "Transaction History",
+  "/client/account/new": "Open New Account",
+  "/client/account/list": "Account List",
+  "/client/account/trading-contest": "Trading Contest",
+  "/client/trading-platforms": "Trading Platforms",
+  "/client/refer-friend": "Refer A Friend",
+  "/client/partner/new-account": "Create IB Account",
+  "/client/partner/dashboard": "Partner Dashboard",
+  "/client/partner/ib-commission": "IB Commission",
+  "/client/partner/ib-withdrawal": "IB Withdrawal",
+  "/client/profile/my-profile": "My Profile",
+}
 
-  // const [showNotifications, setShowNotifications] = useState(false)
+interface SearchPage {
+  label: string
+  path: string
+  section: string
+  icon: React.ElementType
+}
+
+const PAGES: SearchPage[] = [
+  { label: "Dashboard",           path: "/client/dashboard",               section: "Main",      icon: Home            },
+  { label: "Deposit",             path: "/client/financial/deposit",        section: "Financial", icon: ArrowDownCircle },
+  { label: "Withdrawal",          path: "/client/financial/withdrawal",     section: "Financial", icon: ArrowUpCircle   },
+  { label: "Transfer",            path: "/client/financial/transfer",       section: "Financial", icon: ArrowRightLeft  },
+  { label: "Transaction History", path: "/client/financial/history",        section: "Financial", icon: History         },
+  { label: "Open New Account",    path: "/client/account/new",             section: "Account",   icon: PlusCircle      },
+  { label: "Account List",        path: "/client/account/list",            section: "Account",   icon: CreditCard      },
+  { label: "Trading Contest",     path: "/client/account/trading-contest", section: "Trading",   icon: Trophy          },
+  { label: "Trading Platforms",   path: "/client/trading-platforms",       section: "Trading",   icon: Monitor         },
+  { label: "Refer A Friend",      path: "/client/refer-friend",            section: "Growth",    icon: UserPlus        },
+  { label: "Create IB Account",   path: "/client/partner/new-account",    section: "Partner",   icon: Link2           },
+  { label: "Partner Dashboard",   path: "/client/partner/dashboard",       section: "Partner",   icon: Home            },
+  { label: "IB Commission",       path: "/client/partner/ib-commission",   section: "Partner",   icon: DollarSign      },
+  { label: "IB Withdrawal",       path: "/client/partner/ib-withdrawal",   section: "Partner",   icon: ArrowUpCircle   },
+  { label: "My Profile",          path: "/client/profile/my-profile",      section: "Account",   icon: User            },
+]
+
+export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
+  const { user, logout, activeRole } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [currentTime, setCurrentTime] = useState(new Date())
   const [userData, setUserData] = useState<UserData>({
     firstname: "User",
-    lastname: "Title",
-    email: "user@example.com"
+    lastname: "",
+    email: "user@example.com",
   })
 
-  const notificationRef = useRef<HTMLDivElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const searchContainerRef = useRef<HTMLDivElement>(null)
 
-  // Update user data when auth context changes
+  const pageTitle = PAGE_TITLES[location.pathname] ?? "Client Portal"
+
+  const searchResults = searchQuery.trim()
+    ? PAGES.filter((p) => {
+        const q = searchQuery.toLowerCase()
+        return p.label.toLowerCase().includes(q) || p.section.toLowerCase().includes(q)
+      })
+    : []
+
   useEffect(() => {
     if (user) {
       setUserData({
         firstname: user.firstname || "User",
-        lastname: user.lastname || "Title",
-        email: user.email || "user@example.com"
+        lastname: user.lastname || "",
+        email: user.email || "user@example.com",
       })
     }
   }, [user])
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        // setShowNotifications(false)
-      }
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-        setShowUserMenu(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => clearInterval(timer)
   }, [])
 
-  // Focus search input when opened
   useEffect(() => {
-    if (showSearch && searchRef.current) {
-      searchRef.current.focus()
+    setSelectedIndex(-1)
+  }, [searchQuery])
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node))
+        setShowUserMenu(false)
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSearch(false)
+        setSearchQuery("")
+        setSelectedIndex(-1)
+      }
     }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    if (showSearch && searchRef.current) searchRef.current.focus()
   }, [showSearch])
 
-  // const toggleNotifications = () => {
-  //   setShowNotifications(!showNotifications)
-  //   setShowUserMenu(false)
-  //   setShowSearch(false)
-  // }
-
-  const toggleUserMenu = () => {
-    setShowUserMenu(!showUserMenu)
-    // setShowNotifications(false)
+  const handleResultClick = (path: string) => {
+    navigate(path)
     setShowSearch(false)
-  }
-
-  const toggleSearch = () => {
-    setShowSearch(!showSearch)
-    // setShowNotifications(false)
-    setShowUserMenu(false)
-    if (!showSearch) {
-      setSearchQuery("")
-    }
-  }
-
-  const handleLogout = () => {
-    if (activeRole) {
-      logout(activeRole, navigate)
-    } else {
-      logout(undefined, navigate)
-    }
-    setShowUserMenu(false)
-  }
-
-  const handleNavigateToProfile = () => {
-    navigate('/client/profile/my-profile')
-    setShowUserMenu(false)
+    setSearchQuery("")
+    setSelectedIndex(-1)
   }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (searchQuery.trim()) {
-      // Implement search functionality
-      console.log('Searching for:', searchQuery)
-      setShowSearch(false)
-      setSearchQuery("")
+    if (searchResults.length > 0) {
+      const target = selectedIndex >= 0 ? searchResults[selectedIndex] : searchResults[0]
+      handleResultClick(target.path)
     }
   }
 
-  const getInitials = (firstname: string, lastname: string) => {
-    return `${firstname.charAt(0)}${lastname.charAt(0)}`.toUpperCase()
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      setSelectedIndex((i) => Math.min(i + 1, searchResults.length - 1))
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      setSelectedIndex((i) => Math.max(i - 1, 0))
+    } else if (e.key === "Escape") {
+      setShowSearch(false)
+      setSearchQuery("")
+      setSelectedIndex(-1)
+    }
   }
 
+  const handleLogout = () => {
+    logout(activeRole ?? undefined, navigate)
+    setShowUserMenu(false)
+  }
+
+  const getInitials = () =>
+    `${userData.firstname.charAt(0)}${userData.lastname.charAt(0)}`.toUpperCase()
+
+  const formatTime = (d: Date) =>
+    d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+
+  const formatDate = (d: Date) =>
+    d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+
   return (
-    <header className="sticky top-0 z-30 h-16 backdrop-blur-xl">
-      {/* Animated Background Layer */}
-      {/* <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-800 dark:to-indigo-900"> */}
-      {/* Sidebar-specific animated blobs */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-8 left-8 w-28 h-28 bg-blue-300/60 rounded-full mix-blend-multiply filter blur-xl animate-blob dark:bg-blue-600/30"></div>
-        <div className="absolute top-1/3 right-6 w-24 h-24 bg-purple-300/50 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000 dark:bg-purple-600/25"></div>
-        <div className="absolute bottom-1/3 left-6 w-26 h-26 bg-indigo-300/55 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000 dark:bg-indigo-600/30"></div>
-        <div className="absolute bottom-12 right-10 w-20 h-20 bg-cyan-300/45 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-1000 dark:bg-cyan-600/20"></div>
-        <div className="absolute top-2/3 left-1/3 w-18 h-18 bg-teal-300/40 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-3000 dark:bg-teal-600/25"></div>
-        <div className="absolute top-1/2 right-8 w-16 h-16 bg-pink-300/35 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-5000 dark:bg-pink-600/20"></div>
-      </div>
-      {/* </div> */}
+    <header
+      className="sticky top-0 z-30 flex h-16 items-center justify-between px-4 backdrop-blur-xl"
+      style={{
+        backgroundColor: "color-mix(in srgb, var(--theme-bg-sidebar) 95%, transparent)",
+        borderBottom: "1px solid var(--theme-border)",
+      }}
+    >
+      {/* ─── Left ─── */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={toggleSidebar}
+          className="rounded-lg p-2 transition-all duration-200 active:scale-95"
+          style={{ color: "var(--theme-text-muted)" }}
+          onMouseEnter={(e) => {
+            ;(e.currentTarget as HTMLElement).style.backgroundColor = "color-mix(in srgb, var(--theme-primary) 10%, transparent)"
+            ;(e.currentTarget as HTMLElement).style.color = "var(--theme-primary)"
+          }}
+          onMouseLeave={(e) => {
+            ;(e.currentTarget as HTMLElement).style.backgroundColor = ""
+            ;(e.currentTarget as HTMLElement).style.color = "var(--theme-text-muted)"
+          }}
+          aria-label="Toggle sidebar"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
 
-      <div className="flex h-full items-center justify-between pr-4 pl-2 ">
-        {/* Left Section */}
-        <div className="flex items-center space-x-4 ">
-          <button
-            onClick={toggleSidebar}
-            className="group relative rounded-lg p-2 outline-none border-none text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground active:scale-95 "
-            aria-label="Toggle sidebar"
-          >
-            <Menu className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
-          </button>
-
-          {!isMobile && (
-            <div className="hidden md:block">
-              {/* <h1 className="text-xl font-semibold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">
-                Test CRM
-              </h1> */}
-            </div>
-          )}
-        </div>
-
-        {/* Center Section - Search */}
-        <div className="flex-1 max-w-md mx-4 hidden md:block">
-          {showSearch ? (
-            <form onSubmit={handleSearch} className="relative">
-              <input
-                ref={searchRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search transactions, accounts..."
-                className="w-full rounded-lg bg-background/50 backdrop-blur-sm px-4 py-2 pl-10 pr-10 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <button
-                type="button"
-                onClick={toggleSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </form>
-          ) : (
-            <button
-              onClick={toggleSearch}
-              className="flex w-full items-center rounded-lg border border-border/50 bg-muted/30 px-4 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:border-border"
-            >
-              <Search className="mr-2 h-4 w-4" />
-              <span>Search...</span>
-              <kbd className="ml-auto hidden sm:inline-block rounded border border-border px-2 py-1 text-xs font-mono bg-background/50">
-                ⌘K
-              </kbd>
-            </button>
-          )}
-        </div>
-
-        {/* Right Section */}
-        <div className="flex items-center space-x-2">
-          {/* Search Button (Mobile) */}
-          <button
-            onClick={toggleSearch}
-            className="md:hidden rounded-lg p-2 text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground active:scale-95"
-            aria-label="Search"
-          >
-            <Search className="h-5 w-5 " />
-          </button>
-
-
-          {/* User Data Display - Desktop */}
-          {!isMobile && (
-            <div className="hidden md:block">
-              <div className="transparent rounded-lg">
-                <div className="flex flex-col space-y-0.5">
-                  {/* Name */}
-                  <div className="flex items-center space-x-2">
-                    <User className="h-4 w-4 text-blue-600" />
-                    <span className="font-medium text-gray-700 text-xs">
-                      {userData.firstname.charAt(0).toUpperCase() + userData.firstname.slice(1)} {userData.lastname.charAt(0).toUpperCase() + userData.lastname.slice(1)}
-                    </span>
-                  </div>
-
-                  {/* Email */}
-                  <div className="flex items-center space-x-2">
-                    <Mail className="h-4 w-4 text-blue-600" />
-                    <span className="text-gray-600 text-xs">{userData.email}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-
-          {/* Theme Toggle */}
-          {/* <button
-            onClick={toggleTheme}
-            className="group relative rounded-lg p-2 text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground active:scale-95"
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            <div className="relative">
-              {theme === "dark" ? (
-                <Sun className="h-5 w-5 transition-transform duration-200 group-hover:rotate-12" />
-              ) : (
-                <Moon className="h-5 w-5 transition-transform duration-200 group-hover:-rotate-12" />
-              )}
-            </div>
-          </button> */}
-
-          {/* Notifications */}
-          {/* <div className="relative" ref={notificationRef}>
-            <button
-              onClick={toggleNotifications}
-              className="group relative rounded-lg p-2 text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground active:scale-95"
-              aria-label="Notifications"
-            >
-              <Bell className={`h-5 w-5 transition-transform duration-200 group-hover:rotate-12 ${!isConnected ? 'text-muted-foreground/50' : ''}`} />
-              {unreadCount > 0 && (
-                <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-xs font-bold text-white items-center justify-center">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                </div>
-              )}
-              {!isConnected && (
-                <div className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-yellow-500" title="Reconnecting..." />
-              )}
-            </button>
-
-            {showNotifications && (
-              <NotificationDropdown
-                notifications={notifications}
-                onClose={() => setShowNotifications(false)}
-                onMarkAsRead={markAsRead}
-                onMarkAllAsRead={markAllAsRead}
-                onDeleteNotification={deleteNotification}
-                loading={loading}
-                unreadCount={unreadCount}
-              />
-            )}
-          </div> */}
-
-          {/* User Menu */}
-          <div className="relative" ref={userMenuRef}>
-            <button
-              onClick={toggleUserMenu}
-              className="group flex items-center space-x-2 rounded-lg p-2 text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground active:scale-95"
-              aria-label="User menu"
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-xs font-semibold text-primary-foreground shadow-lg">
-                {getInitials(userData.firstname, userData.lastname)}
-              </div>
-              {!isMobile && (
-                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
-              )}
-            </button>
-
-            {showUserMenu && (
-              <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-border/50 bg-card/95 backdrop-blur-xl shadow-xl">
-                {/* User Info */}
-                <div className="flex items-center space-x-3 border-b border-border/50 p-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-sm font-semibold text-primary-foreground shadow-lg">
-                    {getInitials(userData.firstname, userData.lastname)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-foreground truncate">
-                      {userData.firstname.charAt(0).toUpperCase() + userData.firstname.slice(1)} {userData.lastname.charAt(0).toUpperCase() + userData.lastname.slice(1)}
-                    </h3>
-                    <p className="text-sm text-muted-foreground truncate">{userData.email}</p>
-                    {activeRole && (
-                      <div className="flex items-center mt-1">
-                        <Shield className="h-3 w-3 mr-1 text-primary" />
-                        <span className="text-xs text-primary font-medium capitalize">{activeRole}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Menu Items */}
-                <div className="p-2">
-                  <button
-                    onClick={handleNavigateToProfile}
-                    className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground"
-                  >
-                    <User className="h-4 w-4" />
-                    <span>My Profile</span>
-                  </button>
-
-                  {/* <button className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground">
-                    <Settings className="h-4 w-4" />
-                    <span>Settings</span>
-                  </button>
-
-                  <button className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span>Activity Log</span>
-                  </button> */}
-
-                  <div className="border-t border-border/50" />
-
-                  <button
-                    onClick={handleLogout}
-                    className="flex w-full items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-destructive transition-all duration-200 hover:bg-destructive/10"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span>Logout</span>
-                  </button>
-                </div>
-              </div>
-            )}
+        {!isMobile && (
+          <div className="hidden md:flex items-center gap-2">
+            <span className="text-xs" style={{ color: "var(--theme-text-disabled)" }}>Client Portal</span>
+            <span style={{ color: "var(--theme-border)" }}>/</span>
+            <span className="text-sm font-semibold" style={{ color: "var(--theme-text-primary)" }}>
+              {pageTitle}
+            </span>
           </div>
+        )}
+      </div>
+
+      {/* ─── Center — Search ─── */}
+      <div ref={searchContainerRef} className="relative flex-1 max-w-sm mx-4 hidden md:block">
+        {showSearch ? (
+          <form onSubmit={handleSearch} className="relative">
+            <Search
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+              style={{ color: "var(--theme-text-disabled)" }}
+            />
+            <input
+              ref={searchRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Search pages…"
+              className="w-full rounded-lg px-4 py-2 pl-9 pr-9 text-sm outline-none"
+              style={{
+                backgroundColor: "var(--theme-bg-card)",
+                border: "1px solid var(--theme-primary)",
+                color: "var(--theme-text-primary)",
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => { setShowSearch(false); setSearchQuery(""); setSelectedIndex(-1) }}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+              style={{ color: "var(--theme-text-muted)" }}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </form>
+        ) : (
+          <button
+            onClick={() => setShowSearch(true)}
+            className="flex w-full items-center rounded-lg px-4 py-2 text-sm transition-all duration-200"
+            style={{
+              backgroundColor: "var(--theme-bg-card)",
+              border: "1px solid var(--theme-border)",
+              color: "var(--theme-text-disabled)",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--theme-primary)" }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--theme-border)" }}
+          >
+            <Search className="mr-2 h-4 w-4" />
+            <span>Search pages…</span>
+            <kbd
+              className="ml-auto rounded px-1.5 py-0.5 text-xs font-mono"
+              style={{ border: "1px solid var(--theme-border)", color: "var(--theme-text-disabled)" }}
+            >
+              ⌘K
+            </kbd>
+          </button>
+        )}
+
+        {/* ─── Search Results Dropdown ─── */}
+        {showSearch && searchResults.length > 0 && (
+          <div
+            className="absolute top-full left-0 right-0 mt-1 rounded-xl shadow-2xl z-50 overflow-hidden"
+            style={{ backgroundColor: "var(--theme-bg-card)", border: "1px solid var(--theme-border)" }}
+          >
+            <div className="max-h-72 overflow-y-auto">
+              {searchResults.map((page, idx) => {
+                const Icon = page.icon
+                const isSelected = idx === selectedIndex
+                return (
+                  <button
+                    key={page.path}
+                    onClick={() => handleResultClick(page.path)}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 transition-colors duration-100"
+                    style={{
+                      backgroundColor: isSelected
+                        ? "color-mix(in srgb, var(--theme-primary) 12%, transparent)"
+                        : "transparent",
+                      borderLeft: isSelected ? "3px solid var(--theme-primary)" : "3px solid transparent",
+                    }}
+                    onMouseEnter={() => setSelectedIndex(idx)}
+                  >
+                    <div
+                      className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: "color-mix(in srgb, var(--theme-primary) 12%, transparent)" }}
+                    >
+                      <Icon className="h-3.5 w-3.5" style={{ color: "var(--theme-primary)" }} />
+                    </div>
+                    <div className="min-w-0 flex-1 text-left">
+                      <p
+                        className="text-sm font-medium truncate"
+                        style={{ color: isSelected ? "var(--theme-primary)" : "var(--theme-text-primary)" }}
+                      >
+                        {page.label}
+                      </p>
+                    </div>
+                    <span
+                      className="text-[10px] rounded-full px-2 py-0.5 flex-shrink-0 font-medium"
+                      style={{
+                        color: "var(--theme-text-muted)",
+                        backgroundColor: "color-mix(in srgb, var(--theme-text-muted) 10%, transparent)",
+                      }}
+                    >
+                      {page.section}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <div
+              className="px-4 py-1.5 flex items-center gap-2"
+              style={{ borderTop: "1px solid var(--theme-border)" }}
+            >
+              <span className="text-[10px]" style={{ color: "var(--theme-text-disabled)" }}>
+                {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}
+              </span>
+              <span className="text-[10px]" style={{ color: "var(--theme-text-disabled)" }}>·</span>
+              <span className="text-[10px]" style={{ color: "var(--theme-text-disabled)" }}>
+                ↑↓ navigate · Enter select · Esc close
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* No results */}
+        {showSearch && searchQuery.trim() && searchResults.length === 0 && (
+          <div
+            className="absolute top-full left-0 right-0 mt-1 rounded-xl shadow-2xl z-50 px-4 py-6 text-center"
+            style={{ backgroundColor: "var(--theme-bg-card)", border: "1px solid var(--theme-border)" }}
+          >
+            <Search className="h-6 w-6 mx-auto mb-2" style={{ color: "var(--theme-text-disabled)" }} />
+            <p className="text-sm" style={{ color: "var(--theme-text-muted)" }}>No pages found for "{searchQuery}"</p>
+          </div>
+        )}
+      </div>
+
+      {/* ─── Right ─── */}
+      <div className="flex items-center gap-2">
+        {/* Mobile search */}
+        <button
+          onClick={() => setShowSearch(true)}
+          className="md:hidden rounded-lg p-2 transition-colors"
+          style={{ color: "var(--theme-text-muted)" }}
+          aria-label="Search"
+        >
+          <Search className="h-5 w-5" />
+        </button>
+
+        {/* Live Clock */}
+        {!isMobile && (
+          <div
+            className="hidden lg:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs"
+            style={{
+              backgroundColor: "var(--theme-bg-card)",
+              border: "1px solid var(--theme-border)",
+              color: "var(--theme-text-muted)",
+            }}
+          >
+            <Clock className="h-3.5 w-3.5" style={{ color: "var(--theme-primary)" }} />
+            <span className="font-mono font-medium" style={{ color: "var(--theme-text-primary)" }}>
+              {formatTime(currentTime)}
+            </span>
+            <span>{formatDate(currentTime)}</span>
+          </div>
+        )}
+
+        {/* Notifications placeholder */}
+        <button
+          className="relative rounded-lg p-2 transition-all duration-200"
+          style={{ color: "var(--theme-text-muted)" }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--theme-primary)" }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--theme-text-muted)" }}
+          aria-label="Notifications"
+        >
+          <Bell className="h-5 w-5" />
+        </button>
+
+        {/* User Menu */}
+        <div className="relative" ref={userMenuRef}>
+          <button
+            onClick={() => setShowUserMenu((v) => !v)}
+            className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-all duration-200 active:scale-95"
+            style={{ color: "var(--theme-text-muted)" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "color-mix(in srgb, var(--theme-primary) 8%, transparent)" }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "" }}
+            aria-label="User menu"
+          >
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white shadow-md"
+              style={{ background: "linear-gradient(135deg, var(--theme-primary), var(--theme-primary-hover))" }}
+            >
+              {getInitials()}
+            </div>
+            {!isMobile && (
+              <>
+                <div className="hidden md:block text-left">
+                  <p className="text-xs font-semibold leading-tight" style={{ color: "var(--theme-text-primary)" }}>
+                    {userData.firstname} {userData.lastname}
+                  </p>
+                  <p className="text-[10px]" style={{ color: "var(--theme-text-disabled)" }}>Client</p>
+                </div>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform duration-200 ${showUserMenu ? "rotate-180" : ""}`}
+                />
+              </>
+            )}
+          </button>
+
+          {showUserMenu && (
+            <div
+              className="absolute right-0 top-full mt-2 w-72 rounded-xl shadow-2xl overflow-hidden z-50"
+              style={{
+                backgroundColor: "var(--theme-bg-card)",
+                border: "1px solid var(--theme-border)",
+              }}
+            >
+              <div className="flex items-center gap-3 p-4" style={{ borderBottom: "1px solid var(--theme-border)" }}>
+                <div
+                  className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white shadow-lg flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, var(--theme-primary), var(--theme-primary-hover))" }}
+                >
+                  {getInitials()}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-semibold truncate" style={{ color: "var(--theme-text-primary)" }}>
+                    {userData.firstname} {userData.lastname}
+                  </h3>
+                  <p className="text-xs truncate" style={{ color: "var(--theme-text-muted)" }}>{userData.email}</p>
+                  {activeRole && (
+                    <div className="mt-1 flex items-center gap-1">
+                      <Shield className="h-3 w-3" style={{ color: "var(--theme-primary)" }} />
+                      <span className="text-xs font-medium capitalize" style={{ color: "var(--theme-primary)" }}>
+                        {activeRole}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="p-2">
+                <MenuItem icon={User} label="My Profile" onClick={() => { navigate("/client/profile/my-profile"); setShowUserMenu(false) }} />
+                <div className="my-1 h-px" style={{ background: "var(--theme-border)" }} />
+                <MenuItem icon={LogOut} label="Logout" onClick={handleLogout} danger />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Mobile Search Overlay */}
+      {/* ─── Mobile Search Overlay ─── */}
       {showSearch && isMobile && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm md:hidden">
-          <div className="flex h-16 items-center px-4">
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-start pt-4 px-4 backdrop-blur-sm"
+          style={{ backgroundColor: "color-mix(in srgb, var(--theme-bg-main) 80%, transparent)" }}
+        >
+          <div className="flex w-full gap-3">
             <form onSubmit={handleSearch} className="flex-1">
               <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--theme-text-disabled)" }} />
                 <input
                   ref={searchRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search transactions, accounts..."
-                  className="w-full rounded-lg border border-border bg-background px-4 py-3 pl-10 pr-10 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  onKeyDown={handleKeyDown}
+                  placeholder="Search pages…"
+                  className="w-full rounded-lg px-4 py-3 pl-9 text-sm outline-none"
+                  style={{ backgroundColor: "var(--theme-bg-card)", border: "1px solid var(--theme-primary)", color: "var(--theme-text-primary)" }}
                 />
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               </div>
             </form>
             <button
-              onClick={toggleSearch}
-              className="ml-3 rounded-lg p-2 text-muted-foreground hover:text-foreground"
+              onClick={() => { setShowSearch(false); setSearchQuery(""); setSelectedIndex(-1) }}
+              className="rounded-lg p-2"
+              style={{ color: "var(--theme-text-muted)" }}
             >
               <X className="h-5 w-5" />
             </button>
           </div>
+
+          {/* Mobile results */}
+          {searchResults.length > 0 && (
+            <div
+              className="mt-2 w-full rounded-xl overflow-hidden shadow-2xl"
+              style={{ backgroundColor: "var(--theme-bg-card)", border: "1px solid var(--theme-border)" }}
+            >
+              {searchResults.map((page, idx) => {
+                const Icon = page.icon
+                const isSelected = idx === selectedIndex
+                return (
+                  <button
+                    key={page.path}
+                    onClick={() => handleResultClick(page.path)}
+                    className="flex w-full items-center gap-3 px-4 py-3 transition-colors duration-100"
+                    style={{
+                      backgroundColor: isSelected ? "color-mix(in srgb, var(--theme-primary) 12%, transparent)" : "transparent",
+                      borderLeft: isSelected ? "3px solid var(--theme-primary)" : "3px solid transparent",
+                    }}
+                  >
+                    <div
+                      className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: "color-mix(in srgb, var(--theme-primary) 12%, transparent)" }}
+                    >
+                      <Icon className="h-3.5 w-3.5" style={{ color: "var(--theme-primary)" }} />
+                    </div>
+                    <div className="min-w-0 flex-1 text-left">
+                      <p className="text-sm font-medium truncate" style={{ color: isSelected ? "var(--theme-primary)" : "var(--theme-text-primary)" }}>{page.label}</p>
+                    </div>
+                    <span
+                      className="text-[10px] rounded-full px-2 py-0.5 flex-shrink-0"
+                      style={{ color: "var(--theme-text-muted)", backgroundColor: "color-mix(in srgb, var(--theme-text-muted) 10%, transparent)" }}
+                    >
+                      {page.section}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          {searchQuery.trim() && searchResults.length === 0 && (
+            <div className="mt-2 w-full rounded-xl px-4 py-6 text-center" style={{ backgroundColor: "var(--theme-bg-card)", border: "1px solid var(--theme-border)" }}>
+              <p className="text-sm" style={{ color: "var(--theme-text-muted)" }}>No pages found</p>
+            </div>
+          )}
         </div>
       )}
     </header>
+  )
+}
+
+function MenuItem({
+  icon: Icon, label, onClick, danger,
+}: {
+  icon: React.ElementType; label: string; onClick: () => void; danger?: boolean
+}) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150"
+      style={{
+        color: danger ? "var(--theme-danger)" : "var(--theme-text-muted)",
+        backgroundColor: hovered
+          ? danger
+            ? "color-mix(in srgb, var(--theme-danger) 10%, transparent)"
+            : "color-mix(in srgb, var(--theme-primary) 8%, transparent)"
+          : "transparent",
+      }}
+    >
+      <Icon className="h-4 w-4" />
+      <span>{label}</span>
+    </button>
   )
 }

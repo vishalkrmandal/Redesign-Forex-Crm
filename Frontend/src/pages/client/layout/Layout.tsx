@@ -168,26 +168,12 @@ export default function Layout() {
         }}
       />
 
-      {/* Main app container with animated background */}
-      <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-100 dark:from-gray-900 dark:via-indigo-900 dark:to-purple-900 overflow-hidden">
-        {/* Animated Background Decoration */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob dark:bg-purple-600 dark:opacity-35"></div>
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000 dark:bg-blue-600 dark:opacity-35"></div>
-          <div className="absolute top-40 left-1/2 transform -translate-x-1/2 w-96 h-96 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000 dark:bg-pink-600 dark:opacity-35"></div>
-
-          {/* Additional decorative blobs for more visual interest */}
-          <div className="absolute top-1/4 right-1/4 w-80 h-80 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-60 animate-blob animation-delay-1000 dark:bg-yellow-600 dark:opacity-25"></div>
-          <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-green-300 rounded-full mix-blend-multiply filter blur-xl opacity-60 animate-blob animation-delay-3000 dark:bg-green-600 dark:opacity-25"></div>
-          <div className="absolute top-3/4 right-1/3 w-60 h-60 bg-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-5000 dark:bg-indigo-600 dark:opacity-30"></div>
-          <div className="absolute bottom-10 right-10 w-40 h-40 bg-cyan-300 rounded-full mix-blend-multiply filter blur-xl opacity-50 animate-blob animation-delay-6000 dark:bg-cyan-600 dark:opacity-25"></div>
-          <div className="absolute top-10 left-10 w-32 h-32 bg-teal-300 rounded-full mix-blend-multiply filter blur-xl opacity-45 animate-blob animation-delay-7000 dark:bg-teal-600 dark:opacity-20"></div>
-        </div>
-
+      {/* Main app container */}
+      <div className="relative min-h-screen overflow-hidden" style={{ backgroundColor: "var(--theme-bg-main)" }}>
         <ImpersonationBanner />
 
-        {/* Main layout container with subtle background */}
-        <div className="relative z-10 flex h-screen bg-white/25 dark:bg-gray-900/25 backdrop-blur-sm">
+        {/* Main layout container */}
+        <div className="relative flex h-screen" style={{ backgroundColor: "var(--theme-bg-main)" }}>
           {/* Mobile Overlay */}
           {isMobile && sidebarOpen && (
             <div
@@ -217,8 +203,8 @@ export default function Layout() {
             />
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto relative bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-gray-500/20 border-t-2 border-l-2 md:rounded-t-lg md:p-2 shadow-lg">
-              <div className="mx-auto p-2 max-w-7xl">
+            <main className="flex-1 overflow-auto" style={{ backgroundColor: "var(--theme-bg-main)" }}>
+              <div className="mx-auto p-4 max-w-7xl">
                 <Outlet />
               </div>
             </main>
