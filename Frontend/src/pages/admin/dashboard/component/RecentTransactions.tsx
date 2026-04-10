@@ -1,274 +1,207 @@
-// Frontend/src/components/admin/dashboard/RecentTransactions.tsx
+// Frontend/src/pages/admin/dashboard/component/RecentTransactions.tsx
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-    ArrowUpDown,
-    TrendingUp,
-    TrendingDown,
-    ArrowRightLeft,
+  ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft,
+  ArrowRight, Calendar, CreditCard, Filter
 } from 'lucide-react';
 
 interface Transaction {
-    id: string;
-    type: string;
-    amount: number;
-    user: {
-        name: string;
-        email: string;
-    };
-    account: string;
-    status: string;
-    date: string;
-    paymentMethod: string;
+  id: string;
+  type: string;
+  amount: number;
+  user: { name: string; email: string };
+  account: string;
+  status: string;
+  date: string;
+  paymentMethod: string;
 }
 
 interface RecentTransactionsProps {
-    transactions: Transaction[];
+  transactions: Transaction[];
 }
 
+const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+  deposit:    { icon: TrendingUp,       color: '#10b981', label: 'Deposit' },
+  withdrawal: { icon: TrendingDown,     color: '#ef4444', label: 'Withdrawal' },
+  transfer:   { icon: ArrowRightLeft,   color: '#6366f1', label: 'Transfer' },
+};
+
+const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> = {
+  approved: { bg: '#10b98115', text: '#10b981', dot: '#10b981' },
+  pending:  { bg: '#f59e0b15', text: '#f59e0b', dot: '#f59e0b' },
+  rejected: { bg: '#ef444415', text: '#ef4444', dot: '#ef4444' },
+};
+
+const fmtCurrency = (v: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(v);
+
+const fmtDate = (s: string) =>
+  new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+const FILTER_TABS = [
+  { key: 'all', label: 'All' },
+  { key: 'deposit', label: 'Deposits' },
+  { key: 'withdrawal', label: 'Withdrawals' },
+  { key: 'transfer', label: 'Transfers' },
+];
+
 const RecentTransactions: React.FC<RecentTransactionsProps> = ({ transactions }) => {
-    const [filter, setFilter] = useState<'all' | 'deposit' | 'withdrawal' | 'transfer'>('all');
-    const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
+  const [filter, setFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
 
-    const getTransactionIcon = (type: string) => {
-        switch (type.toLowerCase()) {
-            case 'deposit':
-                return <TrendingUp className="w-4 h-4 text-green-600" />;
-            case 'withdrawal':
-                return <TrendingDown className="w-4 h-4 text-red-600" />;
-            case 'transfer':
-                return <ArrowRightLeft className="w-4 h-4 text-blue-600" />;
-            default:
-                return <ArrowUpDown className="w-4 h-4 text-gray-600" />;
-        }
-    };
+  const filtered = transactions.filter(t => filter === 'all' || t.type.toLowerCase() === filter);
+  const sorted = [...filtered].sort((a, b) =>
+    sortBy === 'amount' ? b.amount - a.amount : new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
 
-    const getStatusColor = (status: string) => {
-        switch (status.toLowerCase()) {
-            case 'approved':
-                return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
-            case 'pending':
-                return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
-            case 'rejected':
-                return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
-            default:
-                return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
-        }
-    };
+  const totalByType = (type: string) =>
+    transactions.filter(t => t.type.toLowerCase() === type).reduce((s, t) => s + t.amount, 0);
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
-        }).format(amount);
-    };
+  return (
+    <div className="rounded-2xl flex flex-col h-full max-h-[600px]"
+      style={{ backgroundColor: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    const filteredTransactions = transactions.filter(transaction => {
-        if (filter === 'all') return true;
-        return transaction.type.toLowerCase() === filter;
-    });
-
-    const sortedTransactions = [...filteredTransactions].sort((a, b) => {
-        if (sortBy === 'amount') {
-            return b.amount - a.amount;
-        }
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-    });
-
-    return (
-        <div className="bg-card rounded-xl shadow-sm border p-3 sm:p-6 flex flex-col h-full max-h-[600px]">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 flex-shrink-0">
-                <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-0 w-full sm:w-auto">
-                    <div className="p-1.5 sm:p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
-                        <ArrowUpDown className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400" />
-                    </div>
-                    <div className="flex-1 sm:flex-none">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
-                            Recent Transactions
-                        </h3>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                            Latest financial activities
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex flex-col-1 sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-                    <select
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value as any)}
-                        className="px-3 py-2 bg-background w-full rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent border border-gray-200 dark:border-gray-700"
-                    >
-                        <option value="all">All Types</option>
-                        <option value="deposit">Deposits</option>
-                        <option value="withdrawal">Withdrawals</option>
-                        <option value="transfer">Transfers</option>
-                    </select>
-
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as any)}
-                        className="px-3 py-2 rounded-lg w-full bg-background text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent border border-gray-200 dark:border-gray-700"
-                    >
-                        <option value="date">Sort by Date</option>
-                        <option value="amount">Sort by Amount</option>
-                    </select>
-                </div>
+      {/* Header */}
+      <div className="p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--theme-border)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl p-2" style={{ background: 'color-mix(in srgb, #6366f1 15%, transparent)' }}>
+              <ArrowUpDown className="w-4 h-4" style={{ color: '#6366f1' }} />
             </div>
-
-            {/* Scrollable Content Area */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden px-1 -mr-1 sm:pr-2 sm:-mr-2">
-                <div className="space-y-3 sm:space-y-4">
-                    {sortedTransactions.length === 0 ? (
-                        <div className="text-center py-8">
-                            <ArrowUpDown className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                            <p className="text-gray-500 dark:text-gray-400">No transactions found</p>
-                        </div>
-                    ) : (
-                        sortedTransactions.map((transaction) => (
-                            <div
-                                key={transaction.id}
-                                className="hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded-lg transition-colors duration-200 border border-gray-100 dark:border-gray-700"
-                            >
-                                {/* Mobile Layout */}
-                                <div className="block sm:hidden p-3">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="p-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                                                {getTransactionIcon(transaction.type)}
-                                            </div>
-                                            <span className="font-medium text-gray-900 dark:text-white text-sm">
-                                                {transaction.type}
-                                            </span>
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(transaction.status)}`}>
-                                                {transaction.status}
-                                            </span>
-                                        </div>
-                                        <p className={`font-semibold text-sm ${transaction.type.toLowerCase() === 'deposit'
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : transaction.type.toLowerCase() === 'withdrawal'
-                                                ? 'text-red-600 dark:text-red-400'
-                                                : 'text-blue-600 dark:text-blue-400'
-                                            }`}>
-                                            {transaction.type.toLowerCase() === 'withdrawal' ? '-' : '+'}
-                                            {formatCurrency(transaction.amount)}
-                                        </p>
-                                    </div>
-
-                                    <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                                        <p className="truncate">
-                                            <span className="font-medium">{transaction.user.name}</span> • {transaction.user.email}
-                                        </p>
-                                        <div className="flex items-center justify-between">
-                                            <p className="flex items-center gap-1">
-                                                <span>Account: {transaction.account}</span>
-                                                <span>•</span>
-                                                <span>{transaction.paymentMethod}</span>
-                                            </p>
-                                            <p className="text-gray-500 dark:text-gray-400">
-                                                {formatDate(transaction.date)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Desktop Layout */}
-                                <div className="hidden sm:flex items-center justify-between p-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                                            {getTransactionIcon(transaction.type)}
-                                        </div>
-
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="font-medium text-gray-900 dark:text-white">
-                                                    {transaction.type}
-                                                </span>
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(transaction.status)}`}>
-                                                    {transaction.status}
-                                                </span>
-                                            </div>
-
-                                            <div className="text-sm text-gray-600 dark:text-gray-400">
-                                                <p className="mb-1">
-                                                    <span className="font-medium">{transaction.user.name}</span> • {transaction.user.email}
-                                                </p>
-                                                <p className="flex items-center gap-4">
-                                                    <span>Account: {transaction.account}</span>
-                                                    <span>•</span>
-                                                    <span>{transaction.paymentMethod}</span>
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="text-right">
-                                        <p className={`font-semibold ${transaction.type.toLowerCase() === 'deposit'
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : transaction.type.toLowerCase() === 'withdrawal'
-                                                ? 'text-red-600 dark:text-red-400'
-                                                : 'text-blue-600 dark:text-blue-400'
-                                            }`}>
-                                            {transaction.type.toLowerCase() === 'withdrawal' ? '-' : '+'}
-                                            {formatCurrency(transaction.amount)}
-                                        </p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                            {formatDate(transaction.date)}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
+            <div>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>Recent Transactions</h3>
+              <p className="text-[11px]" style={{ color: 'var(--theme-text-muted)' }}>Latest financial activities</p>
             </div>
-
-            {/* Summary - Fixed at bottom */}
-            <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
-                    <div>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Deposits</p>
-                        <p className="text-sm sm:text-lg font-semibold text-green-600 dark:text-green-400">
-                            {formatCurrency(
-                                transactions
-                                    .filter(t => t.type.toLowerCase() === 'deposit')
-                                    .reduce((sum, t) => sum + t.amount, 0)
-                            )}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Withdrawals</p>
-                        <p className="text-sm sm:text-lg font-semibold text-red-600 dark:text-red-400">
-                            {formatCurrency(
-                                transactions
-                                    .filter(t => t.type.toLowerCase() === 'withdrawal')
-                                    .reduce((sum, t) => sum + t.amount, 0)
-                            )}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Transfers</p>
-                        <p className="text-sm sm:text-lg font-semibold text-blue-600 dark:text-blue-400">
-                            {formatCurrency(
-                                transactions
-                                    .filter(t => t.type.toLowerCase() === 'transfer')
-                                    .reduce((sum, t) => sum + t.amount, 0)
-                            )}
-                        </p>
-                    </div>
-                </div>
-            </div>
+          </div>
+          <button
+            onClick={() => setSortBy(s => s === 'date' ? 'amount' : 'date')}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+            style={{ background: 'color-mix(in srgb, var(--theme-primary) 10%, transparent)', color: 'var(--theme-primary)', border: '1px solid color-mix(in srgb, var(--theme-primary) 30%, transparent)' }}
+          >
+            <Filter className="w-3 h-3" />
+            {sortBy === 'date' ? 'By Date' : 'By Amount'}
+          </button>
         </div>
-    );
+
+        {/* Filter tabs */}
+        <div className="flex gap-1.5 overflow-x-auto">
+          {FILTER_TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex-shrink-0"
+              style={{
+                background: filter === tab.key ? 'var(--theme-primary)' : 'color-mix(in srgb, var(--theme-primary) 8%, transparent)',
+                color: filter === tab.key ? 'white' : 'var(--theme-text-muted)',
+                border: `1px solid ${filter === tab.key ? 'var(--theme-primary)' : 'transparent'}`,
+              }}
+            >
+              {tab.label}
+              {tab.key !== 'all' && (
+                <span className="ml-1.5 opacity-70">
+                  {transactions.filter(t => t.type.toLowerCase() === tab.key).length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Transactions list */}
+      <div className="flex-1 overflow-y-auto">
+        {sorted.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 py-10">
+            <ArrowUpDown className="w-10 h-10" style={{ color: 'var(--theme-text-disabled)' }} />
+            <p className="text-sm font-medium" style={{ color: 'var(--theme-text-muted)' }}>No transactions found</p>
+          </div>
+        ) : (
+          <div className="divide-y" style={{ borderColor: 'var(--theme-border)' }}>
+            <AnimatePresence initial={false}>
+              {sorted.map((txn, idx) => {
+                const type = txn.type.toLowerCase();
+                const cfg = TYPE_CONFIG[type] || { icon: ArrowUpDown, color: '#6b7280', label: txn.type };
+                const statusCfg = STATUS_CONFIG[txn.status?.toLowerCase()] || STATUS_CONFIG.pending;
+                const Icon = cfg.icon;
+                const sign = type === 'withdrawal' ? '-' : '+';
+
+                return (
+                  <motion.div
+                    key={txn.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className="flex items-center gap-3 px-5 py-3 transition-colors"
+                    style={{ cursor: 'default' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--theme-primary) 4%, transparent)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                  >
+                    {/* Icon */}
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${cfg.color}15` }}>
+                      <Icon className="w-4 h-4" style={{ color: cfg.color }} />
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-semibold truncate" style={{ color: 'var(--theme-text-primary)' }}>
+                          {txn.user.name}
+                        </span>
+                        <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
+                          style={{ background: statusCfg.bg, color: statusCfg.text }}>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusCfg.dot }} />
+                          {txn.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px]" style={{ color: 'var(--theme-text-disabled)' }}>
+                        <span className="truncate">{txn.user.email}</span>
+                        <span>·</span>
+                        <span className="flex items-center gap-0.5 flex-shrink-0">
+                          <CreditCard className="w-2.5 h-2.5" />{txn.account}
+                        </span>
+                        <span className="hidden sm:inline">·</span>
+                        <span className="hidden sm:flex items-center gap-0.5 flex-shrink-0">
+                          <Calendar className="w-2.5 h-2.5" />{fmtDate(txn.date)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Amount */}
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-bold" style={{ color: cfg.color }}>
+                        {sign}{fmtCurrency(txn.amount)}
+                      </p>
+                      <p className="text-[10px] sm:hidden mt-0.5" style={{ color: 'var(--theme-text-disabled)' }}>
+                        {fmtDate(txn.date)}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      {/* Footer summary */}
+      <div className="flex-shrink-0 p-4" style={{ borderTop: '1px solid var(--theme-border)', background: 'color-mix(in srgb, var(--theme-primary) 3%, transparent)' }}>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          {[
+            { label: 'Deposits', value: fmtCurrency(totalByType('deposit')), color: '#10b981' },
+            { label: 'Withdrawals', value: fmtCurrency(totalByType('withdrawal')), color: '#ef4444' },
+            { label: 'Transfers', value: fmtCurrency(totalByType('transfer')), color: '#6366f1' },
+          ].map(item => (
+            <div key={item.label}>
+              <p className="text-[10px] mb-0.5" style={{ color: 'var(--theme-text-muted)' }}>{item.label}</p>
+              <p className="text-xs font-bold" style={{ color: item.color }}>{item.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default RecentTransactions;

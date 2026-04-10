@@ -1,1565 +1,788 @@
-// Frontend\src\pages\admin\features\DepositsPage.tsx
-
+// Frontend/src/pages/admin/features/DepositsPage.tsx
 "use client"
 
 import { useState, useEffect } from "react"
 import {
-    Search,
-    Filter,
-    ChevronDown,
-    X, MoreHorizontal, FileText, ArrowUpDown,
-    Calendar,
-    Download,
+  Search, Filter, Download, X, FileText, Eye,
+  CheckCircle, XCircle, ChevronLeft, ChevronRight,
+  ArrowDownCircle, Calendar, RefreshCw, ExternalLink,
 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
-import { Calendar as CalendarComponent } from "@/components/ui/calendar"
-import { format } from "date-fns"
-import axios from "axios";
+import axios from "axios"
 import { toast } from "sonner"
+import { motion, AnimatePresence } from "framer-motion"
+import { createPortal } from "react-dom"
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 interface Deposit {
-    id: string;
-    user: {
-        name: string;
-        email: string;
-        // avatar: string;
-    };
-    accountNumber: string;
-    amount: number;
-    planType: string;
-    paymentMethod: string;
-    bonus: number;
-    document: string | null;
-    requestedOn: string;
-    approvedOn?: string;
-    rejectedOn?: string;
-    status: string;
-    remarks?: string;
-    proofOfPayment?: string | null;
+  id: string
+  user: { name: string; email: string }
+  accountNumber: string
+  amount: number
+  planType: string
+  paymentMethod: string
+  bonus: number
+  document: string | null
+  requestedOn: string
+  approvedOn?: string
+  rejectedOn?: string
+  status: string
+  remarks?: string
+  proofOfPayment?: string | null
 }
 
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+const StatusBadge = ({ status }: { status: string }) => {
+  const cfg: Record<string, { bg: string; color: string }> = {
+    Approved: { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
+    Pending:  { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
+    Rejected: { bg: 'rgba(239,68,68,0.12)',  color: '#ef4444' },
+  }
+  const c = cfg[status] || { bg: 'rgba(148,163,184,0.12)', color: '#94a3b8' }
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+      background: c.bg, color: c.color, whiteSpace: 'nowrap',
+    }}>
+      <span style={{ width: 5, height: 5, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
+      {status}
+    </span>
+  )
+}
+
+// ─── Modal Backdrop ───────────────────────────────────────────────────────────
+const Modal = ({ open, onClose, children, maxWidth = 520 }: {
+  open: boolean; onClose: () => void; children: React.ReactNode; maxWidth?: number
+}) => {
+  if (!open) return null
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          onClick={e => { if (e.target === e.currentTarget) onClose() }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', padding: 16,
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.93, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.93, y: 20 }}
+            transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+            style={{
+              width: '100%', maxWidth, maxHeight: '90vh', overflowY: 'auto',
+              background: 'var(--theme-bg-card)', borderRadius: 20,
+              border: '1px solid var(--theme-border)',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.3)',
+            }}
+          >
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body
+  )
+}
+
+// ─── Detail Row ───────────────────────────────────────────────────────────────
+const DRow = ({ label, value }: { label: string; value?: string | React.ReactNode }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+      {label}
+    </span>
+    <span style={{ fontSize: 13, color: 'var(--theme-text-primary)', fontWeight: 500 }}>
+      {value || <span style={{ color: 'var(--theme-text-disabled)' }}>—</span>}
+    </span>
+  </div>
+)
+
+// ─── Skeleton Row ─────────────────────────────────────────────────────────────
+const SkeletonRow = () => (
+  <tr>
+    {[90, 70, 50, 60, 70, 40, 40, 80, 60, 40].map((w, i) => (
+      <td key={i} style={{ padding: '14px 16px' }}>
+        <div style={{ height: 12, borderRadius: 6, background: 'var(--theme-border)', width: w, animation: 'pulse 1.5s ease-in-out infinite' }} />
+      </td>
+    ))}
+  </tr>
+)
+
 const DepositsPage = () => {
-    const [searchTerm, setSearchTerm] = useState("")
-    const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
-    const [selectedPlanType, setSelectedPlanType] = useState<string | null>(null)
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null)
-    const [startDate, setStartDate] = useState<Date | null>(null)
-    const [endDate, setEndDate] = useState<Date | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
+  const [selectedPlanType, setSelectedPlanType] = useState<string | null>(null)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null)
+  const [startDate, setStartDate] = useState<Date | null>(null)
+  const [endDate, setEndDate] = useState<Date | null>(null)
+  const [sortField, setSortField] = useState("requestedOn")
+  const [sortOrder, setSortOrder] = useState("desc")
+  const [deposits, setDeposits] = useState<Deposit[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [approveOpen, setApproveOpen] = useState(false)
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null)
+  const [bonus, setBonus] = useState(0)
+  const [remarks, setRemarks] = useState("Congratulations")
+  const [rejectRemarks, setRejectRemarks] = useState("")
+  const [statusOptions, setStatusOptions] = useState<string[]>([])
+  const [planTypeOptions, setPlanTypeOptions] = useState<string[]>([])
+  const [paymentMethodOptions, setPaymentMethodOptions] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [approveLoading, setApproveLoading] = useState(false)
+  const [rejectLoading, setRejectLoading] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [showExport, setShowExport] = useState(false)
 
-    // Updated default sorting to show latest first
-    const [sortField, setSortField] = useState("requestedOn")
-    const [sortOrder, setSortOrder] = useState("desc")
+  const getToken = () => localStorage.getItem('adminToken')
+  const getAuthHeaders = () => ({ headers: { Authorization: `Bearer ${getToken()}` } })
 
-    const [deposits, setDeposits] = useState<Deposit[]>([]);
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (currentPage !== 1) setCurrentPage(1)
+      else fetchDeposits()
+    }, 300)
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm])
 
-    // Dialog states
-    const [detailsOpen, setDetailsOpen] = useState(false)
-    const [approveOpen, setApproveOpen] = useState(false)
-    const [rejectOpen, setRejectOpen] = useState(false)
-    const [documentOpen, setDocumentOpen] = useState(false)
-    const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null)
+  useEffect(() => {
+    fetchDeposits()
+  }, [selectedStatus, selectedPlanType, selectedPaymentMethod, startDate, endDate, sortField, sortOrder, currentPage, itemsPerPage])
 
-    // Form states
-    const [bonus, setBonus] = useState(0)
-    const [remarks, setRemarks] = useState("Congratulations")
-    const [rejectRemarks, setRejectRemarks] = useState("")
-    const [zoomLevel, setZoomLevel] = useState(100)
-
-    //Filters states
-    const [statusOptions, setStatusOptions] = useState<string[]>([]);
-    const [planTypeOptions, setPlanTypeOptions] = useState<string[]>([]);
-    const [paymentMethodOptions, setPaymentMethodOptions] = useState<string[]>([]);
-
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(10);
-    const [totalItems, setTotalItems] = useState(0);
-    const [totalPages, setTotalPages] = useState(1);
-    // Add these new state variables with your existing states
-    const [approveLoading, setApproveLoading] = useState(false)
-    const [rejectLoading, setRejectLoading] = useState(false)
-
-
-    // Get token from localStorage
-    const getToken = () => localStorage.getItem('adminToken');
-
-    // API headers with auth token
-    const getAuthHeaders = () => ({
-        headers: {
-            Authorization: `Bearer ${getToken()}`
-        }
-    });
-    // Debounced search effect
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            if (currentPage !== 1) {
-                setCurrentPage(1); // Reset to first page on search
-            } else {
-                fetchDeposits();
-            }
-        }, 300);
-
-        return () => clearTimeout(timeoutId);
-    }, [searchTerm]);
-
-
-    // Fetch deposits on component mount and when filters/sort change
-    useEffect(() => {
-        fetchDeposits();
-    }, [selectedStatus, selectedPlanType, selectedPaymentMethod, startDate, endDate, sortField, sortOrder, currentPage, itemsPerPage]);
-
-    // Fetch deposits from API
-    const fetchDeposits = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-
-            // Build query params
-            const params = new URLSearchParams();
-            if (searchTerm.trim()) params.append('search', searchTerm.trim());
-            if (selectedStatus) params.append('status', selectedStatus);
-            if (selectedPlanType) params.append('planType', selectedPlanType);
-            if (selectedPaymentMethod) params.append('paymentMethod', selectedPaymentMethod);
-            if (startDate) params.append('startDate', startDate.toISOString());
-            if (endDate) params.append('endDate', endDate.toISOString());
-
-            // Always sort by latest first by default
-            params.append('sortField', sortField);
-            params.append('sortOrder', sortOrder);
-            params.append('page', currentPage.toString());
-            params.append('limit', itemsPerPage.toString());
-
-            const response = await axios.get(`${API_BASE_URL}/api/admindeposits?${params.toString()}`, getAuthHeaders());
-
-            // Transform the API response
-            const transformedData = response.data.data.map((item: any) => ({
-                id: item._id,
-                user: {
-                    name: item.user?.name || 'Unknown User',
-                    email: item.user?.email || 'No email',
-                },
-                accountNumber: item.accountNumber || 'N/A',
-                amount: item.amount || 0,
-                planType: item.planType || 'Unknown',
-                paymentMethod: item.paymentMethod || 'Unknown',
-                bonus: item.bonus || 0,
-                document: item.proofOfPayment || item.document,
-                requestedOn: item.requestedOn || item.createdAt,
-                approvedOn: item.approvedOn,
-                rejectedOn: item.rejectedOn,
-                status: item.status || 'Pending',
-                remarks: item.remarks || item.notes,
-                proofOfPayment: item.proofOfPayment || item.document
-            }));
-
-            setDeposits(transformedData);
-            setTotalItems(response.data.total || 0);
-            setTotalPages(Math.ceil((response.data.total || 0) / itemsPerPage));
-
-        } catch (error) {
-            console.error('Error fetching deposits:', error);
-            setError('Failed to fetch deposits');
-            setDeposits([]);
-            toast.error("Failed to load deposits. Please try refreshing the page.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-
-    useEffect(() => {
-        if (deposits.length > 0) {
-            const uniqueStatuses = [...new Set(deposits.map(deposit => deposit.status))].filter(Boolean);
-            const uniquePlanTypes = [...new Set(deposits.map(deposit => deposit.planType))].filter(Boolean);
-            const uniquePaymentMethods = [...new Set(deposits.map(deposit => deposit.paymentMethod))].filter(Boolean);
-
-            setStatusOptions(uniqueStatuses);
-            setPlanTypeOptions(uniquePlanTypes);
-            setPaymentMethodOptions(uniquePaymentMethods);
-        }
-    }, [deposits]);
-
-    // Filter deposits based on search and filters
-    const filteredDeposits = deposits.filter((deposit) => {
-        // Search filter
-        const matchesSearch =
-            searchTerm === "" ||
-            deposit.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            deposit.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            deposit.accountNumber.toLowerCase().includes(searchTerm.toLowerCase())
-
-        // Status filter
-        const matchesStatus = selectedStatus === null || deposit.status === selectedStatus
-
-        // Plan Type filter
-        const matchesPlanType = selectedPlanType === null || deposit.planType === selectedPlanType
-
-        // Payment Method filter
-        const matchesPaymentMethod = selectedPaymentMethod === null || deposit.paymentMethod === selectedPaymentMethod
-
-        // Date filter
-        let matchesDate = true
-        if (startDate && endDate) {
-            const depositDate = new Date(deposit.requestedOn)
-            matchesDate = depositDate >= startDate && depositDate <= endDate
-        }
-
-        return matchesSearch && matchesStatus && matchesPlanType && matchesPaymentMethod && matchesDate
-    }).sort((a, b) => {
-        // Sort by selected field
-        if ((a[sortField as keyof Deposit] ?? '') < (b[sortField as keyof Deposit] ?? '')) {
-            return sortOrder === "asc" ? -1 : 1
-        }
-        if ((a[sortField as keyof Deposit] ?? '') > (b[sortField as keyof Deposit] ?? '')) {
-            return sortOrder === "asc" ? 1 : -1
-        }
-        return 0
-    })
-
-    // Reset all filters
-    const resetFilters = () => {
-        setSearchTerm("")
-        setSelectedStatus(null)
-        setSelectedPlanType(null)
-        setSelectedPaymentMethod(null)
-        setStartDate(null)
-        setEndDate(null)
-        setCurrentPage(1) // Reset to first page when clearing filters
+  const fetchDeposits = async () => {
+    try {
+      setLoading(true); setError(null)
+      const params = new URLSearchParams()
+      if (searchTerm.trim()) params.append('search', searchTerm.trim())
+      if (selectedStatus) params.append('status', selectedStatus)
+      if (selectedPlanType) params.append('planType', selectedPlanType)
+      if (selectedPaymentMethod) params.append('paymentMethod', selectedPaymentMethod)
+      if (startDate) params.append('startDate', startDate.toISOString())
+      if (endDate) params.append('endDate', endDate.toISOString())
+      params.append('sortField', sortField)
+      params.append('sortOrder', sortOrder)
+      params.append('page', currentPage.toString())
+      params.append('limit', itemsPerPage.toString())
+      const response = await axios.get(`${API_BASE_URL}/api/admindeposits?${params.toString()}`, getAuthHeaders())
+      const transformedData = response.data.data.map((item: any) => ({
+        id: item._id,
+        user: { name: item.user?.name || 'Unknown User', email: item.user?.email || 'No email' },
+        accountNumber: item.accountNumber || 'N/A',
+        amount: item.amount || 0,
+        planType: item.planType || 'Unknown',
+        paymentMethod: item.paymentMethod || 'Unknown',
+        bonus: item.bonus || 0,
+        document: item.proofOfPayment || item.document,
+        requestedOn: item.requestedOn || item.createdAt,
+        approvedOn: item.approvedOn,
+        rejectedOn: item.rejectedOn,
+        status: item.status || 'Pending',
+        remarks: item.remarks || item.notes,
+        proofOfPayment: item.proofOfPayment || item.document
+      }))
+      setDeposits(transformedData)
+      setTotalItems(response.data.total || 0)
+      setTotalPages(Math.ceil((response.data.total || 0) / itemsPerPage))
+    } catch {
+      setError('Failed to fetch deposits')
+      setDeposits([])
+      toast.error("Failed to load deposits. Please try refreshing.")
+    } finally {
+      setLoading(false)
     }
+  }
 
-    // Format date
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString)
-        return date.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        })
+  useEffect(() => {
+    if (deposits.length > 0) {
+      setStatusOptions([...new Set(deposits.map(d => d.status))].filter(Boolean))
+      setPlanTypeOptions([...new Set(deposits.map(d => d.planType))].filter(Boolean))
+      setPaymentMethodOptions([...new Set(deposits.map(d => d.paymentMethod))].filter(Boolean))
     }
+  }, [deposits])
 
-    // Handle sort toggle
-    const handleSort = (field: keyof Deposit) => {
-        if (sortField === field) {
-            setSortOrder(sortOrder === "asc" ? "desc" : "asc")
-        } else {
-            setSortField(field)
-            setSortOrder(field === "requestedOn" ? "desc" : "asc") // Default to desc for dates
-        }
-        setCurrentPage(1); // Reset to first page when sorting
+  const resetFilters = () => {
+    setSearchTerm(""); setSelectedStatus(null); setSelectedPlanType(null)
+    setSelectedPaymentMethod(null); setStartDate(null); setEndDate(null); setCurrentPage(1)
+  }
+
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+
+  const handleSort = (field: keyof Deposit) => {
+    if (sortField === field) setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+    else { setSortField(field); setSortOrder(field === "requestedOn" ? "desc" : "asc") }
+    setCurrentPage(1)
+  }
+
+  const handleExport = async (format: string) => {
+    try {
+      setShowExport(false)
+      const loadingToast = toast.loading(`Exporting ${format.toUpperCase()}...`)
+      const params = new URLSearchParams()
+      if (searchTerm.trim()) params.append('search', searchTerm.trim())
+      if (selectedStatus) params.append('status', selectedStatus)
+      if (selectedPlanType) params.append('planType', selectedPlanType)
+      if (selectedPaymentMethod) params.append('paymentMethod', selectedPaymentMethod)
+      if (startDate) params.append('startDate', startDate.toISOString())
+      if (endDate) params.append('endDate', endDate.toISOString())
+      params.append('sortField', sortField); params.append('sortOrder', sortOrder); params.append('format', format)
+      const response = await axios.get(`${API_BASE_URL}/api/admindeposits/export?${params.toString()}`, { responseType: 'blob', ...getAuthHeaders() })
+      const contentDisposition = response.headers['content-disposition']
+      const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition)
+      const filename = matches && matches[1] ? matches[1].replace(/['"]/g, '') : `deposits_${new Date().toISOString().split('T')[0]}.${format.toLowerCase()}`
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a'); link.href = url; link.setAttribute('download', filename)
+      document.body.appendChild(link); link.click(); link.remove(); window.URL.revokeObjectURL(url)
+      toast.dismiss(loadingToast); toast.success(`${format.toUpperCase()} exported successfully`)
+    } catch { toast.error(`Failed to export ${format.toUpperCase()}.`) }
+  }
+
+  const openDetails = (deposit: Deposit) => { setSelectedDeposit(deposit); setDetailsOpen(true) }
+  const openApprove = (deposit: Deposit) => { setSelectedDeposit(deposit); setBonus(0); setRemarks("Congratulations"); setApproveOpen(true) }
+  const openReject = (deposit: Deposit) => { setSelectedDeposit(deposit); setRejectRemarks(""); setRejectOpen(true) }
+
+  const openDocumentInNewTab = () => {
+    if (selectedDeposit && (selectedDeposit.proofOfPayment || selectedDeposit.document)) {
+      const documentPath = selectedDeposit.proofOfPayment || selectedDeposit.document
+      const url = documentPath && documentPath.startsWith('http') ? documentPath : documentPath ? `${API_BASE_URL}${documentPath}` : ''
+      if (url) window.open(url, '_blank')
+      else toast.error("Failed to open document")
     }
-
-    // Get status badge
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case "Approved":
-                return (
-                    <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
-                        Approved
-                    </Badge>
-                )
-            case "Pending":
-                return (
-                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
-                        Pending
-                    </Badge>
-                )
-            case "Rejected":
-                return (
-                    <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200">
-                        Rejected
-                    </Badge>
-                )
-            default:
-                return <Badge variant="outline">{status}</Badge>
-        }
-    }
-
-
-
-    // Handle export
-    const handleExport = async (format: string) => {
-        try {
-            const loadingToast = toast.loading(`Exporting ${format.toUpperCase()}...`);
-
-            // Build query parameters for filtering
-            const params = new URLSearchParams();
-            if (searchTerm.trim()) params.append('search', searchTerm.trim());
-            if (selectedStatus) params.append('status', selectedStatus);
-            if (selectedPlanType) params.append('planType', selectedPlanType);
-            if (selectedPaymentMethod) params.append('paymentMethod', selectedPaymentMethod);
-            if (startDate) params.append('startDate', startDate.toISOString());
-            if (endDate) params.append('endDate', endDate.toISOString());
-            params.append('sortField', sortField);
-            params.append('sortOrder', sortOrder);
-            params.append('format', format);
-
-            // Create export URL
-            const exportUrl = `${API_BASE_URL}/api/admindeposits/export?${params.toString()}`;
-
-            // Make authenticated request
-            const response = await axios.get(exportUrl, {
-                responseType: 'blob',
-                ...getAuthHeaders()
-            });
-
-            // Get filename from content-disposition header or use default
-            const contentDisposition = response.headers['content-disposition'];
-            const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-            const matches = filenameRegex.exec(contentDisposition);
-            const filename = matches && matches[1]
-                ? matches[1].replace(/['"]/g, '')
-                : `deposits_${new Date().toISOString().split('T')[0]}.${format.toLowerCase()}`;
-
-            // Create a download link and trigger it
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-
-            toast.dismiss(loadingToast);
-            toast.success(`${format.toUpperCase()} exported successfully`);
-        } catch (error) {
-            console.error('Export failed:', error);
-            toast.error(`Failed to export ${format.toUpperCase()}. Please try again.`);
-        }
-    };
-
-    // Open details dialog
-    const openDetails = (deposit: Deposit) => {
-        setSelectedDeposit(deposit)
-        setDetailsOpen(true)
-    }
-
-    // Open approve dialog
-    const openApprove = (deposit: Deposit) => {
-        setSelectedDeposit(deposit)
-        setBonus(0)
-        setRemarks("Congratulations")
-        setApproveOpen(true)
-    }
-
-    // Open reject dialog
-    const openReject = (deposit: Deposit) => {
-        setSelectedDeposit(deposit)
-        setRejectRemarks("")
-        setRejectOpen(true)
-    }
-
-    // Document dialog - modified to handle real file fetching
-    const openDocument = (deposit: Deposit) => {
-        // Check if either proofOfPayment or document exists
-        if (deposit.proofOfPayment || deposit.document) {
-            setSelectedDeposit({
-                ...deposit,
-                // Ensure both properties are set to the same value
-                proofOfPayment: deposit.proofOfPayment || deposit.document,
-                document: deposit.proofOfPayment || deposit.document
-            });
-
-            setZoomLevel(100);
-            setDocumentOpen(true);
-        } else {
-            toast.error("No document available for this deposit");
-        }
-    };
-
-
-    // Approve deposit
-    const handleApprove = async () => {
-        let loadingToast: any;
-        try {
-            if (!selectedDeposit) {
-                toast.error("No deposit selected for approval.");
-                return;
-            }
-
-            setApproveLoading(true);
-
-            // Close dialog immediately after click
-            setApproveOpen(false);
-            setSelectedDeposit(null);
-
-            loadingToast = toast.loading("Processing approval...");
-
-            const response = await axios.post(`${API_BASE_URL}/api/admindeposits/${selectedDeposit.id}/approve`, {
-                bonus,
-                remarks
-            }, getAuthHeaders());
-
-            // Update the local state properly
-            const updatedDeposit = response.data.data;
-            setDeposits(prevDeposits =>
-                prevDeposits.map(dep =>
-                    dep.id === selectedDeposit.id ? {
-                        ...dep,
-                        status: "Approved",
-                        approvedOn: updatedDeposit.approvedDate || new Date().toISOString(),
-                        bonus: bonus,
-                        remarks: remarks
-                    } : dep
-                )
-            );
-
-            toast.dismiss(loadingToast);
-            toast.success("Deposit approved successfully");
-        } catch (error) {
-            if (loadingToast) toast.dismiss(loadingToast);
-            console.error('Error approving deposit:', error);
-            toast.error("Failed to approve deposit");
-        } finally {
-            setApproveLoading(false);
-        }
-    };
-
-    // Reject deposit
-    const handleReject = async () => {
-        let loadingToast: any;
-        try {
-            if (!selectedDeposit) {
-                console.error("No deposit selected for rejection.");
-                return;
-            }
-
-            if (!rejectRemarks.trim()) {
-                toast.error("Please provide a reason for rejection.");
-                return;
-            }
-
-            setRejectLoading(true);
-
-            // Close dialog immediately after click
-            setRejectOpen(false);
-            setSelectedDeposit(null);
-
-            loadingToast = toast.loading("Processing rejection...");
-
-            await axios.post(`${API_BASE_URL}/api/admindeposits/${selectedDeposit.id}/reject`, {
-                remarks: rejectRemarks
-            }, getAuthHeaders());
-
-            // Update the local state properly
-            setDeposits(prevDeposits =>
-                prevDeposits.map(dep =>
-                    dep.id === selectedDeposit.id ? {
-                        ...dep,
-                        status: "Rejected",
-                        rejectedOn: new Date().toISOString(),
-                        remarks: rejectRemarks
-                    } : dep
-                )
-            );
-
-            setRejectOpen(false);
-            // Clear the selected deposit
-            setSelectedDeposit(null);
-
-            toast.dismiss(loadingToast);
-            toast.success("Deposit rejected successfully.");
-        } catch (error) {
-            if (loadingToast) toast.dismiss(loadingToast);
-            console.error('Error rejecting deposit:', error);
-            toast.error("Failed to reject deposit. Please try again.");
-        } finally {
-            setRejectLoading(false);
-        }
-    };
-
-    // Sort indicator
-    // (Removed unused SortIndicator component)
-
-    const openDocumentInNewTab = () => {
-        if (selectedDeposit && (selectedDeposit.proofOfPayment || selectedDeposit.document)) {
-            // Use a consistent document property
-            const documentPath = selectedDeposit.proofOfPayment || selectedDeposit.document;
-            // Make sure the URL is properly formed
-            const url = documentPath && documentPath.startsWith('http')
-                ? documentPath
-                : documentPath
-                    ? `${API_BASE_URL}${documentPath}`
-                    : '';
-
-            try {
-                window.open(url, '_blank');
-            } catch (error) {
-                toast.error("Failed to open document in new tab");
-            }
-        }
-    };
-
-    return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Deposit Management</CardTitle>
-                    <CardDescription>
-                        Manage and view all deposit requests. Latest deposits appear first.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col space-y-4">
-                        {/* Search and filters - Responsive */}
-                        <div className="flex flex-col lg:flex-row gap-4">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    type="search"
-                                    placeholder="Search by name, email, or account number..."
-                                    className="pl-8"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row gap-2">
-                                {/* Filters Dropdown */}
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="flex items-center gap-2">
-                                            <Filter className="h-4 w-4" />
-                                            Filters
-                                            {(selectedStatus || selectedPlanType || selectedPaymentMethod || startDate || endDate) && (
-                                                <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                                                    {[selectedStatus, selectedPlanType, selectedPaymentMethod, startDate || endDate].filter(Boolean).length}
-                                                </Badge>
-                                            )}
-                                            <ChevronDown className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-[250px]">
-                                        <DropdownMenuLabel>Filter Deposits</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-
-                                        {/* Status Filter */}
-                                        <div className="p-2">
-                                            <Label className="text-xs font-medium text-muted-foreground mb-2 block">
-                                                Status
-                                            </Label>
-                                            <Select
-                                                value={selectedStatus || "all"}
-                                                onValueChange={(value) => {
-                                                    setSelectedStatus(value === "all" ? null : value);
-                                                    setCurrentPage(1);
-                                                }}
-                                            >
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="All Statuses" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Statuses</SelectItem>
-                                                    {statusOptions.map(status => (
-                                                        <SelectItem key={status} value={status}>
-                                                            <div className="flex items-center gap-2">
-                                                                {getStatusBadge(status)}
-                                                            </div>
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-
-                                        {/* Plan Type Filter */}
-                                        <div className="p-2">
-                                            <Label className="text-xs font-medium text-muted-foreground mb-2 block">
-                                                Plan Type
-                                            </Label>
-                                            <Select
-                                                value={selectedPlanType || "all"}
-                                                onValueChange={(value) => {
-                                                    setSelectedPlanType(value === "all" ? null : value);
-                                                    setCurrentPage(1);
-                                                }}
-                                            >
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="All Plans" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Plans</SelectItem>
-                                                    {planTypeOptions.map(planType => (
-                                                        <SelectItem key={planType} value={planType}>
-                                                            {planType}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        {/* Payment Method Filter */}
-                                        <div className="p-2">
-                                            <Label className="text-xs font-medium text-muted-foreground mb-2 block">
-                                                Payment Method
-                                            </Label>
-                                            <Select
-                                                value={selectedPaymentMethod || "all"}
-                                                onValueChange={(value) => {
-                                                    setSelectedPaymentMethod(value === "all" ? null : value);
-                                                    setCurrentPage(1);
-                                                }}
-                                            >
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="All Methods" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Methods</SelectItem>
-                                                    {paymentMethodOptions.map(method => (
-                                                        <SelectItem key={method} value={method}>
-                                                            {method}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        {/* Date Range Filter */}
-                                        <div className="p-2">
-                                            <Label className="text-xs font-medium text-muted-foreground mb-2 block">
-                                                Date Range
-                                            </Label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button
-                                                            variant="outline"
-                                                            className="w-full justify-start text-left font-normal"
-                                                            size="sm"
-                                                        >
-                                                            <Calendar className="mr-2 h-4 w-4" />
-                                                            {startDate ? (
-                                                                format(startDate, "MMM dd")
-                                                            ) : (
-                                                                <span className="text-muted-foreground">From</span>
-                                                            )}
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                        <CalendarComponent
-                                                            mode="single"
-                                                            selected={startDate || undefined}
-                                                            onSelect={(day) => {
-                                                                setStartDate(day || null);
-                                                                setCurrentPage(1);
-                                                            }}
-                                                            initialFocus
-                                                        />
-                                                    </PopoverContent>
-                                                </Popover>
-
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button
-                                                            variant="outline"
-                                                            className="w-full justify-start text-left font-normal"
-                                                            size="sm"
-                                                        >
-                                                            <Calendar className="mr-2 h-4 w-4" />
-                                                            {endDate ? (
-                                                                format(endDate, "MMM dd")
-                                                            ) : (
-                                                                <span className="text-muted-foreground">To</span>
-                                                            )}
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                        <CalendarComponent
-                                                            mode="single"
-                                                            selected={endDate || undefined}
-                                                            onSelect={(day) => {
-                                                                setEndDate(day || null);
-                                                                setCurrentPage(1);
-                                                            }}
-                                                            initialFocus
-                                                        />
-                                                    </PopoverContent>
-                                                </Popover>
-                                            </div>
-                                        </div>
-
-                                        <DropdownMenuSeparator />
-                                        <div className="p-2">
-                                            <Button
-                                                variant="ghost"
-                                                onClick={resetFilters}
-                                                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-                                            >
-                                                <X className="mr-2 h-4 w-4" />
-                                                Reset All Filters
-                                            </Button>
-                                        </div>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-
-
-                                {/* Export Dropdown */}
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="flex items-center gap-2">
-                                            <Download className="h-4 w-4" />
-                                            Export
-                                            <ChevronDown className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuLabel>Export Format</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            onClick={() => handleExport('xlsx')}
-                                            className="flex items-center gap-2"
-                                        >
-                                            <FileText className="h-4 w-4 text-green-600" />
-                                            Excel (.xlsx)
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => handleExport('csv')}
-                                            className="flex items-center gap-2"
-                                        >
-                                            <FileText className="h-4 w-4 text-blue-600" />
-                                            CSV (.csv)
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => handleExport('pdf')}
-                                            className="flex items-center gap-2"
-                                        >
-                                            <FileText className="h-4 w-4 text-red-600" />
-                                            PDF (.pdf)
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        </div>
-
-                        {/* Applied Filters Display */}
-                        {(searchTerm || selectedStatus || selectedPlanType || selectedPaymentMethod || startDate || endDate) && (
-                            <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-lg border">
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Filter className="h-4 w-4" />
-                                    Active filters:
-                                </div>
-
-                                {searchTerm && (
-                                    <Badge variant="secondary" className="flex items-center gap-1">
-                                        Search: "{searchTerm}"
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-4 w-4 ml-1 p-0 hover:bg-transparent"
-                                            onClick={() => setSearchTerm("")}
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </Badge>
-                                )}
-
-                                {selectedStatus && (
-                                    <Badge variant="secondary" className="flex items-center gap-1">
-                                        Status: {selectedStatus}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-4 w-4 ml-1 p-0 hover:bg-transparent"
-                                            onClick={() => setSelectedStatus(null)}
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </Badge>
-                                )}
-
-                                {selectedPlanType && (
-                                    <Badge variant="secondary" className="flex items-center gap-1">
-                                        Plan: {selectedPlanType}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-4 w-4 ml-1 p-0 hover:bg-transparent"
-                                            onClick={() => setSelectedPlanType(null)}
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </Badge>
-                                )}
-
-                                {selectedPaymentMethod && (
-                                    <Badge variant="secondary" className="flex items-center gap-1">
-                                        Payment: {selectedPaymentMethod}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-4 w-4 ml-1 p-0 hover:bg-transparent"
-                                            onClick={() => setSelectedPaymentMethod(null)}
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </Badge>
-                                )}
-
-                                {(startDate || endDate) && (
-                                    <Badge variant="secondary" className="flex items-center gap-1">
-                                        Date: {startDate && format(startDate, "MMM dd")} - {endDate && format(endDate, "MMM dd")}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-4 w-4 ml-1 p-0 hover:bg-transparent"
-                                            onClick={() => {
-                                                setStartDate(null);
-                                                setEndDate(null);
-                                            }}
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </Badge>
-                                )}
-
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 text-xs px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    onClick={resetFilters}
-                                >
-                                    Clear All
-                                </Button>
-                            </div>
-                        )}
-
-                        {/* Results Summary */}
-                        {!loading && deposits.length > 0 && (
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-muted-foreground">
-                                <div>
-                                    {totalItems > 0 ? (
-                                        <>Found <strong>{totalItems}</strong> deposits</>
-                                    ) : (
-                                        <>No deposits found</>
-                                    )}
-                                    {(searchTerm || selectedStatus || selectedPlanType || selectedPaymentMethod || startDate || endDate) &&
-                                        <> matching your filters</>
-                                    }
-                                </div>
-                                {sortField && (
-                                    <div className="flex items-center gap-1">
-                                        Sorted by {sortField} ({sortOrder === 'desc' ? 'newest first' : 'oldest first'})
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        {/* Loading state */}
-                        {loading && (
-                            <div className="text-center py-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                                <p className="mt-2 text-sm text-muted-foreground">Loading deposits...</p>
-                            </div>
-                        )}
-
-                        {/* Error state */}
-                        {error && !loading && (
-                            <div className="text-center py-8">
-                                <p className="text-red-600">{error}</p>
-                                <Button onClick={fetchDeposits} className="mt-2">
-                                    Try Again
-                                </Button>
-                            </div>
-                        )}
-
-                        {/* Empty state */}
-                        {!loading && !error && deposits.length === 0 && (
-                            <div className="text-center py-8">
-                                <p className="text-muted-foreground">No deposits found.</p>
-                            </div>
-                        )}
-
-                        {/* Table */}
-                        {!loading && !error && deposits.length > 0 && (
-                            <>
-                                <div className="hidden md:block rounded-md border">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>User</TableHead>
-                                                <TableHead>Account #</TableHead>
-                                                <TableHead
-                                                    onClick={() => handleSort("amount")}
-                                                    className="cursor-pointer hover:bg-muted/50"
-                                                >
-                                                    <div className="flex items-center">
-                                                        Amount
-                                                        <ArrowUpDown className="ml-1 h-4 w-4" />
-                                                    </div>
-                                                </TableHead>
-                                                <TableHead
-                                                    onClick={() => handleSort("planType")}
-                                                    className="cursor-pointer hover:bg-muted/50"
-                                                >
-                                                    <div className="flex items-center">
-                                                        Plan
-                                                        <ArrowUpDown className="ml-1 h-4 w-4" />
-                                                    </div>
-                                                </TableHead>
-                                                <TableHead>Payment</TableHead>
-                                                <TableHead>Bonus</TableHead>
-                                                <TableHead>Doc</TableHead>
-                                                <TableHead
-                                                    onClick={() => handleSort("requestedOn")}
-                                                    className="cursor-pointer hover:bg-muted/50"
-                                                >
-                                                    <div className="flex items-center">
-                                                        Date
-                                                        {sortField === "requestedOn" && (
-                                                            sortOrder === "desc" ?
-                                                                <ChevronDown className="ml-1 h-4 w-4" /> :
-                                                                <ChevronDown className="ml-1 h-4 w-4 rotate-180" />
-                                                        )}
-                                                        {sortField !== "requestedOn" && <ArrowUpDown className="ml-1 h-4 w-4" />}
-                                                    </div>
-                                                </TableHead>
-                                                <TableHead>Status</TableHead>
-                                                <TableHead></TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {filteredDeposits.map((deposit) => (
-                                                <TableRow key={deposit.id}>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-3">
-                                                            <Avatar>
-                                                                <AvatarImage /*src={deposit.user.avatar}*/ alt={deposit.user.name} />
-                                                                <AvatarFallback>{deposit.user.name?.charAt(0)}</AvatarFallback>
-                                                            </Avatar>
-                                                            <div>
-                                                                <div className="font-medium">{deposit.user.name}</div>
-                                                                <div className="text-sm text-muted-foreground">{deposit.user.email}</div>
-                                                            </div>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>{deposit.accountNumber}</TableCell>
-                                                    <TableCell>${deposit.amount.toLocaleString()}</TableCell>
-                                                    <TableCell>{deposit.planType}</TableCell>
-                                                    <TableCell>{deposit.paymentMethod}</TableCell>
-                                                    <TableCell>${deposit.bonus.toLocaleString()}</TableCell>
-                                                    <TableCell>
-                                                        {deposit.document ? (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                onClick={() => openDocument(deposit)}
-                                                            >
-                                                                <FileText className="h-4 w-4" />
-                                                            </Button>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">None</span>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>{formatDate(deposit.requestedOn)}</TableCell>
-                                                    <TableCell className="text-center">{getStatusBadge(deposit.status)}</TableCell>
-                                                    <TableCell>
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon">
-                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                    <span className="sr-only">Open menu</span>
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onClick={() => openDetails(deposit)}>
-                                                                    View Details
-                                                                </DropdownMenuItem>
-                                                                {deposit.status === "Pending" && (
-                                                                    <>
-                                                                        <DropdownMenuItem
-                                                                            className="text-green-600"
-                                                                            onClick={() => openApprove(deposit)}
-                                                                        >
-                                                                            Approve
-                                                                        </DropdownMenuItem>
-                                                                        <DropdownMenuItem
-                                                                            className="text-red-600"
-                                                                            onClick={() => openReject(deposit)}
-                                                                        >
-                                                                            Reject
-                                                                        </DropdownMenuItem>
-                                                                    </>
-                                                                )}
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-
-                                {/* Mobile Card View */}
-                                <div className="md:hidden space-y-4">
-                                    {deposits.map((deposit) => (
-                                        <Card key={deposit.id} className="p-4">
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="h-10 w-10">
-                                                        <AvatarFallback>{deposit.user.name?.charAt(0)}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div>
-                                                        <div className="font-medium text-sm">{deposit.user.name}</div>
-                                                        <div className="text-xs text-muted-foreground">{deposit.user.email}</div>
-                                                    </div>
-                                                </div>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => openDetails(deposit)}>
-                                                            View Details
-                                                        </DropdownMenuItem>
-                                                        {deposit.status === "Pending" && (
-                                                            <>
-                                                                <DropdownMenuItem
-                                                                    className="text-green-600"
-                                                                    onClick={() => openApprove(deposit)}
-                                                                >
-                                                                    Approve
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    className="text-red-600"
-                                                                    onClick={() => openReject(deposit)}
-                                                                >
-                                                                    Reject
-                                                                </DropdownMenuItem>
-                                                            </>
-                                                        )}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                                                <div>
-                                                    <span className="text-muted-foreground">Amount:</span>
-                                                    <div className="font-semibold">${deposit.amount.toLocaleString()}</div>
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">Plan:</span>
-                                                    <div>{deposit.planType}</div>
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">Payment:</span>
-                                                    <div>{deposit.paymentMethod}</div>
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">Bonus:</span>
-                                                    <div>${deposit.bonus.toLocaleString()}</div>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center justify-between">
-                                                <div className="text-xs text-muted-foreground">
-                                                    {formatDate(deposit.requestedOn)}
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    {deposit.document && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                            onClick={() => openDocument(deposit)}
-                                                        >
-                                                            <FileText className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-                                                    {getStatusBadge(deposit.status)}
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
-
-                                {/* Updated Pagination - Inside Card */}
-                                <div className="border-t pt-4">
-                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                                        <div className="text-sm text-muted-foreground">
-                                            Showing <strong>{Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)}</strong> to{" "}
-                                            <strong>{Math.min(currentPage * itemsPerPage, totalItems)}</strong> of{" "}
-                                            <strong>{totalItems}</strong> deposits
-                                        </div>
-
-                                        <div className="flex flex-col sm:flex-row items-center gap-4">
-                                            <div className="flex items-center space-x-2">
-                                                <span className="text-sm whitespace-nowrap">Rows per page:</span>
-                                                <Select
-                                                    value={itemsPerPage.toString()}
-                                                    onValueChange={(value) => {
-                                                        setItemsPerPage(Number(value));
-                                                        setCurrentPage(1);
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="w-[70px]">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="10">10</SelectItem>
-                                                        <SelectItem value="20">20</SelectItem>
-                                                        <SelectItem value="50">50</SelectItem>
-                                                        <SelectItem value="100">100</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            <div className="flex items-center space-x-1 sm:space-x-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                                    disabled={currentPage === 1 || loading}
-                                                    className="text-xs sm:text-sm"
-                                                >
-                                                    Previous
-                                                </Button>
-
-                                                <div className="flex items-center space-x-1">
-                                                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                                                        let pageToShow;
-                                                        if (totalPages <= 5) {
-                                                            pageToShow = i + 1;
-                                                        } else if (currentPage <= 3) {
-                                                            pageToShow = i + 1;
-                                                        } else if (currentPage >= totalPages - 2) {
-                                                            pageToShow = totalPages - 4 + i;
-                                                        } else {
-                                                            pageToShow = currentPage - 2 + i;
-                                                        }
-
-                                                        if (pageToShow > 0 && pageToShow <= totalPages) {
-                                                            return (
-                                                                <Button
-                                                                    key={i}
-                                                                    variant={pageToShow === currentPage ? "default" : "outline"}
-                                                                    size="sm"
-                                                                    className="w-8 h-8 p-0 text-xs"
-                                                                    onClick={() => setCurrentPage(pageToShow)}
-                                                                    disabled={loading}
-                                                                >
-                                                                    {pageToShow}
-                                                                </Button>
-                                                            );
-                                                        }
-                                                        return null;
-                                                    })}
-                                                </div>
-
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                                    disabled={currentPage === totalPages || loading}
-                                                    className="text-xs sm:text-sm"
-                                                >
-                                                    Next
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Details Dialog */}
-            <div className={`fixed inset-0 z-50 ${detailsOpen ? 'flex' : 'hidden'} items-center justify-center`}>
-                {/* Backdrop overlay */}
-                <div className="absolute inset-0 bg-black/50" onClick={() => {
-                    setDetailsOpen(false);
-                    if (detailsOpen) setSelectedDeposit(null);
-                }}></div>
-
-                {/* Dialog content */}
-                <div className="relative bg-background max-w-3xl w-full max-h-[90vh] overflow-auto rounded-lg shadow-lg border border-border p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <div>
-                            <h2 className="text-xl font-semibold">Deposit Details</h2>
-                            <p className="text-muted-foreground text-sm">Complete information about this deposit request</p>
-                        </div>
-                        <button
-                            onClick={() => {
-                                setDetailsOpen(false);
-                                setSelectedDeposit(null);
-                            }}
-                            className="text-muted-foreground hover:text-foreground"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
-
-                    {selectedDeposit && (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-3">
-                                    <div>
-                                        <div className="text-sm font-medium mb-1 text-muted-foreground">User Information</div>
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <Avatar className="h-10 w-10">
-                                                <AvatarImage alt={selectedDeposit.user.name} />
-                                                <AvatarFallback>{selectedDeposit.user.name?.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <div className="font-medium">{selectedDeposit.user.name}</div>
-                                                <div className="text-sm text-muted-foreground">{selectedDeposit.user.email}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="text-sm font-medium mb-1 text-muted-foreground">Account Number</div>
-                                        <div className="text-sm">{selectedDeposit.accountNumber}</div>
-                                    </div>
-
-                                    <div>
-                                        <div className="text-sm font-medium mb-1 text-muted-foreground">Amount</div>
-                                        <div className="text-lg font-semibold">${selectedDeposit.amount.toLocaleString()}</div>
-                                    </div>
-
-                                    <div>
-                                        <div className="text-sm font-medium mb-1 text-muted-foreground">Plan Type</div>
-                                        <div className="text-sm">{selectedDeposit.planType}</div>
-                                    </div>
-
-                                    <div>
-                                        <div className="text-sm font-medium mb-1 text-muted-foreground">Payment Method</div>
-                                        <div className="text-sm">{selectedDeposit.paymentMethod}</div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <div>
-                                        <div className="text-sm font-medium mb-1 text-muted-foreground">Status</div>
-                                        <div>{getStatusBadge(selectedDeposit.status)}</div>
-                                    </div>
-
-                                    <div>
-                                        <div className="text-sm font-medium mb-1 text-muted-foreground">Requested On</div>
-                                        <div className="text-sm">{formatDate(selectedDeposit.requestedOn)}</div>
-                                    </div>
-
-                                    {selectedDeposit.status === "Approved" && selectedDeposit.approvedOn && (
-                                        <div>
-                                            <div className="text-sm font-medium mb-1 text-muted-foreground">Approved On</div>
-                                            <div className="text-sm">{formatDate(selectedDeposit.approvedOn)}</div>
-                                        </div>
-                                    )}
-
-                                    {selectedDeposit.status === "Rejected" && selectedDeposit.rejectedOn && (
-                                        <div>
-                                            <div className="text-sm font-medium mb-1 text-muted-foreground">Rejected On</div>
-                                            <div className="text-sm">{formatDate(selectedDeposit.rejectedOn)}</div>
-                                        </div>
-                                    )}
-
-                                    {selectedDeposit.bonus > 0 && (
-                                        <div>
-                                            <div className="text-sm font-medium mb-1 text-muted-foreground">Bonus</div>
-                                            <div className="text-sm">${selectedDeposit.bonus.toLocaleString()}</div>
-                                        </div>
-                                    )}
-
-                                    {selectedDeposit.remarks && (
-                                        <div>
-                                            <div className="text-sm font-medium mb-1 text-muted-foreground">Remarks</div>
-                                            <div className="text-sm">{selectedDeposit.remarks}</div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {selectedDeposit.document && (
-                                <div>
-                                    <div className="text-sm font-medium mb-2 text-muted-foreground">Document Preview</div>
-                                    <div className="border rounded-md p-2 h-40 relative bg-muted">
-                                        {/* Document preview taking full width */}
-                                        <div className="w-full h-full">
-                                            {selectedDeposit.document.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                                                <img
-                                                    src={`${API_BASE_URL}${selectedDeposit.document}`}
-                                                    alt="Document preview"
-                                                    className="w-full h-full object-contain"
-                                                />
-                                            ) : selectedDeposit.document.match(/\.(pdf)$/i) ? (
-                                                <div className="w-full h-full flex items-center justify-center bg-background text-muted-foreground">
-                                                    <FileText className="h-10 w-10" />
-                                                </div>
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center bg-background text-muted-foreground">
-                                                    <FileText className="h-10 w-10" />
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Transparent button overlay centered on the image */}
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => openDocument(selectedDeposit)}
-                                                className="bg-background bg-opacity-70 hover:bg-opacity-90 transition-all"
-                                            >
-                                                <FileText className="mr-2 h-4 w-4" />
-                                                View Document
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="flex justify-end mt-6">
-                        <Button variant="outline" onClick={() => setDetailsOpen(false)}>Close</Button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Approve Dialog */}
-            <div className={`fixed inset-0 z-50 ${approveOpen ? 'flex' : 'hidden'} items-center justify-center`}>
-                {/* Backdrop overlay */}
-                <div className="absolute inset-0 bg-black/50" onClick={() => {
-                    setApproveOpen(false);
-                    setBonus(0);
-                    setRemarks("Congratulations");
-                }}></div>
-
-                {/* Dialog content */}
-                <div className="relative bg-background w-full max-w-md rounded-lg shadow-lg border border-border p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <div>
-                            <h2 className="text-xl font-semibold">Approve Deposit</h2>
-                            <p className="text-muted-foreground text-sm">Approve this deposit request and add an optional bonus</p>
-                        </div>
-                        <button
-                            onClick={() => {
-                                setApproveOpen(false);
-                                setBonus(0);
-                                setRemarks("Congratulations");
-                            }}
-                            className="text-muted-foreground hover:text-foreground"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
-
-                    {selectedDeposit && (
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="font-medium">Amount</div>
-                                <div>${selectedDeposit.amount.toLocaleString()}</div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="bonus">Bonus Amount</Label>
-                                <Input
-                                    id="bonus"
-                                    type="number"
-                                    min="0"
-                                    value={bonus === 0 ? "" : bonus}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        setBonus(val === "" ? 0 : Number(val));
-                                    }}
-                                    className="w-full"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="remarks">Remarks</Label>
-                                <Textarea
-                                    id="remarks"
-                                    value={remarks}
-                                    onChange={(e) => setRemarks(e.target.value)}
-                                    rows={3}
-                                    className="w-full"
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="flex justify-end gap-2 mt-6">
-                        <Button variant="outline" onClick={() => setApproveOpen(false)} disabled={approveLoading}>Cancel</Button>
-                        <Button onClick={handleApprove} disabled={approveLoading}>
-                            {approveLoading ? "Processing..." : "Approve"}
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Reject Dialog */}
-            <div className={`fixed inset-0 z-50 ${rejectOpen ? 'flex' : 'hidden'} items-center justify-center`}>
-                {/* Backdrop overlay */}
-                <div className="absolute inset-0 bg-black/50" onClick={() => {
-                    setRejectOpen(false);
-                    setRejectRemarks("");
-                }}></div>
-
-                {/* Dialog content */}
-                <div className="relative bg-background w-full max-w-md rounded-lg shadow-lg border border-border p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <div>
-                            <h2 className="text-xl font-semibold">Reject Deposit</h2>
-                            <p className="text-muted-foreground text-sm">Reject this deposit request and provide a reason</p>
-                        </div>
-                        <button
-                            onClick={() => {
-                                setRejectOpen(false);
-                                setRejectRemarks("");
-                            }}
-                            className="text-muted-foreground hover:text-foreground"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
-
-                    {selectedDeposit && (
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="font-medium">Amount</div>
-                                <div>${selectedDeposit.amount.toLocaleString()}</div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="rejectRemarks">Reason for Rejection</Label>
-                                <Textarea
-                                    id="rejectRemarks"
-                                    value={rejectRemarks}
-                                    onChange={(e) => setRejectRemarks(e.target.value)}
-                                    rows={3}
-                                    placeholder="Please provide a reason for rejection"
-                                    className="w-full"
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="flex justify-end gap-2 mt-6">
-                        <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={rejectLoading}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleReject} disabled={!rejectRemarks.trim() || rejectLoading}>
-                            {rejectLoading ? "Processing..." : "Reject"}
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Document Dialog */}
-            <div className={`fixed inset-0 z-50 ${documentOpen ? 'flex' : 'hidden'} items-center justify-center`}>
-                {/* Backdrop overlay */}
-                <div className="absolute inset-0 bg-black/50" onClick={() => {
-                    setDocumentOpen(false);
-                    setZoomLevel(100);
-                }}></div>
-
-                {/* Dialog content */}
-                <div className="relative bg-background w-full max-w-4xl max-h-[90vh] rounded-lg shadow-lg border border-border p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">Document Preview</h2>
-                        <button
-                            onClick={() => {
-                                setDocumentOpen(false);
-                                setZoomLevel(100);
-                            }}
-                            className="text-muted-foreground hover:text-foreground"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
-
-                    {selectedDeposit && (
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <Button variant="outline" onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))}>
-                                    Zoom Out
-                                </Button>
-                                <span>{zoomLevel}%</span>
-                                <Button variant="outline" onClick={() => setZoomLevel(Math.min(200, zoomLevel + 10))}>
-                                    Zoom In
-                                </Button>
-                            </div>
-
-                            {/* Document preview container */}
-                            <div className="border rounded-lg overflow-auto h-[60vh] bg-muted">
-                                <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top left" }}>
-                                    {/* Display document based on file type */}
-                                    {selectedDeposit.proofOfPayment && (
-                                        <div className="min-h-[500px] min-w-[500px] flex items-center justify-center">
-                                            {/* Use proper error handling for image loading */}
-                                            {selectedDeposit.proofOfPayment.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                                                <img
-                                                    src={`${API_BASE_URL}${selectedDeposit.proofOfPayment}`}
-                                                    alt="Document preview"
-                                                    className="max-w-full"
-                                                    crossOrigin="anonymous"
-                                                    onError={(e) => {
-                                                        console.error('Failed to load image:', `${API_BASE_URL}${selectedDeposit.proofOfPayment}`);
-                                                        e.currentTarget.onerror = null;
-                                                    }}
-                                                />
-                                            ) : selectedDeposit.proofOfPayment.match(/\.(pdf)$/i) ? (
-                                                <iframe
-                                                    src={`${API_BASE_URL}${selectedDeposit.proofOfPayment}`}
-                                                    title="PDF Document"
-                                                    width="100%"
-                                                    height="500px"
-                                                    onError={() => toast.error("Failed to load PDF")}
-                                                />
-                                            ) : (
-                                                <div className="text-center text-muted-foreground">
-                                                    <FileText className="h-16 w-16 mx-auto mb-4" />
-                                                    <p>File preview not available</p>
-                                                    <p>Click "Open in New Tab" to view</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                            </div>
-                            <div className="flex justify-end space-x-2">
-                                <Button variant="outline" onClick={() => setDocumentOpen(false)}>Close</Button>
-                                <Button onClick={() => openDocumentInNewTab()}>
-                                    Open in New Tab
-                                </Button>
-                            </div>
-
-                        </div>
-                    )}
-                </div>
-            </div>
+  }
+
+  const handleApprove = async () => {
+    let loadingToast: any
+    try {
+      if (!selectedDeposit) return
+      setApproveLoading(true); setApproveOpen(false); setSelectedDeposit(null)
+      loadingToast = toast.loading("Processing approval...")
+      const response = await axios.post(`${API_BASE_URL}/api/admindeposits/${selectedDeposit.id}/approve`, { bonus, remarks }, getAuthHeaders())
+      const updatedDeposit = response.data.data
+      setDeposits(prev => prev.map(dep => dep.id === selectedDeposit.id ? { ...dep, status: "Approved", approvedOn: updatedDeposit.approvedDate || new Date().toISOString(), bonus, remarks } : dep))
+      toast.dismiss(loadingToast); toast.success("Deposit approved successfully")
+    } catch {
+      if (loadingToast) toast.dismiss(loadingToast); toast.error("Failed to approve deposit")
+    } finally { setApproveLoading(false) }
+  }
+
+  const handleReject = async () => {
+    let loadingToast: any
+    try {
+      if (!selectedDeposit) return
+      if (!rejectRemarks.trim()) { toast.error("Please provide a reason for rejection."); return }
+      setRejectLoading(true); setRejectOpen(false); setSelectedDeposit(null)
+      loadingToast = toast.loading("Processing rejection...")
+      await axios.post(`${API_BASE_URL}/api/admindeposits/${selectedDeposit.id}/reject`, { remarks: rejectRemarks }, getAuthHeaders())
+      setDeposits(prev => prev.map(dep => dep.id === selectedDeposit.id ? { ...dep, status: "Rejected", rejectedOn: new Date().toISOString(), remarks: rejectRemarks } : dep))
+      toast.dismiss(loadingToast); toast.success("Deposit rejected successfully.")
+    } catch {
+      if (loadingToast) toast.dismiss(loadingToast); toast.error("Failed to reject deposit.")
+    } finally { setRejectLoading(false) }
+  }
+
+  const activeFilters = [selectedStatus, selectedPlanType, selectedPaymentMethod, startDate || endDate].filter(Boolean).length
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  const pending = deposits.filter(d => d.status === 'Pending').length
+  const approved = deposits.filter(d => d.status === 'Approved').length
+  const totalAmount = deposits.filter(d => d.status === 'Approved').reduce((s, d) => s + d.amount, 0)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      style={{ maxWidth: 1400, margin: '0 auto' }}
+    >
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}
+      >
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--theme-text-primary)', margin: 0, marginBottom: 4 }}>
+            Deposit Management
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--theme-text-muted)', margin: 0 }}>
+            Review and process all incoming deposit requests
+          </p>
         </div>
-    )
+        <motion.button
+          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+          onClick={() => fetchDeposits()}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 10,
+            border: '1px solid var(--theme-border)', background: 'var(--theme-bg-card)',
+            color: 'var(--theme-text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          <RefreshCw style={{ width: 13, height: 13 }} />
+          Refresh
+        </motion.button>
+      </motion.div>
+
+      {/* ── Stats Strip ─────────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
+        {[
+          { label: 'Total Deposits', value: totalItems, color: '#6366f1', bg: 'rgba(99,102,241,0.08)' },
+          { label: 'Pending', value: pending, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+          { label: 'Approved', value: approved, color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+          { label: 'Approved Volume', value: `$${totalAmount.toLocaleString()}`, color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+        ].map((s, i) => (
+          <motion.div
+            key={s.label}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 + i * 0.06 }}
+            whileHover={{ y: -3, scale: 1.02 }}
+            style={{ borderRadius: 14, padding: '14px 16px', background: s.bg, border: `1px solid ${s.color}25` }}
+          >
+            <p style={{ fontSize: 20, fontWeight: 800, color: s.color, margin: '0 0 2px' }}>{s.value}</p>
+            <p style={{ fontSize: 11, color: 'var(--theme-text-muted)', margin: 0 }}>{s.label}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ── Filter & Search Bar ─────────────────────────────────────────── */}
+      <div style={{
+        background: 'var(--theme-bg-card)', borderRadius: 16,
+        border: '1px solid var(--theme-border)', padding: 16, marginBottom: 16,
+      }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Search */}
+          <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+            <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: 'var(--theme-text-disabled)' }} />
+            <input
+              type="text" placeholder="Search by name, email, account…"
+              value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%', height: 40, paddingLeft: 38, paddingRight: 14, borderRadius: 10,
+                border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)',
+                outline: 'none', fontSize: 13, color: 'var(--theme-text-primary)', boxSizing: 'border-box',
+              }}
+            />
+          </div>
+          {/* Filter Toggle */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            style={{
+              height: 40, padding: '0 14px', borderRadius: 10, border: `1px solid ${showFilters ? '#6366f1' : 'var(--theme-border)'}`,
+              background: showFilters ? 'rgba(99,102,241,0.1)' : 'var(--theme-bg-main)',
+              color: showFilters ? '#6366f1' : 'var(--theme-text-muted)',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            <Filter style={{ width: 13, height: 13 }} />
+            Filters
+            {activeFilters > 0 && (
+              <span style={{ background: '#6366f1', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {activeFilters}
+              </span>
+            )}
+          </button>
+          {/* Export */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowExport(!showExport)}
+              style={{
+                height: 40, padding: '0 14px', borderRadius: 10, border: '1px solid var(--theme-border)',
+                background: 'var(--theme-bg-main)', color: 'var(--theme-text-muted)',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <Download style={{ width: 13, height: 13 }} />
+              Export
+            </button>
+            <AnimatePresence>
+              {showExport && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                  style={{
+                    position: 'absolute', top: '100%', right: 0, marginTop: 6, width: 160, zIndex: 50,
+                    background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)',
+                    borderRadius: 12, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  }}
+                >
+                  {[{ f: 'xlsx', label: 'Excel (.xlsx)', color: '#10b981' }, { f: 'csv', label: 'CSV (.csv)', color: '#6366f1' }, { f: 'pdf', label: 'PDF (.pdf)', color: '#ef4444' }].map(e => (
+                    <button key={e.f} onClick={() => handleExport(e.f)}
+                      style={{
+                        width: '100%', padding: '10px 14px', textAlign: 'left', background: 'none',
+                        border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--theme-text-primary)',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                      }}
+                      onMouseEnter={el => (el.currentTarget.style.background = 'var(--theme-bg-main)')}
+                      onMouseLeave={el => (el.currentTarget.style.background = 'none')}
+                    >
+                      <FileText style={{ width: 13, height: 13, color: e.color }} />
+                      {e.label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Filter Panel */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div style={{ paddingTop: 16, marginTop: 14, borderTop: '1px solid var(--theme-border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+                  {[
+                    { label: 'Status', value: selectedStatus, options: statusOptions, onChange: (v: string | null) => { setSelectedStatus(v); setCurrentPage(1) } },
+                    { label: 'Plan Type', value: selectedPlanType, options: planTypeOptions, onChange: (v: string | null) => { setSelectedPlanType(v); setCurrentPage(1) } },
+                    { label: 'Payment Method', value: selectedPaymentMethod, options: paymentMethodOptions, onChange: (v: string | null) => { setSelectedPaymentMethod(v); setCurrentPage(1) } },
+                  ].map(f => (
+                    <div key={f.label}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', marginBottom: 5, textTransform: 'uppercase' }}>{f.label}</label>
+                      <select
+                        value={f.value || 'all'}
+                        onChange={e => f.onChange(e.target.value === 'all' ? null : e.target.value)}
+                        style={{
+                          width: '100%', height: 36, padding: '0 10px', borderRadius: 8,
+                          border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)',
+                          color: 'var(--theme-text-primary)', fontSize: 12, outline: 'none',
+                        }}
+                      >
+                        <option value="all">All {f.label}s</option>
+                        {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', marginBottom: 5, textTransform: 'uppercase' }}>From Date</label>
+                    <input type="date" value={startDate ? startDate.toISOString().split('T')[0] : ''}
+                      onChange={e => { setStartDate(e.target.value ? new Date(e.target.value) : null); setCurrentPage(1) }}
+                      style={{ width: '100%', height: 36, padding: '0 10px', borderRadius: 8, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-primary)', fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', marginBottom: 5, textTransform: 'uppercase' }}>To Date</label>
+                    <input type="date" value={endDate ? endDate.toISOString().split('T')[0] : ''}
+                      onChange={e => { setEndDate(e.target.value ? new Date(e.target.value) : null); setCurrentPage(1) }}
+                      style={{ width: '100%', height: 36, padding: '0 10px', borderRadius: 8, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-primary)', fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+                  <button onClick={resetFilters} style={{ height: 32, padding: '0 14px', borderRadius: 8, border: '1px solid var(--theme-border)', background: 'none', color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <X style={{ width: 12, height: 12 }} /> Reset All
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Active Filter Chips */}
+        {activeFilters > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: 'var(--theme-text-muted)' }}>Active:</span>
+            {selectedStatus && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, background: 'rgba(99,102,241,0.1)', color: '#6366f1', fontSize: 11, fontWeight: 600 }}>
+                Status: {selectedStatus}
+                <X style={{ width: 10, height: 10, cursor: 'pointer' }} onClick={() => setSelectedStatus(null)} />
+              </span>
+            )}
+            {selectedPlanType && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: 11, fontWeight: 600 }}>
+                Plan: {selectedPlanType}
+                <X style={{ width: 10, height: 10, cursor: 'pointer' }} onClick={() => setSelectedPlanType(null)} />
+              </span>
+            )}
+            {selectedPaymentMethod && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', fontSize: 11, fontWeight: 600 }}>
+                Method: {selectedPaymentMethod}
+                <X style={{ width: 10, height: 10, cursor: 'pointer' }} onClick={() => setSelectedPaymentMethod(null)} />
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Table ───────────────────────────────────────────────────────── */}
+      <div style={{ background: 'var(--theme-bg-card)', borderRadius: 16, border: '1px solid var(--theme-border)', overflow: 'hidden' }}>
+        {error && (
+          <div style={{ padding: '12px 20px', background: 'rgba(239,68,68,0.08)', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <X style={{ width: 14, height: 14, color: '#ef4444' }} />
+            <span style={{ fontSize: 13, color: '#ef4444' }}>{error}</span>
+          </div>
+        )}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--theme-bg-main)' }}>
+                {[
+                  { key: 'user', label: 'User', sortable: false },
+                  { key: 'accountNumber', label: 'Account', sortable: false },
+                  { key: 'amount', label: 'Amount', sortable: true },
+                  { key: 'planType', label: 'Plan', sortable: false },
+                  { key: 'paymentMethod', label: 'Payment', sortable: false },
+                  { key: 'bonus', label: 'Bonus', sortable: false },
+                  { key: 'document', label: 'Doc', sortable: false },
+                  { key: 'requestedOn', label: 'Requested', sortable: true },
+                  { key: 'status', label: 'Status', sortable: true },
+                  { key: 'actions', label: 'Actions', sortable: false },
+                ].map(col => (
+                  <th key={col.key}
+                    onClick={() => col.sortable && handleSort(col.key as keyof Deposit)}
+                    style={{
+                      padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                      color: 'var(--theme-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em',
+                      whiteSpace: 'nowrap', cursor: col.sortable ? 'pointer' : 'default',
+                      borderBottom: '1px solid var(--theme-border)',
+                    }}
+                  >
+                    {col.label}
+                    {col.sortable && sortField === col.key && (
+                      <span style={{ marginLeft: 4 }}>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading
+                ? [...Array(6)].map((_, i) => <SkeletonRow key={i} />)
+                : deposits.length === 0
+                  ? (
+                    <tr>
+                      <td colSpan={10} style={{ padding: '60px 20px', textAlign: 'center' }}>
+                        <ArrowDownCircle style={{ width: 40, height: 40, color: 'var(--theme-border)', margin: '0 auto 10px' }} />
+                        <p style={{ fontSize: 14, color: 'var(--theme-text-muted)', margin: 0 }}>No deposits found</p>
+                        {activeFilters > 0 && (
+                          <button onClick={resetFilters} style={{ marginTop: 8, fontSize: 12, color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer' }}>Clear filters</button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                  : deposits.map((dep, idx) => (
+                    <motion.tr key={dep.id}
+                      initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02 }}
+                      style={{ borderBottom: '1px solid var(--theme-border)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--theme-bg-main)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <td style={{ padding: '12px 16px' }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text-primary)' }}>{dep.user.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--theme-text-muted)' }}>{dep.user.email}</div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--theme-text-muted)', fontFamily: 'monospace' }}>{dep.accountNumber}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: '#10b981' }}>${dep.amount.toLocaleString()}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: 'rgba(99,102,241,0.1)', color: '#6366f1', fontWeight: 600 }}>{dep.planType}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--theme-text-muted)' }}>{dep.paymentMethod}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 12, color: dep.bonus > 0 ? '#10b981' : 'var(--theme-text-disabled)', fontWeight: dep.bonus > 0 ? 700 : 400 }}>
+                        {dep.bonus > 0 ? `+$${dep.bonus}` : '—'}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {dep.document ? (
+                          <button
+                            onClick={() => { setSelectedDeposit(dep); openDocumentInNewTab() }}
+                            style={{ background: 'rgba(99,102,241,0.1)', border: 'none', cursor: 'pointer', borderRadius: 6, padding: '4px 8px', color: '#6366f1' }}
+                          >
+                            <ExternalLink style={{ width: 12, height: 12 }} />
+                          </button>
+                        ) : <span style={{ color: 'var(--theme-text-disabled)', fontSize: 11 }}>—</span>}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: 11, color: 'var(--theme-text-muted)', whiteSpace: 'nowrap' }}>{formatDate(dep.requestedOn)}</td>
+                      <td style={{ padding: '12px 16px' }}><StatusBadge status={dep.status} /></td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button title="View Details" onClick={() => openDetails(dep)}
+                            style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--theme-border)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--theme-text-muted)' }}>
+                            <Eye style={{ width: 13, height: 13 }} />
+                          </button>
+                          {dep.status === 'Pending' && (
+                            <>
+                              <button title="Approve" onClick={() => openApprove(dep)}
+                                style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                                <CheckCircle style={{ width: 13, height: 13 }} />
+                              </button>
+                              <button title="Reject" onClick={() => openReject(dep)}
+                                style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                                <XCircle style={{ width: 13, height: 13 }} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {!loading && deposits.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid var(--theme-border)', flexWrap: 'wrap', gap: 10 }}>
+            <span style={{ fontSize: 12, color: 'var(--theme-text-muted)' }}>
+              {Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)}–{Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}
+            </span>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <select value={itemsPerPage} onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1) }}
+                style={{ height: 30, padding: '0 8px', borderRadius: 8, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-muted)', fontSize: 11, outline: 'none' }}>
+                {[10, 20, 50].map(n => <option key={n} value={n}>{n} / page</option>)}
+              </select>
+              <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}
+                style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ChevronLeft style={{ width: 14, height: 14, color: 'var(--theme-text-muted)' }} />
+              </button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let page = totalPages <= 5 ? i + 1 : currentPage <= 3 ? i + 1 : currentPage >= totalPages - 2 ? totalPages - 4 + i : currentPage - 2 + i
+                if (page < 1 || page > totalPages) return null
+                return (
+                  <button key={page} onClick={() => setCurrentPage(page)}
+                    style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${page === currentPage ? '#6366f1' : 'var(--theme-border)'}`, background: page === currentPage ? '#6366f1' : 'var(--theme-bg-main)', color: page === currentPage ? 'white' : 'var(--theme-text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    {page}
+                  </button>
+                )
+              })}
+              <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}
+                style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ChevronRight style={{ width: 14, height: 14, color: 'var(--theme-text-muted)' }} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Details Modal ────────────────────────────────────────────────── */}
+      <Modal open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth={560}>
+        <div style={{ padding: '22px 24px 20px', borderBottom: '1px solid var(--theme-border)', background: 'linear-gradient(135deg,rgba(99,102,241,0.08),transparent)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--theme-text-primary)' }}>Deposit Details</h3>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--theme-text-muted)' }}>ID: {selectedDeposit?.id}</p>
+            </div>
+            <button onClick={() => setDetailsOpen(false)} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'var(--theme-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X style={{ width: 13, height: 13, color: 'var(--theme-text-muted)' }} />
+            </button>
+          </div>
+        </div>
+        <div style={{ padding: 24 }}>
+          {selectedDeposit && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <DRow label="Client Name" value={selectedDeposit.user.name} />
+              <DRow label="Email" value={selectedDeposit.user.email} />
+              <DRow label="Account Number" value={selectedDeposit.accountNumber} />
+              <DRow label="Amount" value={`$${selectedDeposit.amount.toLocaleString()}`} />
+              <DRow label="Plan Type" value={selectedDeposit.planType} />
+              <DRow label="Payment Method" value={selectedDeposit.paymentMethod} />
+              <DRow label="Bonus" value={selectedDeposit.bonus > 0 ? `$${selectedDeposit.bonus}` : 'None'} />
+              <DRow label="Status" value={<StatusBadge status={selectedDeposit.status} />} />
+              <DRow label="Requested On" value={formatDate(selectedDeposit.requestedOn)} />
+              {selectedDeposit.approvedOn && <DRow label="Approved On" value={formatDate(selectedDeposit.approvedOn)} />}
+              {selectedDeposit.rejectedOn && <DRow label="Rejected On" value={formatDate(selectedDeposit.rejectedOn)} />}
+              {selectedDeposit.remarks && <div style={{ gridColumn: '1/-1' }}><DRow label="Remarks" value={selectedDeposit.remarks} /></div>}
+            </div>
+          )}
+          {selectedDeposit?.document && (
+            <button onClick={openDocumentInNewTab}
+              style={{ marginTop: 16, width: '100%', height: 40, borderRadius: 10, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#6366f1', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <ExternalLink style={{ width: 14, height: 14 }} /> View Proof of Payment
+            </button>
+          )}
+        </div>
+      </Modal>
+
+      {/* ── Approve Modal ────────────────────────────────────────────────── */}
+      <Modal open={approveOpen} onClose={() => setApproveOpen(false)} maxWidth={440}>
+        <div style={{ padding: '22px 24px 20px', borderBottom: '1px solid var(--theme-border)', background: 'linear-gradient(135deg,rgba(16,185,129,0.08),transparent)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--theme-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle style={{ width: 18, height: 18, color: '#10b981' }} />
+              Approve Deposit
+            </h3>
+            <button onClick={() => setApproveOpen(false)} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'var(--theme-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X style={{ width: 13, height: 13, color: 'var(--theme-text-muted)' }} />
+            </button>
+          </div>
+          {selectedDeposit && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--theme-text-muted)' }}>{selectedDeposit.user.name} — ${selectedDeposit.amount.toLocaleString()}</p>}
+        </div>
+        <div style={{ padding: 24 }}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Bonus Amount ($)</label>
+            <input type="number" min={0} value={bonus} onChange={e => setBonus(Number(e.target.value))}
+              style={{ width: '100%', height: 40, padding: '0 12px', borderRadius: 10, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Remarks</label>
+            <textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={3}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-primary)', fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setApproveOpen(false)}
+              style={{ flex: 1, height: 42, borderRadius: 10, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              Cancel
+            </button>
+            <button onClick={handleApprove} disabled={approveLoading}
+              style={{ flex: 1, height: 42, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#10b981,#059669)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: approveLoading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <CheckCircle style={{ width: 14, height: 14 }} />
+              Approve
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Reject Modal ─────────────────────────────────────────────────── */}
+      <Modal open={rejectOpen} onClose={() => setRejectOpen(false)} maxWidth={440}>
+        <div style={{ padding: '22px 24px 20px', borderBottom: '1px solid var(--theme-border)', background: 'linear-gradient(135deg,rgba(239,68,68,0.08),transparent)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--theme-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <XCircle style={{ width: 18, height: 18, color: '#ef4444' }} />
+              Reject Deposit
+            </h3>
+            <button onClick={() => setRejectOpen(false)} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'var(--theme-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X style={{ width: 13, height: 13, color: 'var(--theme-text-muted)' }} />
+            </button>
+          </div>
+          {selectedDeposit && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--theme-text-muted)' }}>{selectedDeposit.user.name} — ${selectedDeposit.amount.toLocaleString()}</p>}
+        </div>
+        <div style={{ padding: 24 }}>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Rejection Reason <span style={{ color: '#ef4444' }}>*</span></label>
+            <textarea value={rejectRemarks} onChange={e => setRejectRemarks(e.target.value)} rows={4} placeholder="Provide a clear reason for rejection…"
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${rejectRemarks.trim() ? 'var(--theme-border)' : 'rgba(239,68,68,0.4)'}`, background: 'var(--theme-bg-main)', color: 'var(--theme-text-primary)', fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setRejectOpen(false)}
+              style={{ flex: 1, height: 42, borderRadius: 10, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              Cancel
+            </button>
+            <button onClick={handleReject} disabled={rejectLoading || !rejectRemarks.trim()}
+              style={{ flex: 1, height: 42, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#ef4444,#dc2626)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (rejectLoading || !rejectRemarks.trim()) ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <XCircle style={{ width: 14, height: 14 }} />
+              Reject
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }`}</style>
+    </motion.div>
+  )
 }
 
 export default DepositsPage

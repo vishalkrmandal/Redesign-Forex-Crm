@@ -1,2662 +1,707 @@
-// Frontend\src\pages\admin\features\ClientsPage.tsx
-
+// Frontend/src/pages/admin/features/ClientsPage.tsx
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Search, Filter, Download, ChevronDown, Check, X, MoreHorizontal, Eye, Lock, Pencil } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+  Search, Filter, X, Eye, Lock, ChevronLeft, ChevronRight,
+  Users, UserCheck, UserX, RefreshCw, Shield, ShieldCheck,
+  ShieldX, Mail, MailX, CreditCard, LogIn, KeyRound,
+} from "lucide-react"
 import clientService from "./clientService"
 import { toast } from "sonner"
 import { impersonateClient } from "@/utils/impersonation"
-import { useTheme } from '@/context/ThemeContext'
-import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from "framer-motion"
+import { createPortal } from "react-dom"
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
 interface Client {
-    id: string;
-    name: string;
-    email: string;
-    firstname: string;
-    lastname: string;
-    avatar?: string;
-    accountNumber: string;
-    status: string;
-    isEmailVerified: boolean;
-    kycVerified: boolean;
-    kycStatus: "unverified" | "verified" | "rejected";
-    kycRejectReason?: string;
-    country: {
-        name: string;
-        state: string;
-    };
-    ibPartner: string;
-    phone: string;
-    dateofbirth: string;
-    educationLevel: string;
-    otherEducation: string;
-    idDocument: string;
-    address1Document: string;
-    address2Document: string;
-    bankDetails: {
-        bankName: string;
-        accountHolderName: string;
-        accountNumber: string;
-        ifscSwiftCode: string;
-    };
-    walletDetails: {
-        tetherWalletAddress: string;
-        ethWalletAddress: string;
-        accountNumber: string;
-        trxWalletAddress: string;
-    };
+  id: string; name: string; email: string; firstname: string; lastname: string
+  avatar?: string; accountNumber: string; status: string; isEmailVerified: boolean
+  kycVerified: boolean; kycStatus: "unverified" | "verified" | "rejected"; kycRejectReason?: string
+  country: { name: string; state: string }; ibPartner: string; phone: string
+  dateofbirth: string; educationLevel: string; otherEducation: string
+  idDocument: string; address1Document: string; address2Document: string
+  bankDetails: { bankName: string; accountHolderName: string; accountNumber: string; ifscSwiftCode: string }
+  walletDetails: { tetherWalletAddress: string; ethWalletAddress: string; accountNumber: string; trxWalletAddress: string }
 }
 
 interface Account {
-    _id: string;
-    mt5Account: string;
-    name: string;
-    accountType: string;
-    leverage: string;
-    balance: number;
-    equity: number;
-    profit: number;
+  _id: string; mt5Account: string; name: string; accountType: string
+  leverage: string; balance: number; equity: number; profit: number
 }
 
+// ─── Pill Badges ──────────────────────────────────────────────────────────────
+const Pill = ({ label, color, bg }: { label: string; color: string; bg: string }) => (
+  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: bg, color, whiteSpace: 'nowrap' }}>
+    {label}
+  </span>
+)
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+const Modal = ({ open, onClose, children, maxWidth = 600 }: {
+  open: boolean; onClose: () => void; children: React.ReactNode; maxWidth?: number
+}) => {
+  if (!open) return null
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          onClick={e => { if (e.target === e.currentTarget) onClose() }}
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', padding: 16 }}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.93, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.93, y: 20 }} transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+            style={{ width: '100%', maxWidth, maxHeight: '90vh', overflowY: 'auto', background: 'var(--theme-bg-card)', borderRadius: 20, border: '1px solid var(--theme-border)', boxShadow: '0 24px 80px rgba(0,0,0,0.3)' }}>
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body
+  )
+}
+
+const DRow = ({ label, value }: { label: string; value?: string | React.ReactNode }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</span>
+    <span style={{ fontSize: 13, color: 'var(--theme-text-primary)', fontWeight: 500 }}>
+      {value || <span style={{ color: 'var(--theme-text-disabled)' }}>—</span>}
+    </span>
+  </div>
+)
+
 const ClientsPage = () => {
-    const { theme } = useTheme();
-    const [clients, setClients] = useState<Client[]>([])
-    const [loading, setLoading] = useState(true)
-    const [searchTerm, setSearchTerm] = useState("")
-    const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
-    const [selectedKycStatus, setSelectedKycStatus] = useState<string | null>(null)
-    const [selectedEmailStatus, setSelectedEmailStatus] = useState<string | null>(null)
-    const [selectedIbPartner, setSelectedIbPartner] = useState<string | null>(null)
-    // const [visiblePasswords, setVisiblePasswords] = useState<string[]>([])
-    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
-    const [clientDetailsDialogOpen, setClientDetailsDialogOpen] = useState(false)
-    const [selectedClient, setSelectedClient] = useState<Client | null>(null)
-    const [password, setPassword] = useState("")
-    const [newPassword, setNewPassword] = useState("")
-    const [confirmPassword, setConfirmPassword] = useState("")
-    const [editMode, setEditMode] = useState<Record<string, boolean>>({})
+  const [clients, setClients] = useState<Client[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
+  const [selectedKycStatus, setSelectedKycStatus] = useState<string | null>(null)
+  const [selectedEmailStatus, setSelectedEmailStatus] = useState<string | null>(null)
+  const [selectedIbPartner, setSelectedIbPartner] = useState<string | null>(null)
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  const [clientDetailsDialogOpen, setClientDetailsDialogOpen] = useState(false)
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const [password, setPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [accountsDialogOpen, setAccountsDialogOpen] = useState(false)
+  const [clientAccounts, setClientAccounts] = useState<Account[]>([])
+  const [loadingAccounts, setLoadingAccounts] = useState(false)
+  const [countries, setCountries] = useState<string[]>([])
+  const [ibPartners, setIbPartners] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [showFilters, setShowFilters] = useState(false)
 
-    const [accountsDialogOpen, setAccountsDialogOpen] = useState(false)
-    const [clientAccounts, setClientAccounts] = useState<Account[]>([])
-    const [loadingAccounts, setLoadingAccounts] = useState(false)
+  const getFullDocumentUrl = (p: string) => {
+    if (!p) return ''
+    return `${API_BASE_URL}/${p.replace(/\\/g, '/')}`
+  }
 
-    // List of unique countries, IB partners for filters
-    const [countries, setCountries] = useState<string[]>([])
-    const [ibPartners, setIbPartners] = useState<string[]>([])
-    const [currentPage, setCurrentPage] = useState(1)
-    const [itemsPerPage, setItemsPerPage] = useState(10)
+  useEffect(() => { fetchClients() }, [])
 
-    // Add this function after your state declarations
-    const getFullDocumentUrl = (documentPath: string) => {
-        if (!documentPath) return '';
-        // Replace backslashes with forward slashes for URL compatibility
-        const formattedPath = documentPath.replace(/\\/g, '/');
-        return `${API_BASE_URL}/${formattedPath}`;
-    };
-
-    useEffect(() => {
-        fetchClients()
-    }, [])
-
-    const fetchClients = async () => {
-        try {
-            setLoading(true)
-            const response = await clientService.getAllClients()
-
-            // Add logging to debug the response structure
-            console.log("Full API response:", response);
-            console.log("Response data:", response.data);
-            console.log("Type of response.data:", typeof response.data);
-
-            // Check if response.data exists and is an array
-            let clientsData = [];
-            if (response.data && Array.isArray(response.data)) {
-                clientsData = response.data;
-            } else if (response && Array.isArray(response)) {
-                // Sometimes the response itself is the array
-                clientsData = response;
-            } else if (response.data && response.data.clients && Array.isArray(response.data.clients)) {
-                // Sometimes data is nested under a 'clients' property
-                clientsData = response.data.clients;
-            } else {
-                console.warn("Unexpected response structure:", response);
-                clientsData = []; // fallback to empty array
-            }
-
-            setClients(clientsData);
-
-            // Extract unique countries and IB partners for filters - with null checks
-            const uniqueCountries = [...new Set(
-                clientsData
-                    .map((client: Client) => client.country?.name)
-                    .filter(Boolean) // Remove null/undefined values
-            )] as string[];
-
-            const uniqueIbPartners = [...new Set(
-                clientsData
-                    .map((client: Client) => client.ibPartner)
-                    .filter(Boolean) // Remove null/undefined values
-            )] as string[];
-
-            setCountries(uniqueCountries);
-            setIbPartners(uniqueIbPartners);
-            setLoading(false);
-        } catch (error) {
-            console.error("Error fetching clients:", error);
-            if (typeof error === "object" && error !== null && "response" in error) {
-                const err = error as { message?: string; response?: any };
-                console.error("Error details:", {
-                    message: err.message,
-                    response: err.response,
-                    status: err.response?.status,
-                    data: err.response?.data
-                });
-            } else {
-                console.error("Error details:", error);
-            }
-
-            // Set empty arrays to prevent further errors
-            setClients([]);
-            setCountries([]);
-            setIbPartners([]);
-
-            toast.error("Failed to fetch clients. Please try again.");
-            setLoading(false);
-        }
+  const fetchClients = async () => {
+    try {
+      setLoading(true)
+      const response = await clientService.getAllClients()
+      let clientsData: Client[] = []
+      if (response.data && Array.isArray(response.data)) clientsData = response.data
+      else if (Array.isArray(response)) clientsData = response
+      else if (response.data?.clients && Array.isArray(response.data.clients)) clientsData = response.data.clients
+      setClients(clientsData)
+      setCountries([...new Set(clientsData.map((c: Client) => c.country?.name).filter(Boolean))] as string[])
+      setIbPartners([...new Set(clientsData.map((c: Client) => c.ibPartner).filter(Boolean))] as string[])
+    } catch {
+      toast.error("Failed to fetch clients. Please try again.")
+      setClients([]); setCountries([]); setIbPartners([])
+    } finally {
+      setLoading(false)
     }
+  }
 
-    // Add this new function to handle client impersonation
-    const handleImpersonateClient = async (client: Client) => {
-        try {
-            // Show loading toast
-            toast.loading("Preparing client access...");
-
-            // Call the API to get impersonation token
-            const response = await clientService.impersonateClient(client.id);
-
-            if (response.success) {
-                // Dismiss the loading toast
-                toast.dismiss();
-                toast.success("Client access prepared successfully");
-
-                // Handle the impersonation - this will open a new tab
-                impersonateClient(response.clientToken, response.user);
-            } else {
-                toast.dismiss();
-                toast.error("Failed to access client account");
-            }
-        } catch (error) {
-            console.error("Error impersonating client:", error);
-            toast.dismiss();
-            toast.error("Failed to access client account. Please try again.");
-        }
-    };
-
-    const getClientPassword = async (clientId: string) => {
-        try {
-            const response = await clientService.getClientPassword(clientId)
-            setPassword(response.password || "Not available")
-        } catch (error) {
-            console.error("Error fetching password:", error)
-            // Set password state to indicate it wasn't found
-            setPassword("Password not found")
-
-            // Only show toast for other types of errors
-            if ((error as any)?.response?.status !== 404) {
-                toast.error("Failed to fetch password. Please try again.")
-            }
-        }
+  const handleImpersonateClient = async (client: Client) => {
+    try {
+      toast.loading("Preparing client access...")
+      const response = await clientService.impersonateClient(client.id)
+      if (response.success) {
+        toast.dismiss(); toast.success("Client access prepared successfully")
+        impersonateClient(response.clientToken, response.user)
+      } else {
+        toast.dismiss(); toast.error("Failed to access client account")
+      }
+    } catch {
+      toast.dismiss(); toast.error("Failed to access client account. Please try again.")
     }
+  }
 
-    const handlePasswordDialog = async (client: Client) => {
-        setSelectedClient(client)
-        await getClientPassword(client.id)
-        setPasswordDialogOpen(true)
+  const handlePasswordDialog = async (client: Client) => {
+    setSelectedClient(client)
+    try {
+      const response = await clientService.getClientPassword(client.id)
+      setPassword(response.password || "Not available")
+    } catch (error: any) {
+      setPassword(error?.response?.status === 404 ? "Password not found" : "Error fetching password")
     }
+    setPasswordDialogOpen(true)
+  }
 
-    const handleUpdatePassword = async () => {
-        if (!selectedClient) return
-        if (newPassword !== confirmPassword) {
-            toast.error("Passwords do not match.")
-            return
-        }
+  const handleUpdatePassword = async () => {
+    if (!selectedClient) return
+    if (newPassword !== confirmPassword) { toast.error("Passwords do not match."); return }
+    try {
+      await clientService.updateClientPassword(selectedClient.id, newPassword)
+      toast.success("Password updated successfully.")
+      setPasswordDialogOpen(false); setNewPassword(""); setConfirmPassword("")
+    } catch { toast.error("Failed to update password. Please try again.") }
+  }
 
-        try {
-            await clientService.updateClientPassword(selectedClient.id, newPassword)
-            toast.success("Password updated successfully.")
-            setPasswordDialogOpen(false)
-            setNewPassword("")
-            setConfirmPassword("")
-        } catch (error) {
-            console.error("Error updating password:", error)
-            toast.error("Failed to update password. Please try again.")
-        }
+  const handleViewDetails = async (client: Client) => {
+    setSelectedClient(client)
+    try {
+      const response = await clientService.getClientDetails(client.id)
+      setSelectedClient(response.data); setClientDetailsDialogOpen(true)
+    } catch { toast.error("Failed to fetch client details. Please try again.") }
+  }
+
+  const handleSuspendClient = async (clientId: string) => {
+    try {
+      await clientService.suspendClient(clientId)
+      toast.success("Client suspended successfully."); fetchClients()
+    } catch { toast.error("Failed to suspend client. Please try again.") }
+  }
+
+  const handleActivateClient = async (clientId: string) => {
+    try {
+      await clientService.activateClient(clientId)
+      toast.success("Client activated successfully."); fetchClients()
+    } catch { toast.error("Failed to activate client. Please try again.") }
+  }
+
+  const handleUpdateClient = async () => {
+    if (!selectedClient) return
+    if (selectedClient.kycStatus === "rejected" && !selectedClient.kycRejectReason?.trim()) {
+      toast.error("Rejection reason is required when KYC status is set to Rejected"); return
     }
-
-    const handleViewDetails = async (client: Client) => {
-        setSelectedClient(client)
-        try {
-            const response = await clientService.getClientDetails(client.id)
-            setSelectedClient(response.data)
-            setClientDetailsDialogOpen(true)
-        } catch (error) {
-            console.error("Error fetching client details:", error)
-            toast.error("Failed to fetch client details. Please try again.")
-        }
+    const clientData: any = {
+      firstname: selectedClient.firstname, lastname: selectedClient.lastname,
+      email: selectedClient.email, isEmailVerified: selectedClient.isEmailVerified,
+      country: selectedClient.country, phone: selectedClient.phone,
+      dateofbirth: selectedClient.dateofbirth, kycVerified: selectedClient.kycStatus === "verified",
+      kycStatus: selectedClient.kycStatus, kycRejectReason: selectedClient.kycRejectReason,
+      ibPartner: selectedClient.ibPartner, bankDetails: selectedClient.bankDetails,
+      walletDetails: selectedClient.walletDetails,
     }
-
-    const handleSuspendClient = async (clientId: string) => {
-        try {
-            await clientService.suspendClient(clientId)
-            toast.success("Client suspended successfully.")
-            fetchClients()
-        } catch (error) {
-            console.error("Error suspending client:", error)
-            toast.error("Failed to suspend client. Please try again.")
-        }
+    if (selectedClient.educationLevel?.trim() && selectedClient.educationLevel !== 'not-specified') {
+      clientData.educationLevel = selectedClient.educationLevel
+      if (selectedClient.educationLevel === 'other' && selectedClient.otherEducation)
+        clientData.otherEducation = selectedClient.otherEducation
     }
+    try {
+      await clientService.updateClient(selectedClient.id, clientData)
+      toast.success("Client updated successfully."); fetchClients(); setClientDetailsDialogOpen(false)
+    } catch { toast.error("Failed to update client. Please try again.") }
+  }
 
-    const handleActivateClient = async (clientId: string) => {
-        try {
-            await clientService.activateClient(clientId)
-            toast.success("Client activated successfully.")
-            fetchClients()
-        } catch (error) {
-            console.error("Error activating client:", error)
-            toast.error("Failed to activate client. Please try again.")
-        }
+  const handleOpenDocument = (documentUrl: string) => {
+    if (!documentUrl) return
+    const fullUrl = getFullDocumentUrl(documentUrl)
+    const isPdf = documentUrl.toLowerCase().endsWith('.pdf')
+    if (isPdf) { window.open(fullUrl, '_blank') }
+    else { const w = window.open(""); if (w) w.document.write(`<img src="${fullUrl}" style="max-width:100%">`) }
+  }
+
+  const handleViewAccounts = async (client: Client) => {
+    setSelectedClient(client); setLoadingAccounts(true); setAccountsDialogOpen(true)
+    try {
+      const response = await clientService.getUserAccounts(client.id)
+      setClientAccounts(response.data)
+      if (response.warning) toast.warning(response.warning)
+    } catch {
+      toast.error("Failed to fetch user accounts."); handleCloseAccountsDialog()
+    } finally { setLoadingAccounts(false) }
+  }
+
+  const handleCloseAccountsDialog = () => {
+    setAccountsDialogOpen(false); setLoadingAccounts(false)
+    setClientAccounts([]); setSelectedClient(null)
+    setTimeout(() => { document.body.style.overflow = 'unset'; document.body.style.paddingRight = '0px' }, 100)
+  }
+
+  const resetFilters = () => {
+    setSearchTerm(""); setSelectedCountry(null); setSelectedKycStatus(null)
+    setSelectedEmailStatus(null); setSelectedIbPartner(null)
+  }
+
+  useEffect(() => { setCurrentPage(1) }, [searchTerm, selectedCountry, selectedKycStatus, selectedEmailStatus, selectedIbPartner])
+
+  const { paginatedClients, totalPages, totalItems, startItem, endItem } = useMemo(() => {
+    const arr = clients || []
+    const filtered = arr.filter(c => {
+      if (searchTerm && !c.name?.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !c.email?.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !c.accountNumber?.toLowerCase().includes(searchTerm.toLowerCase())) return false
+      if (selectedCountry && selectedCountry !== 'all' && c.country?.name !== selectedCountry) return false
+      if (selectedKycStatus && selectedKycStatus !== 'all') {
+        if (selectedKycStatus === 'Verified' && c.kycStatus !== 'verified') return false
+        if (selectedKycStatus === 'Unverified' && c.kycStatus !== 'unverified') return false
+        if (selectedKycStatus === 'Rejected' && c.kycStatus !== 'rejected') return false
+      }
+      if (selectedEmailStatus && selectedEmailStatus !== 'all') {
+        if (selectedEmailStatus === 'Verified' && !c.isEmailVerified) return false
+        if (selectedEmailStatus === 'Unverified' && c.isEmailVerified) return false
+      }
+      if (selectedIbPartner && selectedIbPartner !== 'all' && c.ibPartner !== selectedIbPartner) return false
+      return true
+    }).reverse()
+    const total = filtered.length
+    const pages = Math.max(1, Math.ceil(total / itemsPerPage))
+    const start = (currentPage - 1) * itemsPerPage
+    return {
+      paginatedClients: filtered.slice(start, start + itemsPerPage),
+      totalPages: pages, totalItems: total,
+      startItem: total === 0 ? 0 : start + 1,
+      endItem: Math.min(start + itemsPerPage, total),
     }
-
-    const toggleEditMode = (field: string) => {
-        setEditMode(prev => ({
-            ...prev,
-            [field]: !prev[field]
-        }))
-    }
-
-    const handleUpdateClient = async () => {
-        if (!selectedClient) return;
-
-        // Validate reject reason is provided if status is rejected
-        if (selectedClient.kycStatus === "rejected" && !selectedClient.kycRejectReason?.trim()) {
-            toast.error("Rejection reason is required when KYC status is set to Rejected");
-            return;
-        }
-
-        // Prepare client data without education level initially
-        const clientData: any = {
-            firstname: selectedClient.firstname,
-            lastname: selectedClient.lastname,
-            email: selectedClient.email,
-            isEmailVerified: selectedClient.isEmailVerified,
-            country: selectedClient.country,
-            phone: selectedClient.phone,
-            dateofbirth: selectedClient.dateofbirth,
-            kycVerified: selectedClient.kycStatus === "verified",
-            kycStatus: selectedClient.kycStatus,
-            kycRejectReason: selectedClient.kycRejectReason,
-            ibPartner: selectedClient.ibPartner,
-            bankDetails: selectedClient.bankDetails,
-            walletDetails: selectedClient.walletDetails
-        };
-
-        // Only add education level if it has a valid value
-        if (selectedClient.educationLevel && selectedClient.educationLevel.trim() !== '' &&
-            selectedClient.educationLevel !== 'not-specified') {
-            clientData.educationLevel = selectedClient.educationLevel;
-
-            // Add otherEducation only if educationLevel is 'other'
-            if (selectedClient.educationLevel === 'other' && selectedClient.otherEducation) {
-                clientData.otherEducation = selectedClient.otherEducation;
-            }
-        }
-
-        try {
-            await clientService.updateClient(selectedClient.id, clientData);
-            toast.success("Client updated successfully.");
-            setEditMode({});
-            fetchClients();
-            setClientDetailsDialogOpen(false);
-        } catch (error) {
-            console.error("Error updating client:", error);
-            toast.error("Failed to update client. Please try again.");
-        }
-    };
-    const handleOpenDocument = (documentUrl: string) => {
-        if (!documentUrl) return
-
-        // Get full URL
-        const fullUrl = getFullDocumentUrl(documentUrl);
-
-        // Check if PDF or image
-        const isPdf = documentUrl.toLowerCase().endsWith('.pdf')
-
-        if (isPdf) {
-            window.open(fullUrl, '_blank')
-        } else {
-            // Open image in new tab
-            const img = new Image()
-            img.src = fullUrl
-            const w = window.open("")
-            if (w) w.document.write(img.outerHTML)
-        }
-    }
-
-    const handleDownloadDocument = (documentUrl: string, fileName: string) => {
-        if (!documentUrl) return
-
-        const fullUrl = getFullDocumentUrl(documentUrl);
-
-        fetch(fullUrl)
-            .then(response => response.blob())
-            .then(blob => {
-                const link = document.createElement('a')
-                link.href = URL.createObjectURL(blob)
-                link.download = fileName
-                document.body.appendChild(link)
-                link.click()
-                document.body.removeChild(link)
-            })
-            .catch(error => {
-                console.error("Error downloading document:", error)
-                // toast.error("Failed to download document. Please try again.")
-            })
-    }
-
-
-    // Add this function to fetch user accounts with proper cleanup
-    const handleViewAccounts = async (client: Client) => {
-        setSelectedClient(client)
-        setLoadingAccounts(true)
-        setAccountsDialogOpen(true) // Open dialog immediately to show loading state
-
-        try {
-            const response = await clientService.getUserAccounts(client.id)
-            setClientAccounts(response.data)
-
-            // Show warning if API returned a warning (when external API fails)
-            if (response.warning) {
-                toast.warning(response.warning)
-            }
-        } catch (error) {
-            console.error("Error fetching user accounts:", error)
-            toast.error("Failed to fetch user accounts. Please try again.")
-            handleCloseAccountsDialog() // Use proper close handler
-        } finally {
-            setLoadingAccounts(false)
-        }
-    }
-
-    // Add proper dialog close handler with cleanup
-    const handleCloseAccountsDialog = () => {
-        setAccountsDialogOpen(false)
-        setLoadingAccounts(false)
-        setClientAccounts([])
-        setSelectedClient(null)
-
-        // Force cleanup of any lingering modal states
-        setTimeout(() => {
-            document.body.style.overflow = 'unset'
-            document.body.style.paddingRight = '0px'
-        }, 100)
-    }
-
-
-    // Reset all filters
-    const resetFilters = () => {
-        setSearchTerm("")
-        setSelectedCountry(null)
-        setSelectedKycStatus(null)
-        setSelectedEmailStatus(null)
-        setSelectedIbPartner(null)
-    }
-
-    // 1. Email Verified Badge (replace existing email verification badges)
-    const EmailVerifiedBadge = ({ isVerified }: { isVerified: boolean }) => {
-        const { theme } = useTheme();
-
-        if (isVerified) {
-            return (
-                <Badge
-                    variant="outline"
-                    className={`${theme === 'dark'
-                        ? 'bg-green-900/20 text-green-400 border-green-800 hover:bg-green-900/30'
-                        : 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100'
-                        }`}
-                >
-                    <Check className="mr-1 h-3 w-3" />Verified
-                </Badge>
-            );
-        }
-
-        return (
-            <Badge
-                variant="outline"
-                className={`${theme === 'dark'
-                    ? 'bg-red-900/20 text-red-400 border-red-800 hover:bg-red-900/30'
-                    : 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100'
-                    }`}
-            >
-                <X className="mr-1 h-3 w-3" />Unverified
-            </Badge>
-        );
-    };
-
-    // 2. KYC Status Badge (replace existing KYC badges)
-    const KYCStatusBadge = ({ status }: { status: "verified" | "unverified" | "rejected" }) => {
-        const { theme } = useTheme();
-
-        switch (status) {
-            case "verified":
-                return (
-                    <Badge
-                        variant="outline"
-                        className={`${theme === 'dark'
-                            ? 'bg-green-900/20 text-green-400 border-green-800 hover:bg-green-900/30'
-                            : 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100'
-                            }`}
-                    >
-                        <Check className="mr-1 h-3 w-3" />Verified
-                    </Badge>
-                );
-            case "rejected":
-                return (
-                    <Badge
-                        variant="outline"
-                        className={`${theme === 'dark'
-                            ? 'bg-red-900/20 text-red-400 border-red-800 hover:bg-red-900/30'
-                            : 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100'
-                            }`}
-                    >
-                        <X className="mr-1 h-3 w-3" />Rejected
-                    </Badge>
-                );
-            default:
-                return (
-                    <Badge
-                        variant="outline"
-                        className={`${theme === 'dark'
-                            ? 'bg-yellow-900/20 text-yellow-400 border-yellow-800 hover:bg-yellow-900/30'
-                            : 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100'
-                            }`}
-                    >
-                        <X className="mr-1 h-3 w-3" />Unverified
-                    </Badge>
-                );
-        }
-    };
-
-    // 3. Client Status Badge (replace existing status badges)
-    const ClientStatusBadge = ({ status }: { status: string }) => {
-        const { theme } = useTheme();
-
-        if (status === "activated") {
-            return (
-                <Badge
-                    className={`${theme === 'dark'
-                        ? 'bg-green-900/20 text-green-400 border-green-800 hover:bg-green-900/30'
-                        : 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100'
-                        }`}
-                >
-                    Active
-                </Badge>
-            );
-        }
-
-        return (
-            <Badge
-                className={`${theme === 'dark'
-                    ? 'bg-red-900/20 text-red-400 border-red-800 hover:bg-red-900/30'
-                    : 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100'
-                    }`}
-            >
-                Suspended
-            </Badge>
-        );
-    };
-
-    // 4. Filter Badge (replace existing filter badges)
-    const FilterBadge = ({ label, value, onRemove }: { label: string, value: string, onRemove: () => void }) => {
-        const { theme } = useTheme();
-
-        return (
-            <Badge
-                variant="secondary"
-                className={`flex items-center gap-1 ${theme === 'dark'
-                    ? 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
-                    : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
-                    }`}
-            >
-                {label}: {value}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-4 w-4 ml-1 p-0 hover:bg-transparent"
-                    onClick={onRemove}
-                >
-                    <X className="h-3 w-3" />
-                </Button>
-            </Badge>
-        );
-    };
-
-    {
-        selectedCountry && selectedCountry !== "all" && (
-            <FilterBadge
-                label="Country"
-                value={selectedCountry}
-                onRemove={() => setSelectedCountry(null)}
-            />
-        )
-    }
-    {
-        selectedKycStatus && selectedKycStatus !== "all" && (
-            <FilterBadge
-                label="KYC"
-                value={selectedKycStatus}
-                onRemove={() => setSelectedKycStatus(null)}
-            />
-        )
-    }
-    {
-        selectedEmailStatus && selectedEmailStatus !== "all" && (
-            <FilterBadge
-                label="Email"
-                value={selectedEmailStatus}
-                onRemove={() => setSelectedEmailStatus(null)}
-            />
-        )
-    }
-    {
-        selectedIbPartner && selectedIbPartner !== "all" && (
-            <FilterBadge
-                label="IB Partner"
-                value={selectedIbPartner}
-                onRemove={() => setSelectedIbPartner(null)}
-            />
-        )
-    }
-
-    const { paginatedClients, totalPages, totalItems, startItem, endItem } = useMemo(() => {
-        // Add this line to fix the error
-        const clientsArray = clients || [];
-
-        // Change this line to use clientsArray instead of clients
-        const filtered = clientsArray.filter(client => {
-            const matchesSearch = !searchTerm ||
-                client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                client.accountNumber?.toLowerCase().includes(searchTerm.toLowerCase());
-
-            const matchesCountry = !selectedCountry ||
-                selectedCountry === "all" ||
-                client.country?.name === selectedCountry;
-
-            const matchesKycStatus = !selectedKycStatus ||
-                selectedKycStatus === "all" ||
-                (selectedKycStatus === "Verified" && client.kycStatus === "verified") ||
-                (selectedKycStatus === "Unverified" && client.kycStatus === "unverified") ||
-                (selectedKycStatus === "Rejected" && client.kycStatus === "rejected");
-
-            const matchesEmailStatus = !selectedEmailStatus ||
-                selectedEmailStatus === "all" ||
-                (selectedEmailStatus === "Verified" && client.isEmailVerified) ||
-                (selectedEmailStatus === "Unverified" && !client.isEmailVerified);
-
-            const matchesIbPartner = !selectedIbPartner ||
-                selectedIbPartner === "all" ||
-                client.ibPartner === selectedIbPartner;
-
-            return matchesSearch && matchesCountry && matchesKycStatus && matchesEmailStatus && matchesIbPartner;
-        });
-
-        // Reverse the order - newest clients first
-        const reversedFiltered = filtered.reverse();
-
-        // Calculate pagination
-        const totalItems = reversedFiltered.length;
-        const totalPages = Math.ceil(totalItems / itemsPerPage);
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        const paginatedClients = reversedFiltered.slice(startIndex, endIndex);
-
-        const startItem = totalItems === 0 ? 0 : startIndex + 1;
-        const endItem = Math.min(endIndex, totalItems);
-
-        return {
-            paginatedClients,
-            totalPages,
-            totalItems,
-            startItem,
-            endItem
-        };
-    }, [clients, searchTerm, selectedCountry, selectedKycStatus, selectedEmailStatus, selectedIbPartner, currentPage, itemsPerPage]);
-
-    // 3. Add function to handle page changes
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-    };
-
-    const handleItemsPerPageChange = (value: string) => {
-        setItemsPerPage(parseInt(value));
-        setCurrentPage(1); // Reset to first page when changing items per page
-    };
-
-    // 4. Reset current page when filters change (add this useEffect)
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm, selectedCountry, selectedKycStatus, selectedEmailStatus, selectedIbPartner]);
-
-    // 5. Pagination Component (add this component)
-    const PaginationComponent = () => {
-        const { theme } = useTheme();
-
-        return (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
-                {/* Items per page selector */}
-                <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Show</span>
-                    <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
-                        <SelectTrigger className="w-20">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="5">5</SelectItem>
-                            <SelectItem value="10">10</SelectItem>
-                            <SelectItem value="20">20</SelectItem>
-                            <SelectItem value="50">50</SelectItem>
-                            <SelectItem value="100">100</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <span className="text-sm text-muted-foreground">entries</span>
-                </div>
-
-                {/* Pagination info and controls */}
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div className="text-sm text-muted-foreground">
-                        Showing <strong>{startItem}</strong> to <strong>{endItem}</strong> of{' '}
-                        <strong>{totalItems}</strong> clients
-                    </div>
-
-                    {totalPages > 1 && (
-                        <div className="flex items-center gap-2">
-                            {/* Previous button */}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage === 1}
-                                className={`${theme === 'dark'
-                                    ? 'border-gray-700 text-gray-300 hover:bg-gray-800 disabled:opacity-50'
-                                    : 'border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
-                                    }`}
-                            >
-                                Previous
-                            </Button>
-
-                            {/* Page numbers */}
-                            <div className="flex items-center gap-1">
-                                {/* First page */}
-                                {currentPage > 3 && (
-                                    <>
-                                        <Button
-                                            variant={currentPage === 1 ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => handlePageChange(1)}
-                                            className={`w-10 ${currentPage === 1
-                                                ? ''
-                                                : theme === 'dark'
-                                                    ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                                                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                                                }`}
-                                        >
-                                            1
-                                        </Button>
-                                        {currentPage > 4 && <span className="text-gray-400">...</span>}
-                                    </>
-                                )}
-
-                                {/* Current page and surrounding pages */}
-                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                    let pageNumber;
-                                    if (totalPages <= 5) {
-                                        pageNumber = i + 1;
-                                    } else if (currentPage <= 3) {
-                                        pageNumber = i + 1;
-                                    } else if (currentPage >= totalPages - 2) {
-                                        pageNumber = totalPages - 4 + i;
-                                    } else {
-                                        pageNumber = currentPage - 2 + i;
-                                    }
-
-                                    if (pageNumber < 1 || pageNumber > totalPages) return null;
-
-                                    return (
-                                        <Button
-                                            key={pageNumber}
-                                            variant={currentPage === pageNumber ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => handlePageChange(pageNumber)}
-                                            className={`w-10 ${currentPage === pageNumber
-                                                ? ''
-                                                : theme === 'dark'
-                                                    ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                                                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                                                }`}
-                                        >
-                                            {pageNumber}
-                                        </Button>
-                                    );
-                                })}
-
-                                {/* Last page */}
-                                {currentPage < totalPages - 2 && (
-                                    <>
-                                        {currentPage < totalPages - 3 && <span className="text-gray-400">...</span>}
-                                        <Button
-                                            variant={currentPage === totalPages ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => handlePageChange(totalPages)}
-                                            className={`w-10 ${currentPage === totalPages
-                                                ? ''
-                                                : theme === 'dark'
-                                                    ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                                                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                                                }`}
-                                        >
-                                            {totalPages}
-                                        </Button>
-                                    </>
-                                )}
-                            </div>
-
-                            {/* Next button */}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage === totalPages}
-                                className={`${theme === 'dark'
-                                    ? 'border-gray-700 text-gray-300 hover:bg-gray-800 disabled:opacity-50'
-                                    : 'border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
-                                    }`}
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Client List</CardTitle>
-                    <CardDescription>Manage and view all registered clients</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col space-y-4">
-                        {/* Search and filters */}
-                        <div className="flex flex-col sm:flex-row gap-4">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    type="search"
-                                    placeholder="Search by name, email, or account..."
-                                    className="pl-8"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="flex gap-1">
-                                            <Filter className="h-4 w-4" />
-                                            Filters
-                                            <ChevronDown className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-[200px]">
-                                        <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-
-                                        <div className="p-2">
-                                            <p className="text-xs font-medium mb-1">Country</p>
-                                            <Select value={selectedCountry || ""} onValueChange={setSelectedCountry}>
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="All Countries" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Countries</SelectItem>
-                                                    {countries.map((country, index) => (
-                                                        <SelectItem key={index} value={country}>{country}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        <div className="p-2">
-                                            <p className="text-xs font-medium mb-1">KYC Status</p>
-                                            <Select value={selectedKycStatus || ""} onValueChange={setSelectedKycStatus}>
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="All Statuses" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Statuses</SelectItem>
-                                                    <SelectItem value="Verified">Verified</SelectItem>
-                                                    <SelectItem value="Unverified">Unverified</SelectItem>
-                                                    <SelectItem value="Rejected">Rejected</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="p-2">
-                                            <p className="text-xs font-medium mb-1">Email Status</p>
-                                            <Select value={selectedEmailStatus || ""} onValueChange={setSelectedEmailStatus}>
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="All Statuses" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Statuses</SelectItem>
-                                                    <SelectItem value="Verified">Verified</SelectItem>
-                                                    <SelectItem value="Unverified">Unverified</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        <div className="p-2">
-                                            <p className="text-xs font-medium mb-1">IB Partner</p>
-                                            <Select value={selectedIbPartner || ""} onValueChange={setSelectedIbPartner}>
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="All Partners" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Partners</SelectItem>
-                                                    <SelectItem value="None">None</SelectItem>
-                                                    {ibPartners.filter(partner => partner !== "None").map((partner, index) => (
-                                                        <SelectItem key={index} value={partner}>{partner}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onClick={resetFilters}>
-                                            <X className="mr-2 h-4 w-4" />
-                                            Reset Filters
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline">
-                                            <Download className="mr-2 h-4 w-4" />
-                                            Export
-                                            <ChevronDown className="ml-2 h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => clientService.exportToExcel()}>
-                                            Export to Excel
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => clientService.exportToPdf()}>
-                                            Export to PDF
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        </div>
-
-                        {/* Applied filters */}
-                        {(selectedCountry || selectedKycStatus || selectedEmailStatus || selectedIbPartner) && (
-                            <div className="flex flex-wrap gap-2">
-                                {selectedCountry && selectedCountry !== "all" && (
-                                    <Badge variant="secondary" className="flex items-center gap-1">
-                                        Country: {selectedCountry}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-4 w-4 ml-1 p-0"
-                                            onClick={() => setSelectedCountry(null)}
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </Badge>
-                                )}
-                                {selectedKycStatus && selectedKycStatus !== "all" && (
-                                    <Badge variant="secondary" className="flex items-center gap-1">
-                                        KYC: {selectedKycStatus}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-4 w-4 ml-1 p-0"
-                                            onClick={() => setSelectedKycStatus(null)}
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </Badge>
-                                )}
-                                {selectedEmailStatus && selectedEmailStatus !== "all" && (
-                                    <Badge variant="secondary" className="flex items-center gap-1">
-                                        Email: {selectedEmailStatus}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-4 w-4 ml-1 p-0"
-                                            onClick={() => setSelectedEmailStatus(null)}
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </Badge>
-                                )}
-                                {selectedIbPartner && selectedIbPartner !== "all" && (
-                                    <Badge variant="secondary" className="flex items-center gap-1">
-                                        IB Partner: {selectedIbPartner}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-4 w-4 ml-1 p-0"
-                                            onClick={() => setSelectedIbPartner(null)}
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </Badge>
-                                )}
-                                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={resetFilters}>
-                                    Clear All
-                                </Button>
-                            </div>
-                        )}
-
-                        {/* Mobile Card View */}
-                        <div className="block md:hidden space-y-4">
-                            {loading ? (
-                                <div className="text-center py-8">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                                    <p>Loading...</p>
-                                </div>
-                            ) : paginatedClients.length === 0 ? (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    {totalItems === 0 ? "No clients found" : "No clients on this page"}
-                                </div>
-                            ) : (
-                                paginatedClients.map((client) => (
-                                    <Card key={client.id} className="p-4">
-                                        <div className="space-y-3">
-                                            {/* User Info */}
-                                            <div className="flex items-center gap-3">
-                                                <Avatar
-                                                    className="cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                                                    onClick={() => handleImpersonateClient(client)}
-                                                    title="Login as this client"
-                                                >
-                                                    <AvatarImage src={client.avatar || "/placeholder.svg"} alt={client.name} />
-                                                    <AvatarFallback>{client.firstname?.charAt(0) || "C"}</AvatarFallback>
-                                                </Avatar>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-medium truncate">{`${client.firstname || ''} ${client.lastname || ''}`}</div>
-                                                    <div className="text-sm text-muted-foreground truncate">{client.email}</div>
-                                                </div>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                            <span className="sr-only">Open menu</span>
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => handleViewDetails(client)}>
-                                                            View Details
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleViewAccounts(client)}>
-                                                            View MT5 Accounts
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleImpersonateClient(client)}>
-                                                            Login as Client
-                                                        </DropdownMenuItem>
-                                                        {client.status === "activated" ? (
-                                                            <DropdownMenuItem
-                                                                className="text-red-600"
-                                                                onClick={() => handleSuspendClient(client.id)}
-                                                            >
-                                                                Suspend Client
-                                                            </DropdownMenuItem>
-                                                        ) : (
-                                                            <DropdownMenuItem
-                                                                className="text-green-600"
-                                                                onClick={() => handleActivateClient(client.id)}
-                                                            >
-                                                                Activate Client
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
-
-                                            {/* Status Row */}
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => handlePasswordDialog(client)}
-                                                    >
-                                                        <Lock className="h-4 w-4" />
-                                                    </Button>
-                                                    <span className="text-sm text-muted-foreground">Password</span>
-                                                </div>
-                                                <ClientStatusBadge status={client.status} />
-                                            </div>
-
-                                            {/* Verification Status */}
-                                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                                <div>
-                                                    <p className="text-muted-foreground mb-1">Email</p>
-                                                    <EmailVerifiedBadge isVerified={client.isEmailVerified} />
-                                                </div>
-                                                <div>
-                                                    <p className="text-muted-foreground mb-1">KYC</p>
-                                                    <KYCStatusBadge status={client.kycStatus} />
-
-                                                </div>
-                                            </div>
-
-                                            {/* Additional Info */}
-                                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                                <div>
-                                                    <p className="text-muted-foreground">Country</p>
-                                                    <p className="font-medium">{client.country?.name || "—"}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-muted-foreground">IB Partner</p>
-                                                    <p className="font-medium">{client.ibPartner}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                ))
-                            )}
-                        </div>
-
-                        {/* Desktop Table View */}
-                        <div className="hidden md:block rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>User</TableHead>
-                                        <TableHead>Password</TableHead>
-                                        <TableHead>Email Verified</TableHead>
-                                        <TableHead>KYC Verified</TableHead>
-                                        <TableHead>Country</TableHead>
-                                        <TableHead>IB Partner</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={8} className="text-center py-4">Loading...</TableCell>
-                                        </TableRow>
-                                    ) : paginatedClients.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={8} className="text-center py-4">
-                                                {totalItems === 0 ? "No clients found" : "No clients on this page"}
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        paginatedClients.map((client) => (
-                                            <TableRow key={client.id}>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar
-                                                            className="cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                                                            onClick={() => handleImpersonateClient(client)}
-                                                            title="Login as this client"
-                                                        >
-                                                            <AvatarImage src={client.avatar || "/placeholder.svg"} alt={client.name} />
-                                                            <AvatarFallback>{client.firstname?.charAt(0) || "C"}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div>
-                                                            <div className="font-medium">{`${client.firstname || ''} ${client.lastname || ''}`}</div>
-                                                            <div className="text-sm text-muted-foreground">{client.email}</div>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => handlePasswordDialog(client)}
-                                                    >
-                                                        <Lock className="h-4 w-4" />
-                                                    </Button>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {client.isEmailVerified ? (
-                                                        <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">
-                                                            <Check className="mr-1 h-3 w-3" />Verified
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">
-                                                            <X className="mr-1 h-3 w-3" />Unverified
-                                                        </Badge>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {client.kycStatus === "verified" ? (
-                                                        <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">
-                                                            <Check className="mr-1 h-3 w-3" />Verified
-                                                        </Badge>
-                                                    ) : client.kycStatus === "rejected" ? (
-                                                        <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">
-                                                            <X className="mr-1 h-3 w-3" />Rejected
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                                                            <X className="mr-1 h-3 w-3" />Unverified
-                                                        </Badge>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>{client.country?.name || "—"}</TableCell>
-                                                <TableCell>{client.ibPartner}</TableCell>
-                                                <TableCell>
-                                                    {client.status === "activated" ? (
-                                                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                                                            Active
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-                                                            Suspended
-                                                        </Badge>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon">
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                                <span className="sr-only">Open menu</span>
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => handleViewDetails(client)}>
-                                                                View Details
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleViewAccounts(client)}>
-                                                                View MT5 Accounts
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleImpersonateClient(client)}>
-                                                                Login as Client
-                                                            </DropdownMenuItem>
-                                                            {client.status === "activated" ? (
-                                                                <DropdownMenuItem
-                                                                    className="text-red-600"
-                                                                    onClick={() => handleSuspendClient(client.id)}
-                                                                >
-                                                                    Suspend Client
-                                                                </DropdownMenuItem>
-                                                            ) : (
-                                                                <DropdownMenuItem
-                                                                    className="text-green-600"
-                                                                    onClick={() => handleActivateClient(client.id)}
-                                                                >
-                                                                    Activate Client
-                                                                </DropdownMenuItem>
-                                                            )}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-
-                        <PaginationComponent />
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Password Dialog */}
-            {passwordDialogOpen && createPortal(
-                <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>Update Client Login Password</DialogTitle>
-                            <DialogDescription>
-                                Client: {selectedClient?.firstname} {selectedClient?.lastname}
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                            <p>Current password: {password || "Loading..."}</p>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="newPassword">New Password</Label>
-                                <Input
-                                    id="newPassword"
-                                    type="password"
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    placeholder="Enter new password"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                                <Input
-                                    id="confirmPassword"
-                                    type="password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    placeholder="Confirm new password"
-                                />
-                            </div>
-                        </div>
-
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
-                                Cancel
-                            </Button>
-                            <Button onClick={handleUpdatePassword}>Update Password</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>,
-                document.body
-            )}
-
-            {/* Client Details Dialog */}
-            {clientDetailsDialogOpen && createPortal(
-                <Dialog open={clientDetailsDialogOpen} onOpenChange={setClientDetailsDialogOpen}>
-                    <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle>Client Details</DialogTitle>
-                            <DialogDescription>
-                                Manage client information
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        {selectedClient && (
-                            <div className="space-y-6">
-                                <Tabs defaultValue="personal">
-                                    <TabsList className="w-full">
-                                        <TabsTrigger value="personal" className="flex-1">Personal Information</TabsTrigger>
-                                        <TabsTrigger value="documents" className="flex-1">Documents</TabsTrigger>
-                                        <TabsTrigger value="financial" className="flex-1">Financial Details</TabsTrigger>
-                                    </TabsList>
-
-                                    <TabsContent value="personal" className="space-y-4 mt-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {/* First Name */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>First Name</Label>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => toggleEditMode('firstname')}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                {editMode.firstname ? (
-                                                    <Input
-                                                        value={selectedClient.firstname}
-                                                        onChange={(e) => setSelectedClient({
-                                                            ...selectedClient,
-                                                            firstname: e.target.value
-                                                        })}
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm">{selectedClient.firstname}</p>
-                                                )}
-                                            </div>
-
-                                            {/* Last Name */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>Last Name</Label>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => toggleEditMode('lastname')}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                {editMode.lastname ? (
-                                                    <Input
-                                                        value={selectedClient.lastname}
-                                                        onChange={(e) => setSelectedClient({
-                                                            ...selectedClient,
-                                                            lastname: e.target.value
-                                                        })}
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm">{selectedClient.lastname}</p>
-                                                )}
-                                            </div>
-
-                                            {/* Date of Birth */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>Date of Birth</Label>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => toggleEditMode('dateofbirth')}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                {editMode.dateofbirth ? (
-                                                    <Input
-                                                        type="date"
-                                                        value={selectedClient.dateofbirth ? selectedClient.dateofbirth.split('T')[0] : ''}
-                                                        onChange={(e) => setSelectedClient({
-                                                            ...selectedClient,
-                                                            dateofbirth: e.target.value
-                                                        })}
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm">
-                                                        {selectedClient.dateofbirth ? new Date(selectedClient.dateofbirth).toLocaleDateString() : 'Not specified'}
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            {/* Phone Number */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>Contact Number</Label>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => toggleEditMode('phone')}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                {editMode.phone ? (
-                                                    <Input
-                                                        type="tel"
-                                                        value={selectedClient.phone || ''}
-                                                        onChange={(e) => setSelectedClient({
-                                                            ...selectedClient,
-                                                            phone: e.target.value
-                                                        })}
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm">{selectedClient.phone || 'Not specified'}</p>
-                                                )}
-                                            </div>
-
-                                            {/* Email Verified */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>Email Verified</Label>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => toggleEditMode('isEmailVerified')}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                {editMode.isEmailVerified ? (
-                                                    <div className="flex items-center space-x-2">
-                                                        <Checkbox
-                                                            id="isEmailVerified"
-                                                            checked={selectedClient.isEmailVerified}
-                                                            onCheckedChange={(checked) => setSelectedClient({
-                                                                ...selectedClient,
-                                                                isEmailVerified: !!checked
-                                                            })}
-                                                        />
-                                                        <label
-                                                            htmlFor="isEmailVerified"
-                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                        >
-                                                            Mark as Verified
-                                                        </label>
-                                                    </div>
-                                                ) : (
-                                                    selectedClient.isEmailVerified ? (
-                                                        <Badge variant="outline" className="bg-green-100 text-green-800">
-                                                            <Check className="mr-1 h-3 w-3" />Verified
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="outline" className="bg-red-100 text-red-800">
-                                                            <X className="mr-1 h-3 w-3" />Unverified
-                                                        </Badge>
-                                                    )
-                                                )}
-                                            </div>
-
-                                            {/* Country */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>Country</Label>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => toggleEditMode('country')}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                {editMode.country ? (
-                                                    <div className="space-y-2">
-                                                        <Select
-                                                            value={selectedClient.country?.name || ""}
-                                                            onValueChange={(value) => setSelectedClient({
-                                                                ...selectedClient,
-                                                                country: {
-                                                                    ...selectedClient.country,
-                                                                    name: value
-                                                                }
-                                                            })}
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select country" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {countries.map((country, index) => (
-                                                                    <SelectItem key={index} value={country}>{country}</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-
-                                                        <Input
-                                                            placeholder="State/Province"
-                                                            value={selectedClient.country?.state || ""}
-                                                            onChange={(e) => setSelectedClient({
-                                                                ...selectedClient,
-                                                                country: {
-                                                                    ...selectedClient.country,
-                                                                    state: e.target.value
-                                                                }
-                                                            })}
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-sm">
-                                                        {selectedClient.country?.name ? `${selectedClient.country.name}${selectedClient.country.state ? `, ${selectedClient.country.state}` : ''}` : 'Not specified'}
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            {/* KYC Verified */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>KYC Status</Label>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => toggleEditMode('kycStatus')}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                {editMode.kycStatus ? (
-                                                    <div className="space-y-2">
-                                                        <Select
-                                                            value={selectedClient.kycStatus || "unverified"}
-                                                            onValueChange={(value) => setSelectedClient({
-                                                                ...selectedClient,
-                                                                kycStatus: value as "unverified" | "verified" | "rejected",
-                                                                kycVerified: value === "verified"
-                                                            })}
-                                                        >
-                                                            <SelectTrigger className="w-full">
-                                                                <SelectValue placeholder="Select Status" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="unverified">Unverified</SelectItem>
-                                                                <SelectItem value="verified">Verified</SelectItem>
-                                                                <SelectItem value="rejected">Rejected</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-
-                                                        {selectedClient.kycStatus === "rejected" && (
-                                                            <div className="mt-2">
-                                                                <Label htmlFor="kycRejectReason">Rejection Reason</Label>
-                                                                <Input
-                                                                    id="kycRejectReason"
-                                                                    value={selectedClient.kycRejectReason || ""}
-                                                                    onChange={(e) => setSelectedClient({
-                                                                        ...selectedClient,
-                                                                        kycRejectReason: e.target.value
-                                                                    })}
-                                                                    placeholder="Required reason for rejection"
-                                                                    className="mt-1"
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        {selectedClient.kycStatus === "verified" ? (
-                                                            <Badge variant="outline" className="bg-green-100 text-green-800">
-                                                                <Check className="mr-1 h-3 w-3" />Verified
-                                                            </Badge>
-                                                        ) : selectedClient.kycStatus === "rejected" ? (
-                                                            <div>
-                                                                <Badge variant="outline" className="bg-red-100 text-red-800">
-                                                                    <X className="mr-1 h-3 w-3" />Rejected
-                                                                </Badge>
-                                                                {selectedClient.kycRejectReason && (
-                                                                    <p className="text-xs text-red-600 mt-1">
-                                                                        Reason: {selectedClient.kycRejectReason}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
-                                                                <X className="mr-1 h-3 w-3" />Unverified
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {/* Education Level */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>Education Level</Label>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => toggleEditMode('educationLevel')}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                {editMode.educationLevel ? (
-                                                    <Select
-                                                        value={selectedClient.educationLevel || ''}
-                                                        onValueChange={(value) => setSelectedClient({
-                                                            ...selectedClient,
-                                                            educationLevel: value === 'not-specified' ? '' : value,
-                                                            otherEducation: value === 'other' ? selectedClient.otherEducation : ''
-                                                        })}
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select education level" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="not-specified">Not Specified</SelectItem>
-                                                            <SelectItem value="secondary">Secondary</SelectItem>
-                                                            <SelectItem value="higher secondary">Higher Secondary</SelectItem>
-                                                            <SelectItem value="bachelor's degree">Bachelor's Degree</SelectItem>
-                                                            <SelectItem value="master's degree">Master's Degree</SelectItem>
-                                                            <SelectItem value="doctorate">Doctorate</SelectItem>
-                                                            <SelectItem value="other">Other</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                ) : (
-                                                    <p className="text-sm">
-                                                        {selectedClient.educationLevel === 'other' && selectedClient.otherEducation
-                                                            ? `Other: ${selectedClient.otherEducation}`
-                                                            : selectedClient.educationLevel ? selectedClient.educationLevel.charAt(0).toUpperCase() + selectedClient.educationLevel.slice(1) : 'Not specified'}
-                                                    </p>
-                                                )}
-
-                                                {/* Other Education field - only shown when 'other' is selected */}
-                                                {editMode.educationLevel && selectedClient.educationLevel === 'other' && (
-                                                    <div className="mt-2">
-                                                        <Label htmlFor="otherEducation">Please specify</Label>
-                                                        <Input
-                                                            id="otherEducation"
-                                                            value={selectedClient.otherEducation || ''}
-                                                            onChange={(e) => setSelectedClient({
-                                                                ...selectedClient,
-                                                                otherEducation: e.target.value
-                                                            })}
-                                                            placeholder="Specify your education"
-                                                            className="mt-1"
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* IB Partner */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>IB Partner</Label>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => toggleEditMode('ibPartner')}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                {editMode.ibPartner ? (
-                                                    <Select
-                                                        value={selectedClient.ibPartner || 'None'}
-                                                        onValueChange={(value) => setSelectedClient({
-                                                            ...selectedClient,
-                                                            ibPartner: value
-                                                        })}
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select IB partner" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="None">None</SelectItem>
-                                                            {ibPartners.filter(partner => partner !== "None").map((partner, index) => (
-                                                                <SelectItem key={index} value={partner}>{partner}</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                ) : (
-                                                    <p className="text-sm">{selectedClient.ibPartner || 'None'}</p>
-                                                )}
-                                            </div>
-
-                                            {/* Email Address */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>Email Address</Label>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => toggleEditMode('email')}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                {editMode.email ? (
-                                                    <Input
-                                                        type="email"
-                                                        value={selectedClient.email || ''}
-                                                        onChange={(e) => setSelectedClient({
-                                                            ...selectedClient,
-                                                            email: e.target.value
-                                                        })}
-                                                        placeholder="Enter email address"
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm">{selectedClient.email || 'Not specified'}</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </TabsContent>
-
-                                    <TabsContent value="documents" className="space-y-6 mt-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {/* ID Document */}
-                                            <Card>
-                                                <CardHeader className="pb-2">
-                                                    <CardTitle className="text-md">ID Document</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                    {selectedClient.idDocument ? (
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-center mb-2">
-                                                                {selectedClient.idDocument.toLowerCase().endsWith('.pdf') ? (
-                                                                    <div className="flex flex-col items-center">
-                                                                        <p className="text-sm mb-2">PDF Document</p>
-                                                                        <div className="flex space-x-2">
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                onClick={() => handleOpenDocument(selectedClient.idDocument)}
-                                                                            >
-                                                                                <Eye className="mr-2 h-4 w-4" />
-                                                                                View
-                                                                            </Button>
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                onClick={() => handleDownloadDocument(selectedClient.idDocument, 'id-document.pdf')}
-                                                                            >
-                                                                                <Download className="mr-2 h-4 w-4" />
-                                                                                Download
-                                                                            </Button>
-                                                                        </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex flex-col items-center">
-                                                                        <img
-                                                                            src={getFullDocumentUrl(selectedClient.idDocument)}
-                                                                            alt="ID Document"
-                                                                            className="max-h-48 object-contain cursor-pointer border rounded p-1"
-                                                                            onClick={() => handleOpenDocument(selectedClient.idDocument)}
-                                                                        />
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="mt-2"
-                                                                            onClick={() => handleDownloadDocument(selectedClient.idDocument, 'id-document.jpg')}
-                                                                        >
-                                                                            <Download className="mr-2 h-4 w-4" />
-                                                                            Download
-                                                                        </Button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-center text-muted-foreground">No ID document uploaded</p>
-                                                    )}
-                                                </CardContent>
-                                            </Card>
-
-                                            {/* Address 1 Document */}
-                                            <Card>
-                                                <CardHeader className="pb-2">
-                                                    <CardTitle className="text-md">Address Proof 1</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                    {selectedClient.address1Document ? (
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-center mb-2">
-                                                                {selectedClient.address1Document.toLowerCase().endsWith('.pdf') ? (
-                                                                    <div className="flex flex-col items-center">
-                                                                        <p className="text-sm mb-2">PDF Document</p>
-                                                                        <div className="flex space-x-2">
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                onClick={() => handleOpenDocument(selectedClient.address1Document)}
-                                                                            >
-                                                                                <Eye className="mr-2 h-4 w-4" />
-                                                                                View
-                                                                            </Button>
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                onClick={() => handleDownloadDocument(selectedClient.address1Document, 'address-proof-1.pdf')}
-                                                                            >
-                                                                                <Download className="mr-2 h-4 w-4" />
-                                                                                Download
-                                                                            </Button>
-                                                                        </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex flex-col items-center">
-                                                                        <img
-                                                                            src={getFullDocumentUrl(selectedClient.address1Document)}
-                                                                            alt="Address Proof 1"
-                                                                            className="max-h-48 object-contain cursor-pointer border rounded p-1"
-                                                                            onClick={() => handleOpenDocument(selectedClient.address1Document)}
-                                                                        />
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="mt-2"
-                                                                            onClick={() => handleDownloadDocument(selectedClient.address1Document, 'address-proof-1.jpg')}
-                                                                        >
-                                                                            <Download className="mr-2 h-4 w-4" />
-                                                                            Download
-                                                                        </Button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-center text-muted-foreground">No address proof uploaded</p>
-                                                    )}
-                                                </CardContent>
-                                            </Card>
-
-                                            {/* Address 2 Document */}
-                                            <Card>
-                                                <CardHeader className="pb-2">
-                                                    <CardTitle className="text-md">Address Proof 2</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                    {selectedClient.address2Document ? (
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-center mb-2">
-                                                                {selectedClient.address2Document.toLowerCase().endsWith('.pdf') ? (
-                                                                    <div className="flex flex-col items-center">
-                                                                        <p className="text-sm mb-2">PDF Document</p>
-                                                                        <div className="flex space-x-2">
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                onClick={() => handleOpenDocument(selectedClient.address2Document)}
-                                                                            >
-                                                                                <Eye className="mr-2 h-4 w-4" />
-                                                                                View
-                                                                            </Button>
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                onClick={() => handleDownloadDocument(selectedClient.address2Document, 'address-proof-2.pdf')}
-                                                                            >
-                                                                                <Download className="mr-2 h-4 w-4" />
-                                                                                Download
-                                                                            </Button>
-                                                                        </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex flex-col items-center">
-                                                                        <img
-                                                                            src={getFullDocumentUrl(selectedClient.address2Document)}
-                                                                            alt="Address Proof 2"
-                                                                            className="max-h-48 object-contain cursor-pointer border rounded p-1"
-                                                                            onClick={() => handleOpenDocument(selectedClient.address2Document)}
-                                                                        />
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="mt-2"
-                                                                            onClick={() => handleDownloadDocument(selectedClient.address2Document, 'address-proof-2.jpg')}
-                                                                        >
-                                                                            <Download className="mr-2 h-4 w-4" />
-                                                                            Download
-                                                                        </Button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-center text-muted-foreground">No additional address proof uploaded</p>
-                                                    )}
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </TabsContent>
-
-                                    <TabsContent value="financial" className="space-y-6 mt-4">
-                                        {/* Bank Details */}
-                                        <Card>
-                                            <CardHeader>
-                                                <CardTitle>Bank Account Details</CardTitle>
-                                                <CardDescription>Client's bank information</CardDescription>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="space-y-4">
-                                                    {/* Bank Name */}
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label>Bank Name</Label>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                onClick={() => toggleEditMode('bankName')}
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                        {editMode.bankName ? (
-                                                            <Input
-                                                                value={selectedClient.bankDetails?.bankName || ''}
-                                                                onChange={(e) => setSelectedClient({
-                                                                    ...selectedClient,
-                                                                    bankDetails: {
-                                                                        ...selectedClient.bankDetails,
-                                                                        bankName: e.target.value
-                                                                    }
-                                                                })}
-                                                            />
-                                                        ) : (
-                                                            <p className="text-sm">{selectedClient.bankDetails?.bankName || 'Not specified'}</p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Account Holder Name */}
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label>Account Holder Name</Label>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                onClick={() => toggleEditMode('accountHolderName')}
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                        {editMode.accountHolderName ? (
-                                                            <Input
-                                                                value={selectedClient.bankDetails?.accountHolderName || ''}
-                                                                onChange={(e) => setSelectedClient({
-                                                                    ...selectedClient,
-                                                                    bankDetails: {
-                                                                        ...selectedClient.bankDetails,
-                                                                        accountHolderName: e.target.value
-                                                                    }
-                                                                })}
-                                                            />
-                                                        ) : (
-                                                            <p className="text-sm">{selectedClient.bankDetails?.accountHolderName || 'Not specified'}</p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Account Number */}
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label>Account Number</Label>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                onClick={() => toggleEditMode('bankAccountNumber')}
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                        {editMode.bankAccountNumber ? (
-                                                            <Input
-                                                                value={selectedClient.bankDetails?.accountNumber || ''}
-                                                                onChange={(e) => setSelectedClient({
-                                                                    ...selectedClient,
-                                                                    bankDetails: {
-                                                                        ...selectedClient.bankDetails,
-                                                                        accountNumber: e.target.value
-                                                                    }
-                                                                })}
-                                                            />
-                                                        ) : (
-                                                            <p className="text-sm">{selectedClient.bankDetails?.accountNumber || 'Not specified'}</p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* IFSC/SWIFT Code */}
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label>IFSC/SWIFT Code</Label>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                onClick={() => toggleEditMode('ifscSwiftCode')}
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                        {editMode.ifscSwiftCode ? (
-                                                            <Input
-                                                                value={selectedClient.bankDetails?.ifscSwiftCode || ''}
-                                                                onChange={(e) => setSelectedClient({
-                                                                    ...selectedClient,
-                                                                    bankDetails: {
-                                                                        ...selectedClient.bankDetails,
-                                                                        ifscSwiftCode: e.target.value
-                                                                    }
-                                                                })}
-                                                            />
-                                                        ) : (
-                                                            <p className="text-sm">{selectedClient.bankDetails?.ifscSwiftCode || 'Not specified'}</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Wallet Details */}
-                                        <Card>
-                                            <CardHeader>
-                                                <CardTitle>Wallet Details</CardTitle>
-                                                <CardDescription>Client's wallet information for cryptocurrency transactions</CardDescription>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="space-y-4">
-                                                    {/* USDT Wallet Address */}
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label>USDT Wallet Address</Label>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                onClick={() => toggleEditMode('tetherWallet')}
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                        {editMode.tetherWallet ? (
-                                                            <Input
-                                                                value={selectedClient.walletDetails?.tetherWalletAddress || ''}
-                                                                onChange={(e) => setSelectedClient({
-                                                                    ...selectedClient,
-                                                                    walletDetails: {
-                                                                        ...selectedClient.walletDetails,
-                                                                        tetherWalletAddress: e.target.value
-                                                                    }
-                                                                })}
-                                                            />
-                                                        ) : (
-                                                            <p className="text-sm break-all">
-                                                                {selectedClient.walletDetails?.tetherWalletAddress || 'Not specified'}
-                                                            </p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* ETH Wallet Address */}
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label>ETH Wallet Address</Label>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                onClick={() => toggleEditMode('ethWallet')}
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                        {editMode.ethWallet ? (
-                                                            <Input
-                                                                value={selectedClient.walletDetails?.ethWalletAddress || ''}
-                                                                onChange={(e) => setSelectedClient({
-                                                                    ...selectedClient,
-                                                                    walletDetails: {
-                                                                        ...selectedClient.walletDetails,
-                                                                        ethWalletAddress: e.target.value
-                                                                    }
-                                                                })}
-                                                            />
-                                                        ) : (
-                                                            <p className="text-sm break-all">
-                                                                {selectedClient.walletDetails?.ethWalletAddress || 'Not specified'}
-                                                            </p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* TRX Wallet Address */}
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label>TRX Wallet Address</Label>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                onClick={() => toggleEditMode('trxWallet')}
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                        {editMode.trxWallet ? (
-                                                            <Input
-                                                                value={selectedClient.walletDetails?.trxWalletAddress || ''}
-                                                                onChange={(e) => setSelectedClient({
-                                                                    ...selectedClient,
-                                                                    walletDetails: {
-                                                                        ...selectedClient.walletDetails,
-                                                                        trxWalletAddress: e.target.value
-                                                                    }
-                                                                })}
-                                                            />
-                                                        ) : (
-                                                            <p className="text-sm break-all">
-                                                                {selectedClient.walletDetails?.trxWalletAddress || 'Not specified'}
-                                                            </p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Wallet Account Number */}
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label>Wallet Account Number</Label>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                onClick={() => toggleEditMode('walletAccountNumber')}
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                        {editMode.walletAccountNumber ? (
-                                                            <Input
-                                                                value={selectedClient.walletDetails?.accountNumber || ''}
-                                                                onChange={(e) => setSelectedClient({
-                                                                    ...selectedClient,
-                                                                    walletDetails: {
-                                                                        ...selectedClient.walletDetails,
-                                                                        accountNumber: e.target.value
-                                                                    }
-                                                                })}
-                                                            />
-                                                        ) : (
-                                                            <p className="text-sm">
-                                                                {selectedClient.walletDetails?.accountNumber || 'Not specified'}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </TabsContent>
-                                </Tabs>
-
-                                <DialogFooter>
-                                    {Object.keys(editMode).length > 0 && (
-                                        <div className="flex w-full justify-between">
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => setEditMode({})}
-                                            >
-                                                Cancel
-                                            </Button>
-                                            <Button onClick={handleUpdateClient}>
-                                                Save Changes
-                                            </Button>
-                                        </div>
-                                    )}
-                                    {Object.keys(editMode).length === 0 && (
-                                        <Button variant="outline" onClick={() => setClientDetailsDialogOpen(false)}>
-                                            Close
-                                        </Button>
-                                    )}
-                                </DialogFooter>
-                            </div>
-                        )}
-                    </DialogContent>
-                </Dialog>,
-                document.body
-            )}
-
-            {/* Add this dialog to your JSX, right after the existing dialogs */}
-            {/* Updated Accounts Dialog with mobile responsiveness */}
-            {accountsDialogOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    {/* Backdrop */}
-                    <div
-                        className={`fixed inset-0 transition-opacity ${theme === 'dark' ? 'bg-black/80' : 'bg-black/50'
-                            }`}
-                        onClick={handleCloseAccountsDialog}
-                    />
-
-                    {/* Dialog Content */}
-                    <div className={`
-            relative w-[95vw] max-w-4xl h-[90vh] max-h-[90vh] rounded-lg shadow-xl bg-background
-            ${theme === 'dark'
-                            ? 'bg-gray-900 border border-gray-700'
-                            : 'bg-white border border-gray-200'
-                        } 
-            flex flex-col overflow-hidden
-        `}>
-                        {/* Header */}
-                        <div className={`
-                p-4 pb-2 border-b flex justify-between items-start
-                ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}
-            `}>
-                            <div className="flex-1">
-                                <h2 className={`
-                        text-base sm:text-lg font-semibold
-                        ${theme === 'dark' ? 'text-white' : 'text-gray-900'}
-                    `}>
-                                    MT5 Accounts for {selectedClient?.firstname} {selectedClient?.lastname}
-                                </h2>
-                                <p className={`
-                        text-sm mt-1
-                        ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                    `}>
-                                    {loadingAccounts
-                                        ? "Fetching latest account information from trading server..."
-                                        : "Below are all MT5 trading accounts associated with this client."
-                                    }
-                                </p>
-                            </div>
-                            <button
-                                onClick={handleCloseAccountsDialog}
-                                className={`
-                        ml-4 p-2 rounded-md transition-colors
-                        ${theme === 'dark'
-                                        ? 'hover:bg-gray-800 text-gray-400 hover:text-white'
-                                        : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-                                    }
-                    `}
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 overflow-hidden">
-                            {loadingAccounts ? (
-                                <div className="flex flex-col items-center justify-center h-full p-6 space-y-4">
-                                    <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-blue-500"></div>
-                                    <div className="text-center space-y-2">
-                                        <p className={`
-                                text-base sm:text-lg font-medium
-                                ${theme === 'dark' ? 'text-white' : 'text-gray-900'}
-                            `}>
-                                            Loading Account Information
-                                        </p>
-                                        <p className={`
-                                text-xs sm:text-sm px-4
-                                ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                            `}>
-                                            Synchronizing with trading server to get latest balance and equity...
-                                        </p>
-                                    </div>
-                                </div>
-                            ) : clientAccounts.length === 0 ? (
-                                <div className="text-center p-6 h-full flex flex-col items-center justify-center">
-                                    <div className={`
-                            mx-auto flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full mb-4
-                            ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}
-                        `}>
-                                        <svg className={`
-                                w-5 h-5 sm:w-6 sm:h-6
-                                ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}
-                            `} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                        </svg>
-                                    </div>
-                                    <h3 className={`
-                            text-base sm:text-lg font-medium mb-2
-                            ${theme === 'dark' ? 'text-white' : 'text-gray-900'}
-                        `}>
-                                        No MT5 Accounts Found
-                                    </h3>
-                                    <p className={`
-                            text-sm px-4
-                            ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                        `}>
-                                        This client doesn't have any MT5 trading accounts yet.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="h-full overflow-y-auto">
-                                    <div className="p-4 space-y-4">
-                                        {/* Account Summary Cards */}
-                                        <div className={`
-                                grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 sm:p-4 rounded-lg bg-card
-                                ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'}
-                            `}>
-                                            <div className="text-center">
-                                                <p className={`
-                                        text-xs sm:text-sm
-                                        ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                                    `}>
-                                                    Total Accounts
-                                                </p>
-                                                <p className="text-lg sm:text-2xl font-bold text-blue-500">
-                                                    {clientAccounts.length}
-                                                </p>
-                                            </div>
-                                            <div className="text-center">
-                                                <p className={`
-                                        text-xs sm:text-sm
-                                        ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                                    `}>
-                                                    Total Balance
-                                                </p>
-                                                <p className="text-lg sm:text-2xl font-bold text-green-500">
-                                                    ${clientAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0).toFixed(2)}
-                                                </p>
-                                            </div>
-                                            <div className="text-center">
-                                                <p className={`
-                                        text-xs sm:text-sm
-                                        ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                                    `}>
-                                                    Total Equity
-                                                </p>
-                                                <p className="text-lg sm:text-2xl font-bold text-purple-500">
-                                                    ${clientAccounts.reduce((sum, acc) => sum + (acc.equity || 0), 0).toFixed(2)}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Mobile Card View */}
-                                        <div className="block sm:hidden space-y-3">
-                                            {clientAccounts
-                                                .slice()
-                                                .sort((a, b) => {
-                                                    const balanceA = typeof a.balance === 'number' ? a.balance : 0;
-                                                    const balanceB = typeof b.balance === 'number' ? b.balance : 0;
-                                                    return balanceB - balanceA;
-                                                })
-                                                .map((account) => (
-                                                    <div key={account._id} className={`
-                                            border rounded-lg p-4 space-y-3
-                                            ${theme === 'dark'
-                                                            ? 'bg-gray-800 border-gray-700'
-                                                            : 'bg-white border-gray-200'
-                                                        }
-                                        `}>
-                                                        <div className="flex justify-between items-start">
-                                                            <div>
-                                                                <p className={`
-                                                        font-medium font-mono text-sm
-                                                        ${theme === 'dark' ? 'text-white' : 'text-gray-900'}
-                                                    `}>
-                                                                    {account.mt5Account}
-                                                                </p>
-                                                                <p className={`
-                                                        text-sm
-                                                        ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                                                    `}>
-                                                                    {account.name}
-                                                                </p>
-                                                            </div>
-                                                            {/* <span className={`
-                                                    px-2 py-1 text-xs rounded-full font-medium
-                                                    ${account.status 
-                                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                                    }
-                                                `}>
-                                                    {account.status ? 'Active' : 'Inactive'}
-                                                </span> */}
-                                                        </div>
-
-                                                        <div className="grid grid-cols-2 gap-3 text-sm">
-                                                            <div>
-                                                                <p className={`
-                                                        ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                                                    `}>
-                                                                    Type
-                                                                </p>
-                                                                <span className={`
-                                                        px-2 py-1 text-xs rounded font-medium
-                                                        ${account.accountType?.toLowerCase() === 'real'
-                                                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                                                        : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                                                                    }
-                                                    `}>
-                                                                    {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1) || 'N/A'}
-                                                                </span>
-                                                            </div>
-                                                            <div>
-                                                                <p className={`
-                                                        ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                                                    `}>
-                                                                    Leverage
-                                                                </p>
-                                                                <p className={`
-                                                        font-medium
-                                                        ${theme === 'dark' ? 'text-white' : 'text-gray-900'}
-                                                    `}>
-                                                                    1:{account.leverage || 'N/A'}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="grid grid-cols-3 gap-3 text-sm">
-                                                            <div>
-                                                                <p className={`
-                                                        ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                                                    `}>
-                                                                    Balance
-                                                                </p>
-                                                                <p className="font-medium text-green-500">
-                                                                    ${typeof account.balance === 'number' ? account.balance.toFixed(2) : '0.00'}
-                                                                </p>
-                                                            </div>
-                                                            <div>
-                                                                <p className={`
-                                                        ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                                                    `}>
-                                                                    Equity
-                                                                </p>
-                                                                <p className="font-medium text-purple-500">
-                                                                    ${typeof account.equity === 'number' ? account.equity.toFixed(2) : '0.00'}
-                                                                </p>
-                                                            </div>
-                                                            <div>
-                                                                <p className={`
-                                                        ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}
-                                                    `}>
-                                                                    P&L
-                                                                </p>
-                                                                <p className={`font-medium ${(account.profit || 0) > 0
-                                                                    ? 'text-green-500'
-                                                                    : (account.profit || 0) < 0
-                                                                        ? 'text-red-500'
-                                                                        : theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                                                    }`}>
-                                                                    {(account.profit || 0) > 0 ? '+' : ''}${typeof account.profit === 'number' ? account.profit.toFixed(2) : '0.00'}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                        </div>
-
-                                        {/* Desktop Table View */}
-                                        <div className={`
-                                hidden sm:block border rounded-lg overflow-hidden
-                                ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}
-                            `}>
-                                            <div className="overflow-x-auto">
-                                                <table className="w-full">
-                                                    <thead className={`
-                                            sticky top-0 z-10 bg-card
-                                            ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'}
-                                        `}>
-                                                        <tr className={`
-                                                ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}
-                                            `}>
-                                                            <th className={`
-                                                    px-4 py-3 text-left text-xs font-medium uppercase tracking-wider
-                                                    ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}
-                                                `}>
-                                                                Account Number
-                                                            </th>
-                                                            <th className={`
-                                                    px-4 py-3 text-left text-xs font-medium uppercase tracking-wider
-                                                    ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}
-                                                `}>
-                                                                Name
-                                                            </th>
-                                                            <th className={`
-                                                    px-4 py-3 text-left text-xs font-medium uppercase tracking-wider
-                                                    ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}
-                                                `}>
-                                                                Type
-                                                            </th>
-                                                            <th className={`
-                                                    px-4 py-3 text-left text-xs font-medium uppercase tracking-wider
-                                                    ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}
-                                                `}>
-                                                                Leverage
-                                                            </th>
-                                                            <th className={`
-                                                    px-4 py-3 text-left text-xs font-medium uppercase tracking-wider
-                                                    ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}
-                                                `}>
-                                                                Balance
-                                                            </th>
-                                                            <th className={`
-                                                    px-4 py-3 text-left text-xs font-medium uppercase tracking-wider
-                                                    ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}
-                                                `}>
-                                                                Equity
-                                                            </th>
-                                                            <th className={`
-                                                    px-4 py-3 text-left text-xs font-medium uppercase tracking-wider
-                                                    ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}
-                                                `}>
-                                                                Profit/Loss
-                                                            </th>
-                                                            {/* <th className={`
-                                                    px-4 py-3 text-left text-xs font-medium uppercase tracking-wider
-                                                    ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}
-                                                `}>
-                                                                Status
-                                                            </th> */}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className={`
-                                            divide-y
-                                            ${theme === 'dark'
-                                                            ? 'bg-gray-900 divide-gray-700'
-                                                            : 'bg-white divide-gray-200'
-                                                        }
-                                        `}>
-                                                        {clientAccounts
-                                                            .slice()
-                                                            .sort((a, b) => {
-                                                                const balanceA = typeof a.balance === 'number' ? a.balance : 0;
-                                                                const balanceB = typeof b.balance === 'number' ? b.balance : 0;
-                                                                return balanceB - balanceA;
-                                                            })
-                                                            .map((account) => (
-                                                                <tr key={account._id} className={`
-                                                        transition-colors
-                                                        ${theme === 'dark'
-                                                                        ? 'hover:bg-gray-800'
-                                                                        : 'hover:bg-gray-50'
-                                                                    }
-                                                    `}>
-                                                                    <td className={`
-                                                            px-4 py-4 text-sm font-medium font-mono
-                                                            ${theme === 'dark' ? 'text-white' : 'text-gray-900'}
-                                                        `}>
-                                                                        {account.mt5Account}
-                                                                    </td>
-                                                                    <td className={`
-                                                            px-4 py-4 text-sm
-                                                            ${theme === 'dark' ? 'text-gray-300' : 'text-gray-900'}
-                                                        `}>
-                                                                        {account.name}
-                                                                    </td>
-                                                                    <td className="px-4 py-4 text-sm">
-                                                                        <span className={`
-                                                                px-2 py-1 text-xs rounded-full font-medium
-                                                                ${account.accountType?.toLowerCase() === 'real'
-                                                                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                                                                : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                                                                            }
-                                                            `}>
-                                                                            {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1) || 'N/A'}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className={`
-                                                            px-4 py-4 text-sm
-                                                            ${theme === 'dark' ? 'text-gray-300' : 'text-gray-900'}
-                                                        `}>
-                                                                        1:{account.leverage || 'N/A'}
-                                                                    </td>
-                                                                    <td className="px-4 py-4 text-sm font-medium text-green-500">
-                                                                        ${typeof account.balance === 'number' ? account.balance.toFixed(2) : '0.00'}
-                                                                    </td>
-                                                                    <td className="px-4 py-4 text-sm font-medium text-purple-500">
-                                                                        ${typeof account.equity === 'number' ? account.equity.toFixed(2) : '0.00'}
-                                                                    </td>
-                                                                    <td className={`px-4 py-4 text-sm font-medium ${(account.profit || 0) > 0
-                                                                        ? 'text-green-500'
-                                                                        : (account.profit || 0) < 0
-                                                                            ? 'text-red-500'
-                                                                            : theme === 'dark' ? 'text-gray-300' : 'text-gray-900'
-                                                                        }`}>
-                                                                        {(account.profit || 0) > 0 ? '+' : ''}${typeof account.profit === 'number' ? account.profit.toFixed(2) : '0.00'}
-                                                                    </td>
-                                                                    {/* <td className="px-4 py-4 text-sm">
-                                                            <span className={`
-                                                                px-2 py-1 text-xs rounded-full font-medium
-                                                                ${account.status 
-                                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                                                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                                                }
-                                                            `}>
-                                                                {account.status ? 'Active' : 'Inactive'}
-                                                            </span>
-                                                        </td> */}
-                                                                </tr>
-                                                            ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className={`
-                p-4 pt-2 border-t flex flex-col sm:flex-row gap-2 justify-end
-                ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}
-            `}>
-                            {!loadingAccounts && clientAccounts.length > 0 && (
-                                <button
-                                    onClick={() => handleViewAccounts(selectedClient!)}
-                                    className={`
-                            w-full sm:w-auto px-4 py-2 text-sm font-medium rounded-md
-                            border transition-colors flex items-center justify-center gap-2
-                            ${theme === 'dark'
-                                            ? 'border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white'
-                                            : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                                        }
-                        `}
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                    Refresh Accounts
-                                </button>
-                            )}
-                            <button
-                                onClick={handleCloseAccountsDialog}
-                                disabled={loadingAccounts}
-                                className={`
-                        w-full sm:w-auto px-4 py-2 text-sm font-medium rounded-md
-                        border transition-colors
-                        ${theme === 'dark'
-                                        ? 'border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white disabled:opacity-50'
-                                        : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50'
-                                    }
-                    `}
-                            >
-                                {loadingAccounts ? 'Loading...' : 'Close'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+  }, [clients, searchTerm, selectedCountry, selectedKycStatus, selectedEmailStatus, selectedIbPartner, currentPage, itemsPerPage])
+
+  const activeFilters = [selectedCountry, selectedKycStatus, selectedEmailStatus, selectedIbPartner].filter(Boolean).length
+  const kycVerified = clients.filter(c => c.kycStatus === 'verified').length
+  const kycPending = clients.filter(c => c.kycStatus === 'unverified').length
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      style={{ maxWidth: 1400, margin: '0 auto' }}
+    >
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}
+      >
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--theme-text-primary)', margin: 0, marginBottom: 4 }}>Client Management</h1>
+          <p style={{ fontSize: 13, color: 'var(--theme-text-muted)', margin: 0 }}>View and manage all registered client accounts</p>
         </div>
-    )
+        <motion.button
+          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+          onClick={fetchClients}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 10, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-card)', color: 'var(--theme-text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          <RefreshCw style={{ width: 13, height: 13 }} />Refresh
+        </motion.button>
+      </motion.div>
+
+      {/* ── Stats ───────────────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
+        {[
+          { label: 'Total Clients', value: clients.length, color: '#6366f1', bg: 'rgba(99,102,241,0.08)' },
+          { label: 'KYC Verified', value: kycVerified, color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+          { label: 'KYC Pending', value: kycPending, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+          { label: 'Active', value: clients.filter(c => c.status === 'activated').length, color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+          { label: 'Suspended', value: clients.filter(c => c.status !== 'activated').length, color: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
+        ].map((s, i) => (
+          <motion.div
+            key={s.label}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 + i * 0.06 }}
+            whileHover={{ y: -3, scale: 1.02 }}
+            style={{ borderRadius: 14, padding: '14px 16px', background: s.bg, border: `1px solid ${s.color}25`, cursor: 'default' }}
+          >
+            <p style={{ fontSize: 20, fontWeight: 800, color: s.color, margin: '0 0 2px' }}>{s.value}</p>
+            <p style={{ fontSize: 11, color: 'var(--theme-text-muted)', margin: 0 }}>{s.label}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ── Filter & Search ─────────────────────────────────────────────── */}
+      <div style={{ background: 'var(--theme-bg-card)', borderRadius: 16, border: '1px solid var(--theme-border)', padding: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+            <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: 'var(--theme-text-disabled)' }} />
+            <input type="text" placeholder="Search by name, email, account…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+              style={{ width: '100%', height: 40, paddingLeft: 38, paddingRight: 14, borderRadius: 10, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', outline: 'none', fontSize: 13, color: 'var(--theme-text-primary)', boxSizing: 'border-box' }} />
+          </div>
+          <button onClick={() => setShowFilters(!showFilters)}
+            style={{ height: 40, padding: '0 14px', borderRadius: 10, border: `1px solid ${showFilters ? '#6366f1' : 'var(--theme-border)'}`, background: showFilters ? 'rgba(99,102,241,0.1)' : 'var(--theme-bg-main)', color: showFilters ? '#6366f1' : 'var(--theme-text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Filter style={{ width: 13, height: 13 }} />Filters
+            {activeFilters > 0 && <span style={{ background: '#6366f1', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{activeFilters}</span>}
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
+              <div style={{ paddingTop: 16, marginTop: 14, borderTop: '1px solid var(--theme-border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+                  {[
+                    { label: 'Country', value: selectedCountry, options: countries, onChange: setSelectedCountry },
+                    { label: 'KYC Status', value: selectedKycStatus, options: ['Verified', 'Unverified', 'Rejected'], onChange: setSelectedKycStatus },
+                    { label: 'Email Status', value: selectedEmailStatus, options: ['Verified', 'Unverified'], onChange: setSelectedEmailStatus },
+                    { label: 'IB Partner', value: selectedIbPartner, options: ibPartners, onChange: setSelectedIbPartner },
+                  ].map(f => (
+                    <div key={f.label}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', marginBottom: 5, textTransform: 'uppercase' }}>{f.label}</label>
+                      <select value={f.value || 'all'} onChange={e => f.onChange(e.target.value === 'all' ? null : e.target.value)}
+                        style={{ width: '100%', height: 36, padding: '0 10px', borderRadius: 8, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-primary)', fontSize: 12, outline: 'none' }}>
+                        <option value="all">All {f.label}s</option>
+                        {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+                  <button onClick={resetFilters}
+                    style={{ height: 32, padding: '0 14px', borderRadius: 8, border: '1px solid var(--theme-border)', background: 'none', color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <X style={{ width: 12, height: 12 }} />Reset All
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {activeFilters > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: 'var(--theme-text-muted)' }}>Active:</span>
+            {[
+              { v: selectedCountry, label: `Country: ${selectedCountry}`, clear: () => setSelectedCountry(null) },
+              { v: selectedKycStatus, label: `KYC: ${selectedKycStatus}`, clear: () => setSelectedKycStatus(null) },
+              { v: selectedEmailStatus, label: `Email: ${selectedEmailStatus}`, clear: () => setSelectedEmailStatus(null) },
+              { v: selectedIbPartner, label: `IB: ${selectedIbPartner}`, clear: () => setSelectedIbPartner(null) },
+            ].filter(c => c.v).map(c => (
+              <span key={c.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, background: 'rgba(99,102,241,0.1)', color: '#6366f1', fontSize: 11, fontWeight: 600 }}>
+                {c.label}<X style={{ width: 10, height: 10, cursor: 'pointer' }} onClick={c.clear} />
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Table ───────────────────────────────────────────────────────── */}
+      <div style={{ background: 'var(--theme-bg-card)', borderRadius: 16, border: '1px solid var(--theme-border)', overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--theme-bg-main)' }}>
+                {['Client', 'Account', 'Email Verified', 'KYC', 'Country', 'IB Partner', 'Status', 'Actions'].map(h => (
+                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', borderBottom: '1px solid var(--theme-border)' }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                [...Array(6)].map((_, i) => (
+                  <tr key={i}>
+                    {[120, 80, 70, 70, 80, 90, 60, 80].map((w, j) => (
+                      <td key={j} style={{ padding: '14px 16px' }}>
+                        <div style={{ height: 12, borderRadius: 6, background: 'var(--theme-border)', width: w, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : paginatedClients.length === 0 ? (
+                <tr><td colSpan={8} style={{ padding: '60px 20px', textAlign: 'center' }}>
+                  <Users style={{ width: 40, height: 40, color: 'var(--theme-border)', margin: '0 auto 10px' }} />
+                  <p style={{ fontSize: 14, color: 'var(--theme-text-muted)', margin: 0 }}>No clients found</p>
+                  {(searchTerm || activeFilters > 0) && <button onClick={resetFilters} style={{ marginTop: 8, fontSize: 12, color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer' }}>Clear filters</button>}
+                </td></tr>
+              ) : paginatedClients.map((client, idx) => (
+                <motion.tr key={client.id}
+                  initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02 }}
+                  style={{ borderBottom: '1px solid var(--theme-border)' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--theme-bg-main)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  {/* Client */}
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: 'white', flexShrink: 0 }}>
+                        {client.firstname?.[0]?.toUpperCase()}{client.lastname?.[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text-primary)' }}>{client.name || `${client.firstname} ${client.lastname}`}</div>
+                        <div style={{ fontSize: 11, color: 'var(--theme-text-muted)' }}>{client.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  {/* Account */}
+                  <td style={{ padding: '12px 16px', fontSize: 11, color: 'var(--theme-text-muted)', fontFamily: 'monospace' }}>{client.accountNumber || '—'}</td>
+                  {/* Email Verified */}
+                  <td style={{ padding: '12px 16px' }}>
+                    {client.isEmailVerified
+                      ? <Pill label="Verified" color="#10b981" bg="rgba(16,185,129,0.1)" />
+                      : <Pill label="Unverified" color="#ef4444" bg="rgba(239,68,68,0.1)" />}
+                  </td>
+                  {/* KYC */}
+                  <td style={{ padding: '12px 16px' }}>
+                    {client.kycStatus === 'verified'
+                      ? <Pill label="Verified" color="#10b981" bg="rgba(16,185,129,0.1)" />
+                      : client.kycStatus === 'rejected'
+                        ? <Pill label="Rejected" color="#ef4444" bg="rgba(239,68,68,0.1)" />
+                        : <Pill label="Pending" color="#f59e0b" bg="rgba(245,158,11,0.1)" />}
+                  </td>
+                  {/* Country */}
+                  <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--theme-text-muted)' }}>{client.country?.name || '—'}</td>
+                  {/* IB Partner */}
+                  <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--theme-text-muted)' }}>{client.ibPartner || '—'}</td>
+                  {/* Status */}
+                  <td style={{ padding: '12px 16px' }}>
+                    {client.status === 'activated'
+                      ? <Pill label="Active" color="#10b981" bg="rgba(16,185,129,0.1)" />
+                      : <Pill label="Suspended" color="#ef4444" bg="rgba(239,68,68,0.1)" />}
+                  </td>
+                  {/* Actions */}
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'nowrap' }}>
+                      <button title="View Details" onClick={() => handleViewDetails(client)}
+                        style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--theme-border)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--theme-text-muted)' }}>
+                        <Eye style={{ width: 12, height: 12 }} />
+                      </button>
+                      <button title="View Accounts" onClick={() => handleViewAccounts(client)}
+                        style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
+                        <CreditCard style={{ width: 12, height: 12 }} />
+                      </button>
+                      <button title="Login as Client" onClick={() => handleImpersonateClient(client)}
+                        style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                        <LogIn style={{ width: 12, height: 12 }} />
+                      </button>
+                      <button title="Manage Password" onClick={() => handlePasswordDialog(client)}
+                        style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+                        <KeyRound style={{ width: 12, height: 12 }} />
+                      </button>
+                      {client.status === 'activated'
+                        ? <button title="Suspend Client" onClick={() => handleSuspendClient(client.id)}
+                            style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                            <Lock style={{ width: 12, height: 12 }} />
+                          </button>
+                        : <button title="Activate Client" onClick={() => handleActivateClient(client.id)}
+                            style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                            <UserCheck style={{ width: 12, height: 12 }} />
+                          </button>
+                      }
+                    </div>
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {!loading && totalItems > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid var(--theme-border)', flexWrap: 'wrap', gap: 10 }}>
+            <span style={{ fontSize: 12, color: 'var(--theme-text-muted)' }}>{startItem}–{endItem} of {totalItems}</span>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <select value={itemsPerPage} onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1) }}
+                style={{ height: 30, padding: '0 8px', borderRadius: 8, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-muted)', fontSize: 11, outline: 'none' }}>
+                {[10, 20, 50].map(n => <option key={n} value={n}>{n} / page</option>)}
+              </select>
+              <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}
+                style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ChevronLeft style={{ width: 14, height: 14, color: 'var(--theme-text-muted)' }} />
+              </button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                const page = totalPages <= 5 ? i + 1 : currentPage <= 3 ? i + 1 : currentPage >= totalPages - 2 ? totalPages - 4 + i : currentPage - 2 + i
+                if (page < 1 || page > totalPages) return null
+                return (
+                  <button key={page} onClick={() => setCurrentPage(page)}
+                    style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${page === currentPage ? '#6366f1' : 'var(--theme-border)'}`, background: page === currentPage ? '#6366f1' : 'var(--theme-bg-main)', color: page === currentPage ? 'white' : 'var(--theme-text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    {page}
+                  </button>
+                )
+              })}
+              <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}
+                style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ChevronRight style={{ width: 14, height: 14, color: 'var(--theme-text-muted)' }} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Client Details Modal ─────────────────────────────────────────── */}
+      <Modal open={clientDetailsDialogOpen} onClose={() => setClientDetailsDialogOpen(false)} maxWidth={640}>
+        <div style={{ padding: '22px 24px 20px', borderBottom: '1px solid var(--theme-border)', background: 'linear-gradient(135deg,rgba(99,102,241,0.08),transparent)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--theme-text-primary)' }}>Client Details</h3>
+            <button onClick={() => setClientDetailsDialogOpen(false)} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'var(--theme-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X style={{ width: 13, height: 13, color: 'var(--theme-text-muted)' }} />
+            </button>
+          </div>
+        </div>
+        {selectedClient && (
+          <div style={{ padding: 24 }}>
+            {/* Personal */}
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>Personal Information</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+              <DRow label="First Name" value={selectedClient.firstname} />
+              <DRow label="Last Name" value={selectedClient.lastname} />
+              <DRow label="Email" value={selectedClient.email} />
+              <DRow label="Phone" value={selectedClient.phone} />
+              <DRow label="Date of Birth" value={selectedClient.dateofbirth} />
+              <DRow label="Country" value={selectedClient.country?.name} />
+              <DRow label="IB Partner" value={selectedClient.ibPartner} />
+              <DRow label="Account Number" value={selectedClient.accountNumber} />
+            </div>
+
+            {/* KYC Controls */}
+            <div style={{ borderTop: '1px solid var(--theme-border)', paddingTop: 18, marginBottom: 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>KYC Status</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: selectedClient.kycStatus === 'rejected' ? 12 : 0 }}>
+                {(['unverified', 'verified', 'rejected'] as const).map(s => (
+                  <button key={s} onClick={() => setSelectedClient(prev => prev ? { ...prev, kycStatus: s } : prev)}
+                    style={{ height: 34, padding: '0 14px', borderRadius: 8, border: `1px solid ${selectedClient.kycStatus === s ? (s === 'verified' ? '#10b981' : s === 'rejected' ? '#ef4444' : '#f59e0b') : 'var(--theme-border)'}`, background: selectedClient.kycStatus === s ? (s === 'verified' ? 'rgba(16,185,129,0.1)' : s === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)') : 'var(--theme-bg-main)', color: selectedClient.kycStatus === s ? (s === 'verified' ? '#10b981' : s === 'rejected' ? '#ef4444' : '#f59e0b') : 'var(--theme-text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize' }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+              {selectedClient.kycStatus === 'rejected' && (
+                <input type="text" placeholder="Rejection reason (required)" value={selectedClient.kycRejectReason || ''}
+                  onChange={e => setSelectedClient(prev => prev ? { ...prev, kycRejectReason: e.target.value } : prev)}
+                  style={{ width: '100%', height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-primary)', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+              )}
+            </div>
+
+            {/* Documents */}
+            {(selectedClient.idDocument || selectedClient.address1Document || selectedClient.address2Document) && (
+              <div style={{ borderTop: '1px solid var(--theme-border)', paddingTop: 18, marginBottom: 20 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>Documents</p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'ID Document', url: selectedClient.idDocument },
+                    { label: 'Address 1', url: selectedClient.address1Document },
+                    { label: 'Address 2', url: selectedClient.address2Document },
+                  ].filter(d => d.url).map(doc => (
+                    <button key={doc.label} onClick={() => handleOpenDocument(doc.url)}
+                      style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#6366f1', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      View {doc.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Save Button */}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setClientDetailsDialogOpen(false)}
+                style={{ height: 40, padding: '0 20px', borderRadius: 10, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleUpdateClient}
+                style={{ height: 40, padding: '0 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                Save Changes
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Password Modal ───────────────────────────────────────────────── */}
+      <Modal open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth={440}>
+        <div style={{ padding: '22px 24px 20px', borderBottom: '1px solid var(--theme-border)', background: 'linear-gradient(135deg,rgba(245,158,11,0.08),transparent)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--theme-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <KeyRound style={{ width: 18, height: 18, color: '#f59e0b' }} />Password Manager
+            </h3>
+            <button onClick={() => setPasswordDialogOpen(false)} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'var(--theme-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X style={{ width: 13, height: 13, color: 'var(--theme-text-muted)' }} />
+            </button>
+          </div>
+          {selectedClient && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--theme-text-muted)' }}>{selectedClient.name || `${selectedClient.firstname} ${selectedClient.lastname}`}</p>}
+        </div>
+        <div style={{ padding: 24 }}>
+          <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 20 }}>
+            <p style={{ fontSize: 11, color: 'var(--theme-text-muted)', margin: '0 0 4px', textTransform: 'uppercase', fontWeight: 700 }}>Current Password</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text-primary)', margin: 0, fontFamily: 'monospace' }}>{password || '—'}</p>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', marginBottom: 5, textTransform: 'uppercase' }}>New Password</label>
+            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Enter new password"
+              style={{ width: '100%', height: 40, padding: '0 12px', borderRadius: 10, border: '1px solid var(--theme-border)', background: 'var(--theme-bg-main)', color: 'var(--theme-text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', marginBottom: 5, textTransform: 'uppercase' }}>Confirm Password</label>
+            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm new password"
+              style={{ width: '100%', height: 40, padding: '0 12px', borderRadius: 10, border: `1px solid ${confirmPassword && confirmPassword !== newPassword ? 'rgba(239,68,68,0.5)' : 'var(--theme-border)'}`, background: 'var(--theme-bg-main)', color: 'var(--theme-text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+            {confirmPassword && confirmPassword !== newPassword && <p style={{ fontSize: 11, color: '#ef4444', margin: '4px 0 0' }}>Passwords do not match</p>}
+          </div>
+          <button onClick={handleUpdatePassword} disabled={!newPassword || newPassword !== confirmPassword}
+            style={{ width: '100%', height: 42, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (!newPassword || newPassword !== confirmPassword) ? 0.6 : 1 }}>
+            Update Password
+          </button>
+        </div>
+      </Modal>
+
+      {/* ── MT5 Accounts Modal ───────────────────────────────────────────── */}
+      <Modal open={accountsDialogOpen} onClose={handleCloseAccountsDialog} maxWidth={640}>
+        <div style={{ padding: '22px 24px 20px', borderBottom: '1px solid var(--theme-border)', background: 'linear-gradient(135deg,rgba(99,102,241,0.08),transparent)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--theme-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CreditCard style={{ width: 18, height: 18, color: '#6366f1' }} />MT5 Accounts
+            </h3>
+            <button onClick={handleCloseAccountsDialog} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'var(--theme-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X style={{ width: 13, height: 13, color: 'var(--theme-text-muted)' }} />
+            </button>
+          </div>
+          {selectedClient && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--theme-text-muted)' }}>{selectedClient.name || `${selectedClient.firstname} ${selectedClient.lastname}`}</p>}
+        </div>
+        <div style={{ padding: 24 }}>
+          {loadingAccounts ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <div style={{ width: 30, height: 30, border: '3px solid var(--theme-border)', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+              <p style={{ fontSize: 13, color: 'var(--theme-text-muted)', margin: 0 }}>Loading accounts…</p>
+            </div>
+          ) : clientAccounts.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <CreditCard style={{ width: 40, height: 40, color: 'var(--theme-border)', margin: '0 auto 10px' }} />
+              <p style={{ fontSize: 14, color: 'var(--theme-text-muted)', margin: 0 }}>No trading accounts found</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {clientAccounts.map(acc => (
+                <div key={acc._id} style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--theme-text-primary)', fontFamily: 'monospace' }}>{acc.mt5Account}</span>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: 'rgba(99,102,241,0.1)', color: '#6366f1', fontWeight: 600 }}>{acc.accountType}</span>
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--theme-text-muted)' }}>1:{acc.leverage}</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    <div>
+                      <p style={{ fontSize: 10, color: 'var(--theme-text-disabled)', margin: '0 0 2px', textTransform: 'uppercase' }}>Balance</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--theme-text-primary)', margin: 0 }}>${(acc.balance || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 10, color: 'var(--theme-text-disabled)', margin: '0 0 2px', textTransform: 'uppercase' }}>Equity</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--theme-text-primary)', margin: 0 }}>${(acc.equity || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 10, color: 'var(--theme-text-disabled)', margin: '0 0 2px', textTransform: 'uppercase' }}>P&L</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: acc.profit >= 0 ? '#10b981' : '#ef4444', margin: 0 }}>{acc.profit >= 0 ? '+' : ''}${(acc.profit || 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
+    </motion.div>
+  )
 }
 
 export default ClientsPage

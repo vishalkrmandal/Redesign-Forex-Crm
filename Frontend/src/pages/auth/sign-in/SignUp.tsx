@@ -1,597 +1,420 @@
-// Frontend/src/pages/auth/sign-in/SignUp.tsx - Fixed for mobile scrolling with security enhancements
-
+// Frontend/src/pages/auth/sign-in/SignUp.tsx
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { CalendarIcon, Eye, EyeOff, Phone, User, Mail, Lock, Globe, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Eye, EyeOff, User, Mail, Lock, Globe, Phone, Calendar,
+  Check, ChevronLeft, Shield, Gift, TrendingUp, UserCheck, Send
+} from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
-import { ThemeToggle } from "@/components/theme-toggle";
 import LocationSelector from "@/components/ui/location-input";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { motion, AnimatePresence } from "framer-motion";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// Security utility functions
-const escapeHtml = (unsafe: string): string => {
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-};
+const escapeHtml = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+const sanitizeName = (s: string) => escapeHtml(s).replace(/[^a-zA-Z\s'\-]/g,'').trim().slice(0,50);
 
-const sanitizeName = (input: string): string => {
-    return escapeHtml(input)
-        .replace(/[^a-zA-Z\s'\-]/g, '')
-        .trim()
-        .slice(0, 50);
-};
-
-// Enhanced form schema with security validations
 const formSchema = z.object({
-    firstname: z.string()
-        .min(1, "First name is required")
-        .max(50, "First name too long")
-        .regex(/^[a-zA-Z\s'-]+$/, "Only letters, spaces, hyphens and apostrophes allowed"),
-
-    lastname: z.string()
-        .min(1, "Last name is required")
-        .max(50, "Last name too long")
-        .regex(/^[a-zA-Z\s'-]+$/, "Only letters, spaces, hyphens and apostrophes allowed"),
-
-    country: z.tuple([z.string(), z.string().optional()]),
-
-    phone: z.string()
-        .min(10, "Enter a valid phone number")
-        .regex(/^[\d\s\-\+\(\)]+$/, "Invalid phone number format"),
-
-    dateofbirth: z.date({ required_error: "Date of birth is required" }),
-
-    email: z.string()
-        .email("Invalid email format")
-        .max(254, "Email too long"),
-
-    password: z.string()
-        .min(8, "Password must be at least 8 characters")
-        .max(32, "Password too long")
-        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain uppercase, lowercase and number"),
-
-    confirmPassword: z.string()
-        .min(8, "Please confirm your password")
-        .max(32, "Password too long"),
-
-    referralCode: z.string()
-        .max(20, "Referral code too long")
-        .regex(/^[a-zA-Z0-9]*$/, "Invalid referral code format")
-        .optional()
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"]
-});
+  firstname: z.string().min(1,'First name required').max(50).regex(/^[a-zA-Z\s'-]+$/,'Letters only'),
+  lastname:  z.string().min(1,'Last name required').max(50).regex(/^[a-zA-Z\s'-]+$/,'Letters only'),
+  country:   z.tuple([z.string(), z.string().optional()]),
+  phone:     z.string().min(10,'Enter valid phone').regex(/^[\d\s\-\+\(\)]+$/,'Invalid phone'),
+  dateofbirth: z.date({ required_error: 'Date of birth required' }),
+  email:     z.string().email('Invalid email').max(254),
+  password:  z.string().min(8,'Min 8 chars').max(32).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,'Must contain uppercase, lowercase and number'),
+  confirmPassword: z.string().min(8).max(32),
+  referralCode: z.string().max(20).regex(/^[a-zA-Z0-9]*$/,'Invalid code').optional(),
+}).refine(d => d.password === d.confirmPassword, { message:"Passwords don't match", path:['confirmPassword'] });
 
 interface SignUpProps {
-    validReferral?: {
-        code: string;
-        userName: string;
-        preValidated: boolean;
-    };
+  validReferral?: { code: string; userName: string; preValidated: boolean };
 }
 
+const PERKS = [
+  { icon: TrendingUp, text: 'Access live MT5 trading accounts' },
+  { icon: Shield,     text: 'Regulated & secure platform' },
+  { icon: Gift,       text: 'Referral bonuses & rewards' },
+  { icon: UserCheck,  text: 'Verified KYC & fast onboarding' },
+];
+
 export default function SignUp({ validReferral }: SignUpProps) {
-    const navigate = useNavigate();
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [countryName, setCountryName] = useState<string>("");
-    const [stateName, setStateName] = useState<string>("");
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [countryName, setCountryName] = useState('');
+  const [stateName, setStateName] = useState('');
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [showResend, setShowResend] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [isResending, setIsResending] = useState(false);
 
-    const [showResendOption, setShowResendOption] = useState(false);
-    const [resendTimer, setResendTimer] = useState(0);
-    const [isResendingEmail, setIsResendingEmail] = useState(false);
-    const [registrationSuccess, setRegistrationSuccess] = useState(false);
-    const [userEmail, setUserEmail] = useState("");
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      firstname: '', lastname: '', phone: '', email: '',
+      password: '', confirmPassword: '',
+      dateofbirth: new Date(),
+      referralCode: validReferral?.code || '',
+    },
+  });
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            dateofbirth: new Date(),
-            firstname: "",
-            lastname: "",
-            phone: "",
-            email: "",
-            password: "",
-            confirmPassword: "",
-            referralCode: validReferral?.code || ""
-        },
-    });
+  useEffect(() => {
+    if (validReferral?.preValidated) form.setValue('referralCode', validReferral.code);
+  }, [validReferral, form]);
 
-    useEffect(() => {
-        if (validReferral?.preValidated) {
-            form.setValue("referralCode", validReferral.code);
-        }
-    }, [validReferral, form]);
+  const startTimer = () => {
+    setResendTimer(60);
+    setShowResend(false);
+    const t = setInterval(() => setResendTimer(p => { if (p <= 1) { setShowResend(true); clearInterval(t); return 0; } return p - 1; }), 1000);
+  };
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
-        try {
-            setIsSubmitting(true);
+  const startVerificationCheck = (email: string) => {
+    const iv = setInterval(async () => {
+      try {
+        const r = await fetch(`${API_BASE_URL}/api/auth/check-verification-status`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email: escapeHtml(email.toLowerCase().trim()) }),
+        });
+        const d = await r.json();
+        if (d.isVerified) { clearInterval(iv); toast.success('Email verified! Redirecting…'); setTimeout(() => navigate('/?verified=true'), 2500); }
+      } catch { /* silent */ }
+    }, 5000);
+    setTimeout(() => clearInterval(iv), 600000);
+  };
 
-            const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    firstname: sanitizeName(values.firstname),
-                    lastname: sanitizeName(values.lastname),
-                    email: escapeHtml(values.email.toLowerCase().trim()),
-                    phone: values.phone.replace(/[^\d\+\-\s\(\)]/g, ''),
-                    password: values.password,
-                    country: [sanitizeName(countryName), sanitizeName(stateName)],
-                    referralCode: values.referralCode ? values.referralCode.replace(/[^a-zA-Z0-9]/g, '') : undefined,
-                    dateofbirth: values.dateofbirth
-                }),
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                setUserEmail(values.email);
-                setRegistrationSuccess(true);
-                setShowResendOption(false);
-                setResendTimer(60);
-
-                toast.success("Registration successful! Please check your email to verify your account.", {
-                    duration: 5000
-                });
-
-                const timer = setInterval(() => {
-                    setResendTimer((prev) => {
-                        if (prev <= 1) {
-                            setShowResendOption(true);
-                            clearInterval(timer);
-                            return 0;
-                        }
-                        return prev - 1;
-                    });
-                }, 1000);
-
-                startVerificationCheck(values.email);
-                form.reset();
-            } else {
-                toast.error(data.message || "Failed to register. Please try again.");
-            }
-        } catch (error) {
-            console.error("Registration error", error);
-            toast.error("Something went wrong. Please try again.");
-        } finally {
-            setIsSubmitting(false);
-        }
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          firstname: sanitizeName(values.firstname),
+          lastname:  sanitizeName(values.lastname),
+          email:     escapeHtml(values.email.toLowerCase().trim()),
+          phone:     values.phone.replace(/[^\d\+\-\s\(\)]/g,''),
+          password:  values.password,
+          country:   [sanitizeName(countryName), sanitizeName(stateName)],
+          referralCode: values.referralCode ? values.referralCode.replace(/[^a-zA-Z0-9]/g,'') : undefined,
+          dateofbirth: values.dateofbirth,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUserEmail(values.email);
+        setRegistrationSuccess(true);
+        startTimer();
+        startVerificationCheck(values.email);
+        toast.success('Account created! Check your email to verify.', { duration: 5000 });
+        form.reset();
+      } else {
+        toast.error(data.message || 'Registration failed.');
+      }
+    } catch {
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    const checkVerificationStatus = async (email: string) => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/check-verification-status`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: escapeHtml(email.toLowerCase().trim()) }),
-            });
-            const data = await response.json();
-            return data.isVerified;
-        } catch (error) {
-            console.error("Error checking verification status:", error);
-            return false;
-        }
-    };
+  const resendEmail = async () => {
+    setIsResending(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/resend-verification`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email: escapeHtml(userEmail.toLowerCase().trim()) }),
+      });
+      const data = await res.json();
+      if (data.success) { toast.success('Verification email resent!'); startTimer(); }
+      else toast.error(data.message || 'Failed to resend.');
+    } catch {
+      toast.error('Something went wrong.');
+    } finally {
+      setIsResending(false);
+    }
+  };
 
-    const startVerificationCheck = (email: string) => {
-        const checkInterval = setInterval(async () => {
-            const isVerified = await checkVerificationStatus(email);
-            if (isVerified) {
-                clearInterval(checkInterval);
-                toast.success("Your email has been verified! Redirecting to login...", { duration: 3000 });
-                setTimeout(() => navigate('/?verified=true'), 3000);
-            }
-        }, 5000);
+  const errStyle = { fontSize: 11, color: '#ef4444', marginTop: 4 };
+  const labelStyle = { display: 'block' as const, fontSize: 12, fontWeight: 600 as const, color: 'var(--theme-text-muted)', marginBottom: 6 };
+  const inputStyle = (hasLeft = false): React.CSSProperties => ({
+    width: '100%', height: 44, borderRadius: 10, fontSize: 13, outline: 'none', boxSizing: 'border-box',
+    background: 'var(--theme-bg-main)', border: '1.5px solid var(--theme-border)',
+    color: 'var(--theme-text-primary)', paddingLeft: hasLeft ? 40 : 12, paddingRight: 12, transition: 'border-color 0.15s',
+  });
 
-        setTimeout(() => clearInterval(checkInterval), 600000);
-    };
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
 
-    const resendVerificationEmail = async () => {
-        try {
-            setIsResendingEmail(true);
+      {/* ── LEFT PANEL ─────────────────────────────────────────────────────── */}
+      <div
+        className="hidden lg:flex lg:flex-col lg:justify-between"
+        style={{
+          width: 320, flexShrink: 0, padding: '40px 32px',
+          background: 'linear-gradient(160deg, #0f0c29 0%, #302b63 55%, #24243e 100%)',
+          position: 'sticky', top: 0, height: '100vh', overflow: 'hidden',
+        }}
+      >
+        <div style={{ position: 'absolute', top:-60, right:-60, width:240, height:240, borderRadius:'50%', background:'rgba(99,102,241,0.12)', filter:'blur(50px)', pointerEvents:'none' }} />
 
-            const response = await fetch(`${API_BASE_URL}/api/auth/resend-verification`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: escapeHtml(userEmail.toLowerCase().trim()) }),
-            });
+        <div>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:40 }}>
+            <img src="/favicon.png" alt="Logo" style={{ width:40, height:40, objectFit:'contain', borderRadius:8 }} />
+            <p style={{ color:'white', fontWeight:800, fontSize:16, margin:0 }}>OXOTrade</p>
+          </div>
 
-            const data = await response.json();
+          <h2 style={{ color:'white', fontSize:26, fontWeight:900, lineHeight:1.2, marginBottom:12 }}>
+            Start your<br />
+            <span style={{ background:'linear-gradient(90deg,#a5b4fc,#818cf8)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+              trading journey
+            </span>
+          </h2>
+          <p style={{ color:'rgba(255,255,255,0.5)', fontSize:13, lineHeight:1.7, marginBottom:32 }}>
+            Join thousands of traders worldwide and take control of your financial future.
+          </p>
 
-            if (data.success) {
-                toast.success("Verification email sent successfully!");
-                setShowResendOption(false);
-                setResendTimer(60);
-
-                const timer = setInterval(() => {
-                    setResendTimer((prev) => {
-                        if (prev <= 1) {
-                            setShowResendOption(true);
-                            clearInterval(timer);
-                            return 0;
-                        }
-                        return prev - 1;
-                    });
-                }, 1000);
-            } else {
-                toast.error(data.message || "Failed to resend email. Please try again.");
-            }
-        } catch (error) {
-            console.error("Resend email error:", error);
-            toast.error("Something went wrong. Please try again.");
-        } finally {
-            setIsResendingEmail(false);
-        }
-    };
-
-    return (
-        <div className="min-h-screen w-full bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-x-hidden">
-            {/* Theme Toggle */}
-            <div className="fixed top-4 right-4 z-50">
-                <ThemeToggle />
+          {PERKS.map(p => (
+            <div key={p.text} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
+              <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <p.icon style={{ width:14, height:14, color:'#a5b4fc' }} />
+              </div>
+              <p style={{ color:'rgba(255,255,255,0.65)', fontSize:12, margin:0 }}>{p.text}</p>
             </div>
-
-            {/* Background decoration - desktop only */}
-            <div className="absolute inset-0 overflow-hidden hidden md:block">
-                <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob dark:bg-purple-600 dark:opacity-30"></div>
-                <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000 dark:bg-blue-600 dark:opacity-30"></div>
-                <div className="absolute top-40 left-1/2 transform -translate-x-1/2 w-80 h-80 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000 dark:bg-pink-600 dark:opacity-30"></div>
-            </div>
-
-            {/* Main Content */}
-            <div className="relative z-10 w-full px-4 py-6 md:py-8 lg:py-10">
-                <div className="max-w-3xl mx-auto">
-                    <Card className="w-full shadow-2xl border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-
-                        {/* Header */}
-                        <CardHeader className="text-center space-y-2 pb-4 pt-6">
-                            <div className="mx-auto w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-1">
-                                <User className="w-6 h-6 text-white" />
-                            </div>
-                            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                                Create Your Account
-                            </CardTitle>
-                            <CardDescription className="text-sm text-muted-foreground px-2">
-                                {validReferral?.preValidated && validReferral.userName
-                                    ? `Join us today! You were referred by ${escapeHtml(validReferral.userName)}`
-                                    : "Join us today and start your journey"}
-                            </CardDescription>
-                        </CardHeader>
-
-                        {/* Valid Referral Alert */}
-                        {validReferral?.preValidated && (
-                            <div className="px-6 mb-3">
-                                <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20 py-3">
-                                    <Check className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
-                                    <div className="ml-2">
-                                        <AlertTitle className="text-green-800 dark:text-green-200 text-sm font-semibold">
-                                            Valid Referral Code!
-                                        </AlertTitle>
-                                        <AlertDescription className="text-green-700 dark:text-green-300 text-xs">
-                                            You were referred by <strong>{escapeHtml(validReferral.userName)}</strong>.
-                                            The referral bonus will be applied to your account.
-                                        </AlertDescription>
-                                    </div>
-                                </Alert>
-                            </div>
-                        )}
-
-                        <CardContent className="px-6 pb-6">
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-
-                                    {/* Name Fields */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="firstname"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-sm flex items-center gap-1.5">
-                                                        <User className="w-3.5 h-3.5" />
-                                                        First Name
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="Enter your first name"
-                                                            className="h-10 text-sm bg-background/50"
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs" />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <FormField
-                                            control={form.control}
-                                            name="lastname"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-sm flex items-center gap-1.5">
-                                                        <User className="w-3.5 h-3.5" />
-                                                        Last Name
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="Enter your last name"
-                                                            className="h-10 text-sm bg-background/50"
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs" />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    {/* Location */}
-                                    <FormField
-                                        control={form.control}
-                                        name="country"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-sm flex items-center gap-1.5">
-                                                    <Globe className="w-3.5 h-3.5" />
-                                                    Location
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <div className="min-h-[40px]">
-                                                        <LocationSelector
-                                                            onCountryChange={(country) => {
-                                                                setCountryName(country?.name || "");
-                                                                form.setValue(field.name, [country?.name || "", stateName || ""]);
-                                                            }}
-                                                            onStateChange={(state) => {
-                                                                setStateName(state?.name || "");
-                                                                form.setValue(field.name, [countryName || "", state?.name || ""]);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </FormControl>
-                                                <FormMessage className="text-xs" />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {/* Phone and Date of Birth */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="phone"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-sm flex items-center gap-1.5">
-                                                        <Phone className="w-3.5 h-3.5" />
-                                                        Phone Number
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <PhoneInput
-                                                            placeholder="Enter phone number"
-                                                            defaultCountry="IN"
-                                                            className="h-10 text-sm"
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs" />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <FormField
-                                            control={form.control}
-                                            name="dateofbirth"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-sm flex items-center gap-1.5">
-                                                        <CalendarIcon className="w-3.5 h-3.5" />
-                                                        Date of Birth
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <DatePicker
-                                                            value={field.value}
-                                                            onChange={field.onChange}
-                                                            className="h-10 w-full text-sm"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs" />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    {/* Email */}
-                                    <FormField
-                                        control={form.control}
-                                        name="email"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-sm flex items-center gap-1.5">
-                                                    <Mail className="w-3.5 h-3.5" />
-                                                    Email Address
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="Enter your email address"
-                                                        type="email"
-                                                        className="h-10 text-sm bg-background/50"
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage className="text-xs" />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {/* Hidden referral code for pre-validated referrals */}
-                                    {validReferral?.preValidated && (
-                                        <input type="hidden" {...form.register("referralCode")} />
-                                    )}
-
-                                    {/* Password Fields */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="password"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-sm flex items-center gap-1.5">
-                                                        <Lock className="w-3.5 h-3.5" />
-                                                        Password
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <div className="relative">
-                                                            <Input
-                                                                placeholder="Create a strong password"
-                                                                type={showPassword ? "text" : "password"}
-                                                                className="h-10 text-sm bg-background/50 pr-10"
-                                                                {...field}
-                                                            />
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                                                onClick={() => setShowPassword(!showPassword)}
-                                                            >
-                                                                {showPassword
-                                                                    ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-                                                                    : <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                                                                }
-                                                            </Button>
-                                                        </div>
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs" />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <FormField
-                                            control={form.control}
-                                            name="confirmPassword"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-sm flex items-center gap-1.5">
-                                                        <Lock className="w-3.5 h-3.5" />
-                                                        Confirm Password
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <div className="relative">
-                                                            <Input
-                                                                placeholder="Confirm your password"
-                                                                type={showConfirmPassword ? "text" : "password"}
-                                                                className="h-10 text-sm bg-background/50 pr-10"
-                                                                {...field}
-                                                            />
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                                            >
-                                                                {showConfirmPassword
-                                                                    ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-                                                                    : <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                                                                }
-                                                            </Button>
-                                                        </div>
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs" />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    {/* Submit Button */}
-                                    <Button
-                                        type="submit"
-                                        className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-md hover:shadow-lg transition-all duration-300 mt-2"
-                                        disabled={isSubmitting}
-                                    >
-                                        {isSubmitting ? (
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                Creating Account...
-                                            </div>
-                                        ) : (
-                                            "Create Account"
-                                        )}
-                                    </Button>
-
-                                    {/* Resend Verification Section */}
-                                    {registrationSuccess && (
-                                        <div className="text-center py-3 border-t border-gray-200 dark:border-gray-700">
-                                            <p className="text-muted-foreground text-sm mb-2">
-                                                Didn't receive the verification email?
-                                            </p>
-
-                                            {!showResendOption && resendTimer > 0 ? (
-                                                <p className="text-xs text-gray-500">
-                                                    Resend available in{" "}
-                                                    <span className="font-semibold text-blue-600">{resendTimer}</span> seconds
-                                                </p>
-                                            ) : showResendOption ? (
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="h-8 text-xs text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                                    onClick={resendVerificationEmail}
-                                                    disabled={isResendingEmail}
-                                                >
-                                                    {isResendingEmail ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                                                            Sending...
-                                                        </div>
-                                                    ) : (
-                                                        "Resend Verification Email"
-                                                    )}
-                                                </Button>
-                                            ) : null}
-                                        </div>
-                                    )}
-
-                                    {/* Sign In Link */}
-                                    <div className="text-center pt-2">
-                                        <p className="text-sm text-muted-foreground">
-                                            Already have an account?{" "}
-                                            <Button
-                                                variant="link"
-                                                className="p-0 h-auto text-sm font-semibold text-blue-600 hover:text-blue-700"
-                                                onClick={() => navigate('/')}
-                                            >
-                                                Sign in here
-                                            </Button>
-                                        </p>
-                                    </div>
-
-                                </form>
-                            </Form>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+          ))}
         </div>
-    );
+
+        <p style={{ color:'rgba(255,255,255,0.2)', fontSize:11 }}>© {new Date().getFullYear()} OXOTrade</p>
+      </div>
+
+      {/* ── RIGHT PANEL ─────────────────────────────────────────────────────── */}
+      <div style={{ flex:1, background:'var(--theme-bg-main)', overflowY:'auto' }}>
+        <div style={{ maxWidth:580, margin:'0 auto', padding:'40px 24px 60px' }}>
+
+          {/* Header */}
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:32 }}>
+            <button
+              onClick={() => navigate('/')}
+              style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'var(--theme-text-muted)', background:'none', border:'none', cursor:'pointer', padding:0 }}
+            >
+              <ChevronLeft style={{ width:15, height:15 }} /> Back to Login
+            </button>
+          </div>
+
+          <h1 style={{ fontSize:26, fontWeight:900, color:'var(--theme-text-primary)', margin:0, marginBottom:6 }}>Create Account</h1>
+          <p style={{ fontSize:13, color:'var(--theme-text-muted)', marginBottom:28 }}>
+            {validReferral?.preValidated && validReferral.userName
+              ? `Referred by ${escapeHtml(validReferral.userName)} — referral bonus will be applied`
+              : 'Fill in your details to get started'}
+          </p>
+
+          {/* Referral banner */}
+          {validReferral?.preValidated && (
+            <div style={{ padding:'10px 14px', borderRadius:10, marginBottom:24, background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.25)', display:'flex', alignItems:'center', gap:10 }}>
+              <Gift style={{ width:16, height:16, color:'#10b981', flexShrink:0 }} />
+              <div>
+                <p style={{ fontSize:13, fontWeight:700, color:'#10b981', margin:0 }}>Valid Referral Code!</p>
+                <p style={{ fontSize:11, color:'var(--theme-text-muted)', margin:0 }}>Referred by {escapeHtml(validReferral.userName)}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Success state */}
+          <AnimatePresence>
+            {registrationSuccess && (
+              <motion.div
+                initial={{ opacity:0, y:-10 }}
+                animate={{ opacity:1, y:0 }}
+                style={{ padding:24, borderRadius:16, marginBottom:24, textAlign:'center', background:'rgba(99,102,241,0.06)', border:'1px solid rgba(99,102,241,0.2)' }}
+              >
+                <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(16,185,129,0.15)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
+                  <Send style={{ width:24, height:24, color:'#10b981' }} />
+                </div>
+                <h3 style={{ fontSize:18, fontWeight:800, color:'var(--theme-text-primary)', marginBottom:6 }}>Verify your email</h3>
+                <p style={{ fontSize:13, color:'var(--theme-text-muted)', marginBottom:16 }}>
+                  We sent a verification link to <strong>{userEmail}</strong>. Check your inbox.
+                </p>
+                {!showResend && resendTimer > 0 && (
+                  <p style={{ fontSize:12, color:'var(--theme-text-disabled)' }}>Resend in {resendTimer}s</p>
+                )}
+                {showResend && (
+                  <button
+                    onClick={resendEmail}
+                    disabled={isResending}
+                    style={{ padding:'8px 18px', borderRadius:10, border:'1px solid rgba(99,102,241,0.3)', background:'rgba(99,102,241,0.1)', color:'#6366f1', fontSize:13, fontWeight:600, cursor:'pointer' }}
+                  >
+                    {isResending ? 'Sending…' : 'Resend Verification Email'}
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Form */}
+          <form onSubmit={form.handleSubmit(onSubmit)} style={{ display:'flex', flexDirection:'column', gap:18 }}>
+
+            {/* Section: Personal */}
+            <div>
+              <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:700, color:'var(--theme-text-disabled)', marginBottom:12 }}>Personal Information</p>
+              <div className="grid grid-cols-2 gap-4">
+                {/* First Name */}
+                <div>
+                  <label style={labelStyle}>First Name</label>
+                  <div style={{ position:'relative' }}>
+                    <User style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', width:14, height:14, color:'var(--theme-text-disabled)' }} />
+                    <input type="text" placeholder="First name" {...form.register('firstname')} style={inputStyle(true)}
+                      onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor='var(--theme-border)'} />
+                  </div>
+                  {form.formState.errors.firstname && <p style={errStyle}>{form.formState.errors.firstname.message}</p>}
+                </div>
+                {/* Last Name */}
+                <div>
+                  <label style={labelStyle}>Last Name</label>
+                  <div style={{ position:'relative' }}>
+                    <User style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', width:14, height:14, color:'var(--theme-text-disabled)' }} />
+                    <input type="text" placeholder="Last name" {...form.register('lastname')} style={inputStyle(true)}
+                      onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor='var(--theme-border)'} />
+                  </div>
+                  {form.formState.errors.lastname && <p style={errStyle}>{form.formState.errors.lastname.message}</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* Country */}
+            <div>
+              <label style={labelStyle}>Country / State</label>
+              <div style={{ border:'1.5px solid var(--theme-border)', borderRadius:10, overflow:'hidden', background:'var(--theme-bg-main)' }}>
+                <LocationSelector
+                  onCountryChange={(c) => { setCountryName(c?.name||''); form.setValue('country', [c?.name||'', stateName||'']); }}
+                  onStateChange={(s) => { setStateName(s?.name||''); form.setValue('country', [countryName||'', s?.name||'']); }}
+                />
+              </div>
+              {form.formState.errors.country && <p style={errStyle}>Country is required</p>}
+            </div>
+
+            {/* Phone + DOB */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label style={labelStyle}>Phone Number</label>
+                <PhoneInput
+                  placeholder="Enter phone"
+                  defaultCountry="IN"
+                  {...form.register('phone')}
+                  style={{ height: 44, fontSize: 13 }}
+                />
+                {form.formState.errors.phone && <p style={errStyle}>{form.formState.errors.phone.message}</p>}
+              </div>
+              <div>
+                <label style={labelStyle}>Date of Birth</label>
+                <DatePicker
+                  value={form.watch('dateofbirth')}
+                  onChange={(d) => form.setValue('dateofbirth', d!)}
+                  className="w-full h-11 text-sm"
+                />
+                {form.formState.errors.dateofbirth && <p style={errStyle}>{form.formState.errors.dateofbirth.message}</p>}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div style={{ height:1, background:'var(--theme-border)' }} />
+            <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:700, color:'var(--theme-text-disabled)', marginTop:-6 }}>Account Details</p>
+
+            {/* Email */}
+            <div>
+              <label style={labelStyle}>Email Address</label>
+              <div style={{ position:'relative' }}>
+                <Mail style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', width:14, height:14, color:'var(--theme-text-disabled)' }} />
+                <input type="email" placeholder="your@email.com" {...form.register('email')} style={inputStyle(true)}
+                  onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor='var(--theme-border)'} />
+              </div>
+              {form.formState.errors.email && <p style={errStyle}>{form.formState.errors.email.message}</p>}
+            </div>
+
+            {/* Passwords */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Password */}
+              <div>
+                <label style={labelStyle}>Password</label>
+                <div style={{ position:'relative' }}>
+                  <Lock style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', width:14, height:14, color:'var(--theme-text-disabled)' }} />
+                  <input type={showPassword?'text':'password'} placeholder="Min 8 characters" {...form.register('password')}
+                    style={{ ...inputStyle(true), paddingRight:40 }}
+                    onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor='var(--theme-border)'} />
+                  <button type="button" onClick={()=>setShowPassword(!showPassword)}
+                    style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'var(--theme-text-muted)' }}>
+                    {showPassword ? <EyeOff style={{ width:14, height:14 }} /> : <Eye style={{ width:14, height:14 }} />}
+                  </button>
+                </div>
+                {form.formState.errors.password && <p style={errStyle}>{form.formState.errors.password.message}</p>}
+              </div>
+              {/* Confirm Password */}
+              <div>
+                <label style={labelStyle}>Confirm Password</label>
+                <div style={{ position:'relative' }}>
+                  <Lock style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', width:14, height:14, color:'var(--theme-text-disabled)' }} />
+                  <input type={showConfirmPassword?'text':'password'} placeholder="Repeat password" {...form.register('confirmPassword')}
+                    style={{ ...inputStyle(true), paddingRight:40 }}
+                    onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor='var(--theme-border)'} />
+                  <button type="button" onClick={()=>setShowConfirmPassword(!showConfirmPassword)}
+                    style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'var(--theme-text-muted)' }}>
+                    {showConfirmPassword ? <EyeOff style={{ width:14, height:14 }} /> : <Eye style={{ width:14, height:14 }} />}
+                  </button>
+                </div>
+                {form.formState.errors.confirmPassword && <p style={errStyle}>{form.formState.errors.confirmPassword.message}</p>}
+              </div>
+            </div>
+
+            {/* Referral code (if not pre-validated) */}
+            {!validReferral?.preValidated && (
+              <div>
+                <label style={labelStyle}>Referral Code <span style={{ fontWeight:400, color:'var(--theme-text-disabled)' }}>(optional)</span></label>
+                <input type="text" placeholder="Enter referral code" {...form.register('referralCode')} style={inputStyle()}
+                  onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor='var(--theme-border)'} />
+                {form.formState.errors.referralCode && <p style={errStyle}>{form.formState.errors.referralCode.message}</p>}
+              </div>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                height:48, borderRadius:12, border:'none', cursor:'pointer', marginTop:6,
+                background:'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                color:'white', fontSize:14, fontWeight:700,
+                display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                opacity: isSubmitting ? 0.75 : 1, boxShadow:'0 4px 20px rgba(99,102,241,0.3)',
+              }}
+            >
+              {isSubmitting ? (
+                <>
+                  <div style={{ width:15, height:15, border:'2px solid white', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
+                  Creating account…
+                </>
+              ) : (
+                <>
+                  <Check style={{ width:16, height:16 }} />
+                  Create Account
+                </>
+              )}
+            </button>
+
+            <p style={{ textAlign:'center', fontSize:13, color:'var(--theme-text-muted)' }}>
+              Already have an account?{' '}
+              <button type="button" onClick={()=>navigate('/')}
+                style={{ fontWeight:700, color:'#6366f1', background:'none', border:'none', cursor:'pointer', padding:0 }}>
+                Sign in
+              </button>
+            </p>
+          </form>
+        </div>
+      </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
 }

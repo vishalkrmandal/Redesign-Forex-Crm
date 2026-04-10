@@ -1,315 +1,227 @@
-// Frontend/src/components/admin/dashboard/TopPerformingClients.tsx
+// Frontend/src/pages/admin/dashboard/component/TopPerformingClients.tsx
 import React, { useState } from 'react';
-import {
-    Trophy,
-    TrendingUp,
-    User,
-    Calendar,
-    CreditCard,
-    Medal,
-    Award,
-    Crown
-} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Trophy, User, Calendar, CreditCard, TrendingUp, Crown, Medal, Award, Star } from 'lucide-react';
 
 interface Client {
-    _id: string;
-    totalDeposited: number;
-    depositCount: number;
-    user: {
-        firstname: string;
-        lastname: string;
-        email: string;
-        createdAt: string;
-    };
-    accountsCount: number;
+  _id: string;
+  totalDeposited: number;
+  depositCount: number;
+  user: { firstname: string; lastname: string; email: string; createdAt: string };
+  accountsCount: number;
 }
 
 interface TopPerformingClientsProps {
-    clients: Client[];
+  clients: Client[];
 }
 
+const fmtCurrency = (v: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(v);
+
+const fmtFull = (v: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+
+const fmtDate = (s: string) =>
+  new Date(s).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+const RANK_CONFIG = [
+  { icon: Crown, color: '#f59e0b', bg: 'linear-gradient(135deg, #f59e0b, #d97706)', label: 'Gold', ring: '#f59e0b' },
+  { icon: Medal, color: '#94a3b8', bg: 'linear-gradient(135deg, #94a3b8, #64748b)', label: 'Silver', ring: '#94a3b8' },
+  { icon: Award, color: '#f97316', bg: 'linear-gradient(135deg, #f97316, #ea580c)', label: 'Bronze', ring: '#f97316' },
+];
+
+const SORT_OPTS = [
+  { key: 'amount', label: 'By Amount' },
+  { key: 'deposits', label: 'By Count' },
+  { key: 'accounts', label: 'By Accounts' },
+];
+
 const TopPerformingClients: React.FC<TopPerformingClientsProps> = ({ clients }) => {
-    const [sortBy, setSortBy] = useState<'amount' | 'deposits' | 'accounts'>('amount');
+  const [sortBy, setSortBy] = useState<'amount' | 'deposits' | 'accounts'>('amount');
 
-    const getRankIcon = (rank: number) => {
-        switch (rank) {
-            case 1:
-                return <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />;
-            case 2:
-                return <Medal className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />;
-            case 3:
-                return <Award className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />;
-            default:
-                return <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />;
-        }
-    };
+  const sorted = [...clients].sort((a, b) => {
+    if (sortBy === 'deposits') return b.depositCount - a.depositCount;
+    if (sortBy === 'accounts') return b.accountsCount - a.accountsCount;
+    return b.totalDeposited - a.totalDeposited;
+  });
 
-    const getRankColor = (rank: number) => {
-        switch (rank) {
-            case 1:
-                return 'bg-gradient-to-r from-yellow-400 to-yellow-600';
-            case 2:
-                return 'bg-gradient-to-r from-gray-400 to-gray-600';
-            case 3:
-                return 'bg-gradient-to-r from-orange-400 to-orange-600';
-            default:
-                return 'bg-gradient-to-r from-blue-400 to-blue-600';
-        }
-    };
+  const maxValue = sorted[0]?.totalDeposited || 1;
+  const totalValue = clients.reduce((s, c) => s + c.totalDeposited, 0);
+  const avgDeposits = clients.length > 0
+    ? Math.round(clients.reduce((s, c) => s + c.depositCount, 0) / clients.length)
+    : 0;
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(amount);
-    };
+  const getInitials = (c: Client) =>
+    `${c.user.firstname.charAt(0)}${c.user.lastname.charAt(0)}`.toUpperCase();
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            month: 'short',
-            year: 'numeric'
-        });
-    };
+  return (
+    <div className="rounded-2xl flex flex-col h-full max-h-[600px]"
+      style={{ backgroundColor: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
 
-    const sortedClients = [...clients].sort((a, b) => {
-        switch (sortBy) {
-            case 'deposits':
-                return b.depositCount - a.depositCount;
-            case 'accounts':
-                return b.accountsCount - a.accountsCount;
-            default:
-                return b.totalDeposited - a.totalDeposited;
-        }
-    });
-
-    return (
-        <div className="bg-card rounded-xl shadow-sm p-3 sm:p-6 flex flex-col h-full max-h-[600px]">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 flex-shrink-0">
-                <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-0 w-full sm:w-auto">
-                    <div className="p-1.5 sm:p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
-                        <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 dark:text-yellow-400" />
-                    </div>
-                    <div className="flex-1 sm:flex-none">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
-                            Top Performing Clients
-                        </h3>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                            Highest value clients by deposits
-                        </p>
-                    </div>
-                </div>
-
-                <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className="w-full sm:w-auto px-3 py-2 rounded-lg bg-background text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-yellow-500 focus:border-transparent border border-gray-200 dark:border-gray-700"
-                >
-                    <option value="amount">Sort by Amount</option>
-                    <option value="deposits">Sort by Deposits</option>
-                    <option value="accounts">Sort by Accounts</option>
-                </select>
+      {/* Header */}
+      <div className="p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--theme-border)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl p-2" style={{ background: '#f59e0b18' }}>
+              <Trophy className="w-4 h-4" style={{ color: '#f59e0b' }} />
             </div>
-
-            {/* Scrollable Content Area */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 -mr-1 sm:p-2 sm:-mr-2">
-                <div className="space-y-3 sm:space-y-4">
-                    {sortedClients.length === 0 ? (
-                        <div className="text-center py-8">
-                            <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                            <p className="text-gray-500 dark:text-gray-400">No clients found</p>
-                        </div>
-                    ) : (
-                        sortedClients.map((client, index) => (
-                            <div
-                                key={client._id}
-                                className={`relative p-3 sm:p-4 rounded-lg border transition-all duration-200 hover:shadow-md ${index < 3
-                                    ? 'border-yellow-200 dark:border-yellow-800 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/10 dark:to-orange-900/10'
-                                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/50'
-                                    }`}
-                            >
-                                {/* Rank Badge */}
-                                <div className="absolute -top-2 -left-2">
-                                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm ${getRankColor(index + 1)}`}>
-                                        {index + 1}
-                                    </div>
-                                </div>
-
-                                {/* Mobile Layout */}
-                                <div className="block sm:hidden ml-4">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-2">
-                                            {getRankIcon(index + 1)}
-                                            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
-                                                {client.user.firstname} {client.user.lastname}
-                                            </h4>
-                                            {index < 3 && (
-                                                <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400 text-xs rounded-full font-medium">
-                                                    {index === 0 ? 'Gold' : index === 1 ? 'Silver' : 'Bronze'}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-lg font-bold text-gray-900 dark:text-white">
-                                                {formatCurrency(client.totalDeposited)}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1 mb-3">
-                                        <p className="flex items-center gap-1 truncate">
-                                            <User className="w-3 h-3 flex-shrink-0" />
-                                            <span className="truncate">{client.user.email}</span>
-                                        </p>
-                                        <div className="flex items-center gap-4">
-                                            <span className="flex items-center gap-1">
-                                                <Calendar className="w-3 h-3" />
-                                                Joined {formatDate(client.user.createdAt)}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <span className="flex items-center gap-1">
-                                                <TrendingUp className="w-3 h-3" />
-                                                {client.depositCount} deposits
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <CreditCard className="w-3 h-3" />
-                                                {client.accountsCount} accounts
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Progress Bar */}
-                                    <div>
-                                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                            <span>Performance Score</span>
-                                            <span>
-                                                {Math.round((client.totalDeposited / (sortedClients[0]?.totalDeposited || 1)) * 100)}%
-                                            </span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                            <div
-                                                className={`h-2 rounded-full transition-all duration-500 ${index < 3 ? 'bg-gradient-to-r from-yellow-400 to-orange-500' : 'bg-blue-500'
-                                                    }`}
-                                                style={{
-                                                    width: `${(client.totalDeposited / (sortedClients[0]?.totalDeposited || 1)) * 100}%`
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Desktop Layout */}
-                                <div className="hidden sm:block ml-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-2">
-                                                {getRankIcon(index + 1)}
-                                            </div>
-
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h4 className="font-semibold text-gray-900 dark:text-white">
-                                                        {client.user.firstname} {client.user.lastname}
-                                                    </h4>
-                                                    {index < 3 && (
-                                                        <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400 text-xs rounded-full font-medium">
-                                                            {index === 0 ? 'Gold' : index === 1 ? 'Silver' : 'Bronze'}
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                                                    <p className="flex items-center gap-4">
-                                                        <span className="flex items-center gap-1">
-                                                            <User className="w-3 h-3" />
-                                                            {client.user.email}
-                                                        </span>
-                                                        <span className="flex items-center gap-1">
-                                                            <Calendar className="w-3 h-3" />
-                                                            Joined {formatDate(client.user.createdAt)}
-                                                        </span>
-                                                    </p>
-                                                    <p className="flex items-center gap-4">
-                                                        <span className="flex items-center gap-1">
-                                                            <TrendingUp className="w-3 h-3" />
-                                                            {client.depositCount} deposits
-                                                        </span>
-                                                        <span className="flex items-center gap-1">
-                                                            <CreditCard className="w-3 h-3" />
-                                                            {client.accountsCount} accounts
-                                                        </span>
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="text-right">
-                                            <p className="text-xl font-bold text-gray-900 dark:text-white">
-                                                {formatCurrency(client.totalDeposited)}
-                                            </p>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                Total Deposited
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Progress Bar */}
-                                    <div className="mt-4">
-                                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                            <span>Performance Score</span>
-                                            <span>
-                                                {Math.round((client.totalDeposited / (sortedClients[0]?.totalDeposited || 1)) * 100)}%
-                                            </span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                            <div
-                                                className={`h-2 rounded-full transition-all duration-500 ${index < 3 ? 'bg-gradient-to-r from-yellow-400 to-orange-500' : 'bg-blue-500'
-                                                    }`}
-                                                style={{
-                                                    width: `${(client.totalDeposited / (sortedClients[0]?.totalDeposited || 1)) * 100}%`
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
+            <div>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>Top Performing Clients</h3>
+              <p className="text-[11px]" style={{ color: 'var(--theme-text-muted)' }}>Highest value by total deposits</p>
             </div>
-
-            {/* Summary Stats - Fixed at bottom */}
-            <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
-                    <div>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Value</p>
-                        <p className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white">
-                            {formatCurrency(
-                                clients.reduce((sum, client) => sum + client.totalDeposited, 0)
-                            )}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Avg. Deposits</p>
-                        <p className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white">
-                            {clients.length > 0
-                                ? Math.round(clients.reduce((sum, client) => sum + client.depositCount, 0) / clients.length)
-                                : 0
-                            }
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Top Clients</p>
-                        <p className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white">
-                            {clients.length}
-                        </p>
-                    </div>
-                </div>
-            </div>
+          </div>
+          <div className="flex gap-1">
+            {SORT_OPTS.map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setSortBy(opt.key as any)}
+                className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all"
+                style={{
+                  background: sortBy === opt.key ? '#f59e0b' : 'transparent',
+                  color: sortBy === opt.key ? 'white' : 'var(--theme-text-muted)',
+                  border: `1px solid ${sortBy === opt.key ? '#f59e0b' : 'transparent'}`,
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
-    );
+
+        {/* Summary row */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: 'Total Value', value: fmtCurrency(totalValue), color: '#f59e0b' },
+            { label: 'Avg Deposits', value: avgDeposits.toString(), color: '#6366f1' },
+            { label: 'Top Clients', value: clients.length.toString(), color: '#10b981' },
+          ].map(item => (
+            <div key={item.label} className="rounded-xl px-3 py-2 text-center"
+              style={{ background: `${item.color}10`, border: `1px solid ${item.color}25` }}>
+              <p className="text-xs font-bold" style={{ color: item.color }}>{item.value}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: 'var(--theme-text-muted)' }}>{item.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Clients list */}
+      <div className="flex-1 overflow-y-auto p-2">
+        {sorted.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2">
+            <Trophy className="w-10 h-10" style={{ color: 'var(--theme-text-disabled)' }} />
+            <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>No clients found</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <AnimatePresence initial={false}>
+              {sorted.map((client, idx) => {
+                const rankCfg = RANK_CONFIG[idx];
+                const pct = Math.round((client.totalDeposited / maxValue) * 100);
+                const isTop3 = idx < 3;
+
+                return (
+                  <motion.div
+                    key={client._id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                    className="rounded-xl p-3 relative overflow-hidden"
+                    style={{
+                      background: isTop3
+                        ? `linear-gradient(135deg, ${rankCfg.color}10, transparent)`
+                        : 'color-mix(in srgb, var(--theme-primary) 4%, transparent)',
+                      border: `1px solid ${isTop3 ? rankCfg.color + '30' : 'var(--theme-border)'}`,
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Rank badge + Avatar */}
+                      <div className="relative flex-shrink-0">
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold text-white"
+                          style={{ background: isTop3 ? rankCfg.bg : 'linear-gradient(135deg, #6366f1, #4f46e5)' }}
+                        >
+                          {getInitials(client)}
+                        </div>
+                        {isTop3 && (
+                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{ background: rankCfg.bg, border: '1.5px solid var(--theme-bg-card)' }}>
+                            <rankCfg.icon className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                        {!isTop3 && (
+                          <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                            style={{ background: '#6366f1', border: '1.5px solid var(--theme-bg-card)' }}>
+                            {idx + 1}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Client info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold truncate" style={{ color: 'var(--theme-text-primary)' }}>
+                              {client.user.firstname} {client.user.lastname}
+                            </span>
+                            {isTop3 && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold"
+                                style={{ background: `${rankCfg.color}20`, color: rankCfg.color }}>
+                                {rankCfg.label}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-sm font-bold flex-shrink-0 ml-2" style={{ color: isTop3 ? rankCfg.color : 'var(--theme-text-primary)' }}>
+                            {fmtCurrency(client.totalDeposited)}
+                          </span>
+                        </div>
+
+                        {/* Meta row */}
+                        <div className="flex items-center gap-3 text-[10px] mb-1.5" style={{ color: 'var(--theme-text-disabled)' }}>
+                          <span className="flex items-center gap-1 truncate">
+                            <User className="w-2.5 h-2.5" />{client.user.email}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] mb-2" style={{ color: 'var(--theme-text-muted)' }}>
+                          <span className="flex items-center gap-1">
+                            <TrendingUp className="w-2.5 h-2.5" />{client.depositCount} deposits
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <CreditCard className="w-2.5 h-2.5" />{client.accountsCount} accounts
+                          </span>
+                          <span className="hidden sm:flex items-center gap-1">
+                            <Calendar className="w-2.5 h-2.5" />Joined {fmtDate(client.user.createdAt)}
+                          </span>
+                        </div>
+
+                        {/* Progress bar */}
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--theme-border)' }}>
+                          <motion.div
+                            className="h-full rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.8, delay: idx * 0.06, ease: 'easeOut' }}
+                            style={{
+                              background: isTop3
+                                ? rankCfg.bg
+                                : 'linear-gradient(90deg, #6366f1, #4f46e5)',
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-between mt-0.5">
+                          <span className="text-[9px]" style={{ color: 'var(--theme-text-disabled)' }}>Performance</span>
+                          <span className="text-[9px] font-semibold" style={{ color: isTop3 ? rankCfg.color : 'var(--theme-text-muted)' }}>{pct}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default TopPerformingClients;

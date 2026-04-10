@@ -1,414 +1,538 @@
-// Frontend/src/pages/auth/sign-in/SignUp.tsx - Fixed for mobile scrolling
+// Frontend/src/pages/superAdmin/AdminRegistration.tsx
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { CalendarIcon, Eye, EyeOff, Phone, User, Mail, Lock, Globe } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  CalendarIcon, Eye, EyeOff, Phone, User, Mail, Lock, Globe,
+  Shield, CheckCircle2, ArrowRight, Sparkles, Users, Settings2,
+  ChevronRight
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 import LocationSelector from "@/components/ui/location-input";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from "@/hooks/useAuth";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const formSchema = z.object({
-    firstname: z.string().min(1, "First name is required").max(50, "First name too long"),
-    lastname: z.string().min(1, "Last name is required").max(50, "Last name too long"),
-    country: z.tuple([z.string(), z.string().optional()]),
-    phone: z.string().min(10, "Enter a valid phone number"),
-    dateofbirth: z.date({ required_error: "Date of birth is required" }),
-    email: z.string().email("Invalid email format"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z.string().min(1, "Please confirm your password"),
-    referralCode: z.string().optional()
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"]
+  firstname: z.string().min(1, "First name is required").max(50, "First name too long"),
+  lastname: z.string().min(1, "Last name is required").max(50, "Last name too long"),
+  country: z.tuple([z.string(), z.string().optional()]),
+  phone: z.string().min(10, "Enter a valid phone number"),
+  dateofbirth: z.date({ required_error: "Date of birth is required" }),
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+  referralCode: z.string().optional(),
+}).refine((d) => d.password === d.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
+const FEATURES = [
+  { icon: Shield, title: "Secure Access", desc: "Role-based permissions with audit trail" },
+  { icon: Users, title: "Team Management", desc: "Coordinate across clients and agents" },
+  { icon: Settings2, title: "Full Control", desc: "Configure platform settings and policies" },
+];
 
+const STEPS = ["Personal Info", "Contact", "Credentials"];
 
 export default function AdminRegistration() {
-    const navigate = useNavigate();
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [countryName, setCountryName] = useState<string>("");
-    const [stateName, setStateName] = useState<string>("");
+  const navigate = useNavigate();
+  const { activeRole } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [countryName, setCountryName] = useState("");
+  const [stateName, setStateName] = useState("");
+  const [step, setStep] = useState(0);
+  const [success, setSuccess] = useState(false);
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            dateofbirth: new Date(),
-            firstname: "",
-            lastname: "",
-            phone: "",
-            email: "",
-            password: "",
-            confirmPassword: ""
-        },
-    });
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      dateofbirth: new Date(),
+      firstname: "", lastname: "", phone: "", email: "", password: "", confirmPassword: "",
+    },
+  });
 
-    useEffect(() => {
-        // Reset country and state names when form resets
-        form.reset({
-            dateofbirth: new Date(),
-            firstname: "",
-            lastname: "",
-            phone: "",
-            email: "",
-            password: "",
-            confirmPassword: ""
-        });
-        setCountryName("");
-        setStateName("");
-    }, [form]);
+  useEffect(() => {
+    form.reset({ dateofbirth: new Date(), firstname: "", lastname: "", phone: "", email: "", password: "", confirmPassword: "" });
+    setCountryName(""); setStateName("");
+  }, []);
 
-    const { activeRole } = useAuth();
+  const goNext = async () => {
+    let fields: (keyof z.infer<typeof formSchema>)[] = [];
+    if (step === 0) fields = ["firstname", "lastname", "dateofbirth"];
+    if (step === 1) fields = ["country", "phone"];
+    const valid = await form.trigger(fields);
+    if (valid) setStep((s) => Math.min(s + 1, 2));
+  };
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
-        try {
-            setIsSubmitting(true);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      setIsSubmitting(true);
+      if (!["admin", "superadmin"].includes(activeRole || "")) throw new Error("Insufficient permissions");
+      const token = localStorage.getItem(`${activeRole}Token`);
+      if (!token) throw new Error("No authentication token found");
 
-            // Check if current user has permission
-            if (!['admin', 'superadmin'].includes(activeRole || "")) {
-                throw new Error('Insufficient permissions to create agents');
-            }
+      const response = await fetch(`${API_BASE_URL}/api/auth/admin/signup`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...values, country: [countryName, stateName] }),
+      });
 
-            // Get the appropriate token based on active role
-            const token = localStorage.getItem(`${activeRole}Token`);
+      if (!response.ok) throw new Error("Failed to create admin");
+      const data = await response.json();
 
-            if (!token) {
-                throw new Error('No authentication token found');
-            }
-
-            const response = await fetch(`${API_BASE_URL}/api/auth/admin/signup`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    ...values,
-                    country: [countryName, stateName]
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create agent');
-            }
-
-            const data = await response.json();
-            // Handle success
-
-
-            if (data.success) {
-                toast.success("Registration successful! Please check your email to verify your account.", {
-                    duration: 5000
-                });
-
-                form.reset();
-                setTimeout(() => {
-                    navigate('/');
-                }, 2000);
-            } else {
-                toast.error(data.message || "Failed to register. Please try again.");
-            }
-        } catch (error) {
-            console.error("Registration error", error);
-            toast.error("Something went wrong. Please try again.");
-        } finally {
-            setIsSubmitting(false);
-        }
+      if (data.success) {
+        setSuccess(true);
+        toast.success("Admin account created successfully!", { duration: 4000 });
+        setTimeout(() => navigate("/"), 3000);
+      } else {
+        toast.error(data.message || "Failed to register. Please try again.");
+      }
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
+  }
 
-    return (
-        <div className="min-h-screen w-full bg-background relative overflow-x-hidden">
-            {/* Background decoration - Hidden on mobile to improve performance */}
-            {/* <div className="absolute inset-0 overflow-hidden hidden md:block">
-                <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob dark:bg-purple-600 dark:opacity-30"></div>
-                <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000 dark:bg-blue-600 dark:opacity-30"></div>
-                <div className="absolute top-40 left-1/2 transform -translate-x-1/2 w-80 h-80 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000 dark:bg-pink-600 dark:opacity-30"></div>
-            </div> */}
+  return (
+    <div className="min-h-screen w-full flex" style={{ background: "var(--theme-bg-main)" }}>
 
-            {/* Main Content Container - Changed to use padding instead of flex centering */}
-            <div className="relative z-10 w-full md:py-6 lg:py-0">
-                <div className="max-w-5xl mx-auto">
-                    <Card className="w-full border-0 bg-card backdrop-blur-sm">
-                        <CardHeader className="text-center space-y-4 md:pb-8 lg:pb-2">
-                            <div className="mx-auto w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                                <User className="w-6 h-6 md:w-8 md:h-8 text-white" />
-                            </div>
-                            <CardTitle className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                                Create Your Admin Account
-                            </CardTitle>
-                        </CardHeader>
+      {/* ── Left Panel ──────────────────────────────────────────────── */}
+      <div
+        className="hidden lg:flex lg:w-[42%] flex-col justify-between p-10 relative overflow-hidden"
+        style={{ background: "linear-gradient(145deg, color-mix(in srgb, var(--theme-primary) 18%, var(--theme-bg-sidebar)), var(--theme-bg-sidebar))" }}
+      >
+        {/* Decorative orbs */}
+        <div className="absolute -top-32 -left-32 w-80 h-80 rounded-full opacity-10"
+          style={{ background: "radial-gradient(circle, var(--theme-primary), transparent)" }} />
+        <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full opacity-8"
+          style={{ background: "radial-gradient(circle, var(--theme-primary), transparent)" }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full opacity-4"
+          style={{ background: "radial-gradient(circle, var(--theme-primary), transparent)" }} />
 
-                        <CardContent className="px-4 md:px-8 md:pb-8">
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 md:space-y-6">
-                                    {/* Name Fields */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                                        <FormField
-                                            control={form.control}
-                                            name="firstname"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <User className="w-4 h-4" />
-                                                        First Name
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="Enter your first name"
-                                                            className="h-10 md:h-12 bg-background/50 text-sm md:text-base"
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
-                                                </FormItem>
-                                            )}
-                                        />
+        {/* Top logo / brand */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="flex items-center gap-3 relative z-10"
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, var(--theme-primary), var(--theme-primary-hover))" }}>
+            <Shield className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="text-xs font-medium" style={{ color: "var(--theme-text-muted)" }}>Admin Portal</p>
+            <p className="text-sm font-bold" style={{ color: "var(--theme-text-primary)" }}>Super Admin Console</p>
+          </div>
+        </motion.div>
 
-                                        <FormField
-                                            control={form.control}
-                                            name="lastname"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <User className="w-4 h-4" />
-                                                        Last Name
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="Enter your last name"
-                                                            className="h-10 md:h-12 bg-background/50 text-sm md:text-base"
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    {/* Location */}
-                                    <FormField
-                                        control={form.control}
-                                        name="country"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                    <Globe className="w-4 h-4" />
-                                                    Location
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <div className="min-h-[40px] md:min-h-[48px]">
-                                                        <LocationSelector
-                                                            onCountryChange={(country) => {
-                                                                setCountryName(country?.name || "");
-                                                                form.setValue(field.name, [country?.name || "", stateName || ""]);
-                                                            }}
-                                                            onStateChange={(state) => {
-                                                                setStateName(state?.name || "");
-                                                                form.setValue(field.name, [countryName || "", state?.name || ""]);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </FormControl>
-                                                <FormMessage className="text-xs md:text-sm" />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {/* Phone and Date */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                                        <FormField
-                                            control={form.control}
-                                            name="phone"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <Phone className="w-4 h-4" />
-                                                        Phone Number
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <PhoneInput
-                                                            placeholder="Enter phone number"
-                                                            defaultCountry="IN"
-                                                            className="h-10 md:h-12"
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <FormField
-                                            control={form.control}
-                                            name="dateofbirth"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <CalendarIcon className="w-4 h-4" />
-                                                        Date of Birth
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <DatePicker
-                                                            value={field.value}
-                                                            onChange={field.onChange}
-                                                            className="h-10 md:h-12 w-full"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    {/* Email */}
-                                    <FormField
-                                        control={form.control}
-                                        name="email"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                    <Mail className="w-4 h-4" />
-                                                    Email Address
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="Enter your email address"
-                                                        type="email"
-                                                        className="h-10 md:h-12 bg-background/50 text-sm md:text-base"
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage className="text-xs md:text-sm" />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {/* Password Fields */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                                        <FormField
-                                            control={form.control}
-                                            name="password"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <Lock className="w-4 h-4" />
-                                                        Password
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <div className="relative">
-                                                            <Input
-                                                                placeholder="Create a strong password"
-                                                                type={showPassword ? "text" : "password"}
-                                                                className="h-10 md:h-12 bg-background/50 pr-10 text-sm md:text-base"
-                                                                {...field}
-                                                            />
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                                                onClick={() => setShowPassword(!showPassword)}
-                                                            >
-                                                                {showPassword ? (
-                                                                    <EyeOff className="h-4 w-4" />
-                                                                ) : (
-                                                                    <Eye className="h-4 w-4" />
-                                                                )}
-                                                            </Button>
-                                                        </div>
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <FormField
-                                            control={form.control}
-                                            name="confirmPassword"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="flex items-center gap-2 text-sm md:text-base">
-                                                        <Lock className="w-4 h-4" />
-                                                        Confirm Password
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <div className="relative">
-                                                            <Input
-                                                                placeholder="Confirm your password"
-                                                                type={showConfirmPassword ? "text" : "password"}
-                                                                className="h-10 md:h-12 bg-background/50 pr-10 text-sm md:text-base"
-                                                                {...field}
-                                                            />
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                                            >
-                                                                {showConfirmPassword ? (
-                                                                    <EyeOff className="h-4 w-4" />
-                                                                ) : (
-                                                                    <Eye className="h-4 w-4" />
-                                                                )}
-                                                            </Button>
-                                                        </div>
-                                                    </FormControl>
-                                                    <FormMessage className="text-xs md:text-sm" />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    {/* Submit Button */}
-                                    <Button
-                                        type="submit"
-                                        className="w-full h-10 md:h-12 text-base md:text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 mt-6"
-                                        disabled={isSubmitting}
-                                    >
-                                        {isSubmitting ? (
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                Creating Account...
-                                            </div>
-                                        ) : (
-                                            "Create Account"
-                                        )}
-                                    </Button>
-
-                                    {/* Sign In Link */}
-                                    {/* <div className="text-center pt-4">
-                                        <p className="text-muted-foreground text-sm md:text-base">
-                                            Already have an account?{" "}
-                                            <Button
-                                                variant="link"
-                                                className="p-0 h-auto font-semibold text-blue-600 hover:text-blue-700 text-sm md:text-base"
-                                                onClick={() => navigate('/')}
-                                            >
-                                                Sign in here
-                                            </Button>
-                                        </p>
-                                    </div> */}
-                                </form>
-                            </Form>
-                        </CardContent>
-                    </Card>
-                </div>
+        {/* Center content */}
+        <div className="relative z-10 space-y-8">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-4 h-4" style={{ color: "var(--theme-primary)" }} />
+              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--theme-primary)" }}>
+                New Registration
+              </span>
             </div>
+            <h1 className="text-4xl font-bold leading-tight mb-3" style={{ color: "var(--theme-text-primary)" }}>
+              Create an<br />
+              <span style={{ color: "var(--theme-primary)" }}>Admin Account</span>
+            </h1>
+            <p className="text-sm leading-relaxed" style={{ color: "var(--theme-text-muted)" }}>
+              Grant full platform access to a new administrator. Admins can manage clients, approve transactions, and configure platform settings.
+            </p>
+          </motion.div>
+
+          {/* Feature list */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="space-y-4"
+          >
+            {FEATURES.map((f, i) => (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + i * 0.12 }}
+                className="flex items-start gap-4 p-4 rounded-2xl"
+                style={{ background: "color-mix(in srgb, var(--theme-primary) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--theme-primary) 20%, transparent)" }}
+              >
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "color-mix(in srgb, var(--theme-primary) 20%, transparent)" }}>
+                  <f.icon className="w-4 h-4" style={{ color: "var(--theme-primary)" }} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--theme-text-primary)" }}>{f.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--theme-text-muted)" }}>{f.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
-    );
+
+        {/* Step indicator on left panel */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="relative z-10 flex items-center gap-3"
+        >
+          {STEPS.map((s, i) => (
+            <div key={s} className="flex items-center gap-2">
+              <div
+                className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-all duration-300"
+                style={{
+                  background: i <= step ? "var(--theme-primary)" : "color-mix(in srgb, var(--theme-primary) 15%, transparent)",
+                  color: i <= step ? "white" : "var(--theme-text-muted)",
+                }}
+              >
+                {i < step ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
+              </div>
+              <span className="text-xs font-medium" style={{ color: i === step ? "var(--theme-text-primary)" : "var(--theme-text-disabled)" }}>
+                {s}
+              </span>
+              {i < STEPS.length - 1 && (
+                <ChevronRight className="w-3 h-3 mx-1" style={{ color: "var(--theme-text-disabled)" }} />
+              )}
+            </div>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* ── Right Panel — Form ───────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col justify-center p-6 lg:p-12 overflow-y-auto">
+
+        {/* Mobile header */}
+        <div className="lg:hidden flex items-center gap-2 mb-8">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, var(--theme-primary), var(--theme-primary-hover))" }}>
+            <Shield className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-bold text-sm" style={{ color: "var(--theme-text-primary)" }}>Admin Registration</span>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {success ? (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="max-w-md mx-auto text-center"
+            >
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+                style={{ background: "color-mix(in srgb, #10b981 15%, transparent)", border: "2px solid #10b981" }}>
+                <CheckCircle2 className="w-10 h-10 text-green-500" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2" style={{ color: "var(--theme-text-primary)" }}>Account Created!</h2>
+              <p className="text-sm" style={{ color: "var(--theme-text-muted)" }}>
+                The new admin account has been set up. Redirecting shortly…
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-lg mx-auto w-full"
+            >
+              {/* Header */}
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--theme-text-primary)" }}>
+                  {STEPS[step]}
+                </h2>
+                <p className="text-sm" style={{ color: "var(--theme-text-muted)" }}>
+                  Step {step + 1} of {STEPS.length} — fill in the details below
+                </p>
+
+                {/* Progress bar */}
+                <div className="mt-4 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--theme-border)" }}>
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{ background: "linear-gradient(90deg, var(--theme-primary), var(--theme-primary-hover))" }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                  />
+                </div>
+              </div>
+
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                  <AnimatePresence mode="wait">
+
+                    {/* ── Step 0: Personal Info ── */}
+                    {step === 0 && (
+                      <motion.div
+                        key="step0"
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -30 }}
+                        transition={{ duration: 0.25 }}
+                        className="space-y-5"
+                      >
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField control={form.control} name="firstname" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel style={{ color: "var(--theme-text-muted)" }} className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                                <User className="w-3 h-3" /> First Name
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="John"
+                                  className="h-11 text-sm"
+                                  style={{ background: "var(--theme-bg-card)", border: "1px solid var(--theme-border)", color: "var(--theme-text-primary)" }}
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )} />
+                          <FormField control={form.control} name="lastname" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel style={{ color: "var(--theme-text-muted)" }} className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                                <User className="w-3 h-3" /> Last Name
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Doe"
+                                  className="h-11 text-sm"
+                                  style={{ background: "var(--theme-bg-card)", border: "1px solid var(--theme-border)", color: "var(--theme-text-primary)" }}
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )} />
+                        </div>
+
+                        <FormField control={form.control} name="dateofbirth" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel style={{ color: "var(--theme-text-muted)" }} className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                              <CalendarIcon className="w-3 h-3" /> Date of Birth
+                            </FormLabel>
+                            <FormControl>
+                              <DatePicker value={field.value} onChange={field.onChange} className="h-11 w-full" />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )} />
+                      </motion.div>
+                    )}
+
+                    {/* ── Step 1: Contact ── */}
+                    {step === 1 && (
+                      <motion.div
+                        key="step1"
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -30 }}
+                        transition={{ duration: 0.25 }}
+                        className="space-y-5"
+                      >
+                        <FormField control={form.control} name="country" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel style={{ color: "var(--theme-text-muted)" }} className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                              <Globe className="w-3 h-3" /> Location
+                            </FormLabel>
+                            <FormControl>
+                              <div className="min-h-[44px]">
+                                <LocationSelector
+                                  onCountryChange={(country) => {
+                                    setCountryName(country?.name || "");
+                                    form.setValue(field.name, [country?.name || "", stateName || ""]);
+                                  }}
+                                  onStateChange={(state) => {
+                                    setStateName(state?.name || "");
+                                    form.setValue(field.name, [countryName || "", state?.name || ""]);
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )} />
+
+                        <FormField control={form.control} name="phone" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel style={{ color: "var(--theme-text-muted)" }} className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                              <Phone className="w-3 h-3" /> Phone Number
+                            </FormLabel>
+                            <FormControl>
+                              <PhoneInput placeholder="Enter phone number" defaultCountry="IN" className="h-11" {...field} />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )} />
+                      </motion.div>
+                    )}
+
+                    {/* ── Step 2: Credentials ── */}
+                    {step === 2 && (
+                      <motion.div
+                        key="step2"
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -30 }}
+                        transition={{ duration: 0.25 }}
+                        className="space-y-5"
+                      >
+                        <FormField control={form.control} name="email" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel style={{ color: "var(--theme-text-muted)" }} className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                              <Mail className="w-3 h-3" /> Email Address
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="admin@company.com"
+                                type="email"
+                                className="h-11 text-sm"
+                                style={{ background: "var(--theme-bg-card)", border: "1px solid var(--theme-border)", color: "var(--theme-text-primary)" }}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )} />
+
+                        <FormField control={form.control} name="password" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel style={{ color: "var(--theme-text-muted)" }} className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                              <Lock className="w-3 h-3" /> Password
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  placeholder="Min. 6 characters"
+                                  type={showPassword ? "text" : "password"}
+                                  className="h-11 text-sm pr-10"
+                                  style={{ background: "var(--theme-bg-card)", border: "1px solid var(--theme-border)", color: "var(--theme-text-primary)" }}
+                                  {...field}
+                                />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                                  style={{ color: "var(--theme-text-muted)" }}>
+                                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                              </div>
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )} />
+
+                        <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel style={{ color: "var(--theme-text-muted)" }} className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                              <Lock className="w-3 h-3" /> Confirm Password
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  placeholder="Repeat password"
+                                  type={showConfirmPassword ? "text" : "password"}
+                                  className="h-11 text-sm pr-10"
+                                  style={{ background: "var(--theme-bg-card)", border: "1px solid var(--theme-border)", color: "var(--theme-text-primary)" }}
+                                  {...field}
+                                />
+                                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                                  style={{ color: "var(--theme-text-muted)" }}>
+                                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                              </div>
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Navigation buttons */}
+                  <div className="flex items-center gap-3 pt-2">
+                    {step > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setStep((s) => s - 1)}
+                        className="flex-1 h-11 rounded-xl text-sm font-semibold transition-all duration-200 border"
+                        style={{ border: "1px solid var(--theme-border)", color: "var(--theme-text-muted)", background: "transparent" }}
+                      >
+                        Back
+                      </button>
+                    )}
+                    {step < 2 ? (
+                      <motion.button
+                        type="button"
+                        onClick={goNext}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="flex-1 h-11 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all"
+                        style={{ background: "linear-gradient(135deg, var(--theme-primary), var(--theme-primary-hover))" }}
+                      >
+                        Continue <ArrowRight className="w-4 h-4" />
+                      </motion.button>
+                    ) : (
+                      <motion.button
+                        type="submit"
+                        disabled={isSubmitting}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="flex-1 h-11 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                        style={{ background: "linear-gradient(135deg, var(--theme-primary), var(--theme-primary-hover))" }}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Creating…
+                          </>
+                        ) : (
+                          <>
+                            <Shield className="w-4 h-4" /> Create Admin Account
+                          </>
+                        )}
+                      </motion.button>
+                    )}
+                  </div>
+                </form>
+              </Form>
+
+              {/* Mobile step indicators */}
+              <div className="lg:hidden flex items-center justify-center gap-2 mt-6">
+                {STEPS.map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-1.5 rounded-full transition-all duration-300"
+                    style={{
+                      width: i === step ? "24px" : "8px",
+                      background: i <= step ? "var(--theme-primary)" : "var(--theme-border)",
+                    }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
 }

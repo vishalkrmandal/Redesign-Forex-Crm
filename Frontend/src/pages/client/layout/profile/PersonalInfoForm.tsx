@@ -1,768 +1,342 @@
+// Frontend/src/pages/client/layout/profile/PersonalInfoForm.tsx
 import { useState, useRef, useEffect } from 'react';
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Upload } from "lucide-react";
+import { Upload, Camera, Eye, FileText, CheckCircle, AlertCircle, Save } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import WebcamCapture from './WebcamCapture';
+import { motion } from 'framer-motion';
 
 interface PersonalInfoFormProps {
-    initialData: {
-        firstname: string;
-        lastname: string;
-        dateofbirth: string;
-        phone: string;
-        email: string;
-        educationLevel?: string;
-        otherEducation?: string;
-        isEmployed?: string;
-        idDocument?: string;
-        address1Document?: string;
-        address2Document?: string;
-    };
-    setProfileData: React.Dispatch<React.SetStateAction<any>>;
+  initialData: {
+    firstname: string; lastname: string; dateofbirth: string;
+    phone: string; email: string; educationLevel?: string;
+    otherEducation?: string; isEmployed?: string;
+    idDocument?: string; address1Document?: string; address2Document?: string;
+  };
+  setProfileData: React.Dispatch<React.SetStateAction<any>>;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+const EDUCATION_OPTIONS = [
+  { value: 'secondary',          label: 'Secondary' },
+  { value: 'higher secondary',   label: 'Higher Secondary' },
+  { value: "bachelor's degree",  label: "Bachelor's Degree" },
+  { value: "master's degree",    label: "Master's Degree" },
+  { value: 'doctorate',          label: 'Doctorate' },
+  { value: 'other',              label: 'Other' },
+];
+
+type DocField = 'idDocument' | 'address1Document' | 'address2Document';
+const DOC_FIELDS: { field: DocField; label: string; sub: string }[] = [
+  { field: 'idDocument',       label: 'ID Document',      sub: 'Passport, national ID, or driver\'s license' },
+  { field: 'address1Document', label: 'Address Proof 1',  sub: 'Utility bill or bank statement' },
+  { field: 'address2Document', label: 'Address Proof 2',  sub: 'Secondary proof of address (optional)' },
+];
+
+const labelStyle: React.CSSProperties = { display:'block', fontSize:12, fontWeight:600, color:'var(--theme-text-muted)', marginBottom:6 };
+const readonlyStyle: React.CSSProperties = {
+  width:'100%', height:42, borderRadius:10, fontSize:13, padding:'0 12px', boxSizing:'border-box',
+  background:'var(--theme-border)', border:'1.5px solid var(--theme-border)',
+  color:'var(--theme-text-disabled)', cursor:'not-allowed',
+};
+const inputStyle: React.CSSProperties = {
+  width:'100%', height:42, borderRadius:10, fontSize:13, padding:'0 12px', boxSizing:'border-box',
+  background:'var(--theme-bg-main)', border:'1.5px solid var(--theme-border)',
+  color:'var(--theme-text-primary)', outline:'none', transition:'border-color 0.15s',
+};
 
 const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ initialData, setProfileData }) => {
-    const [formData, setFormData] = useState(initialData);
-    const [loading, setLoading] = useState(false);
-    const [files, setFiles] = useState({
-        idDocument: null,
-        address1Document: null,
-        address2Document: null
+  const [formData, setFormData] = useState(initialData);
+  const [loading, setLoading] = useState(false);
+  const [files, setFiles] = useState<Record<DocField, File | null>>({ idDocument: null, address1Document: null, address2Document: null });
+  const [previews, setPreviews] = useState<Record<DocField, string>>({ idDocument: '', address1Document: '', address2Document: '' });
+
+  const docRefs: Record<DocField, React.RefObject<HTMLInputElement>> = {
+    idDocument:       useRef<HTMLInputElement>(null),
+    address1Document: useRef<HTMLInputElement>(null),
+    address2Document: useRef<HTMLInputElement>(null),
+  };
+
+  const formatPath = (p?: string) => p ? p.replace(/\\/g, '/') : '';
+  const getDocUrl = (path?: string) => {
+    if (!path) return '';
+    return path.startsWith('http') ? path : `${API_BASE_URL.replace('/api', '')}/${formatPath(path)}`;
+  };
+
+  useEffect(() => {
+    setPreviews({
+      idDocument:       getDocUrl(initialData.idDocument),
+      address1Document: getDocUrl(initialData.address1Document),
+      address2Document: getDocUrl(initialData.address2Document),
     });
+  }, [initialData]);
 
-    // For previews
-    const [previews, setPreviews] = useState({
-        idDocument: '',
-        address1Document: '',
-        address2Document: ''
-    });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, files: uploaded } = e.target;
+    if (uploaded?.[0]) {
+      const file = uploaded[0];
+      const field = name as DocField;
+      setFiles(p => ({ ...p, [field]: file }));
+      setFormData(p => ({ ...p, [field]: file.name }));
+      if (file.type === 'application/pdf') {
+        setPreviews(p => ({ ...p, [field]: 'PDF_DOC' }));
+      } else {
+        setPreviews(p => ({ ...p, [field]: URL.createObjectURL(file) }));
+      }
+    }
+  };
 
-    // Refs for file inputs
-    const idDocumentRef = useRef<HTMLInputElement>(null);
-    const address1DocumentRef = useRef<HTMLInputElement>(null);
-    const address2DocumentRef = useRef<HTMLInputElement>(null);
+  const handleCaptured = (file: File, fieldName: string) => {
+    const field = fieldName as DocField;
+    setFiles(p => ({ ...p, [field]: file }));
+    setFormData(p => ({ ...p, [field]: file.name }));
+    setPreviews(p => ({ ...p, [field]: URL.createObjectURL(file) }));
+  };
 
-    // Refs for front camera inputs
-    const idFrontCameraRef = useRef<HTMLInputElement>(null);
-    const address1FrontCameraRef = useRef<HTMLInputElement>(null);
-    const address2FrontCameraRef = useRef<HTMLInputElement>(null);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('clientToken');
+      if (!token) { toast.error('Please login'); return; }
 
-    // Refs for rear camera inputs
-    const idRearCameraRef = useRef<HTMLInputElement>(null);
-    const address1RearCameraRef = useRef<HTMLInputElement>(null);
-    const address2RearCameraRef = useRef<HTMLInputElement>(null);
-
-    // Load initial previews
-    useEffect(() => {
-        // Helper function to get correct URL
-        const getDocumentUrl = (path: string | undefined) => {
-            if (!path) return '';
-            return path.startsWith('http') ? path : `${API_BASE_URL.replace('/api', '')}/${path}`;
-        };
-
-        // Set initial previews from server if they exist
-        if (initialData.idDocument) {
-            setPreviews(prev => ({
-                ...prev,
-                idDocument: getDocumentUrl(initialData.idDocument)
-            }));
+      const fd = new FormData();
+      Object.entries(formData).forEach(([k, v]) => {
+        if (!['firstname','lastname','dateofbirth','phone','email'].includes(k) && v != null) {
+          fd.append(k, v as string);
         }
+      });
+      if (files.idDocument)       fd.append('idDocument',       files.idDocument);
+      if (files.address1Document) fd.append('address1Document', files.address1Document);
+      if (files.address2Document) fd.append('address2Document', files.address2Document);
 
-        if (initialData.address1Document) {
-            setPreviews(prev => ({
-                ...prev,
-                address1Document: getDocumentUrl(initialData.address1Document)
-            }));
-        }
+      const res = await axios.post(`${API_BASE_URL}/api/profile/personal-info`, fd, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+      });
 
-        if (initialData.address2Document) {
-            setPreviews(prev => ({
-                ...prev,
-                address2Document: getDocumentUrl(initialData.address2Document)
-            }));
-        }
-    }, [initialData, API_BASE_URL]);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
+      if (res.data.success) {
+        toast.success('Personal information updated successfully');
+        const updated = res.data.data || {};
+        setProfileData((p: any) => ({
+          ...p, personalInfo: {
+            ...formData,
+            idDocument:       updated.idDocument       || formData.idDocument,
+            address1Document: updated.address1Document || formData.address1Document,
+            address2Document: updated.address2Document || formData.address2Document,
+          },
         }));
-    };
+        (['idDocument','address1Document','address2Document'] as DocField[]).forEach(field => {
+          if (updated[field]) setPreviews(p => ({ ...p, [field]: getDocUrl(updated[field]) }));
+        });
+      }
+    } catch {
+      toast.error('Failed to update personal information');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleSelectChange = (value: string, name: string) => {
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
+  const renderDocPreview = (field: DocField) => {
+    const preview = previews[field];
+    const fileName = formData[field] as string;
+    const isPdf = preview === 'PDF_DOC' || (typeof fileName === 'string' && fileName.toLowerCase().endsWith('.pdf'));
+    const pdfUrl = preview !== 'PDF_DOC' && preview ? preview : (fileName?.startsWith('http') ? fileName : getDocUrl(fileName));
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, files: uploadedFiles } = e.target;
+    if (isPdf && pdfUrl && pdfUrl !== 'PDF_DOC') {
+      return (
+        <div style={{ display:'flex', gap:8, marginTop:10, flexWrap:'wrap' }}>
+          <button type="button" onClick={() => window.open(pdfUrl, '_blank')}
+            style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)', color:'#6366f1' }}>
+            <Eye style={{ width:12, height:12 }} /> View PDF
+          </button>
+        </div>
+      );
+    }
+    if (isPdf) {
+      return <p style={{ fontSize:11, color:'var(--theme-text-muted)', marginTop:8 }}>PDF will be viewable after saving.</p>;
+    }
+    const imgSrc = preview && preview !== 'PDF_DOC' && (preview.startsWith('blob:') || preview.startsWith('http')) ? preview : null;
+    if (imgSrc) {
+      return (
+        <motion.div
+          initial={{ opacity:0, scale:0.95 }}
+          animate={{ opacity:1, scale:1 }}
+          style={{ marginTop:10, borderRadius:10, overflow:'hidden', border:'1.5px solid var(--theme-border)', maxWidth:200, cursor:'pointer' }}
+          onClick={() => window.open(imgSrc,'_blank')}
+        >
+          <img src={imgSrc} alt={field} style={{ width:'100%', height:'auto', maxHeight:120, objectFit:'cover', display:'block' }} />
+          <div style={{ padding:'5px 8px', fontSize:10, color:'var(--theme-text-muted)', background:'var(--theme-bg-main)' }}>
+            <Eye style={{ width:10, height:10, display:'inline', marginRight:4 }} />Click to view full size
+          </div>
+        </motion.div>
+      );
+    }
+    return null;
+  };
 
-        if (uploadedFiles && uploadedFiles[0]) {
-            // Update files state for submission
-            setFiles(prev => ({
-                ...prev,
-                [name]: uploadedFiles[0]
-            }));
+  const isDocUploaded = (field: DocField) => {
+    return !!(previews[field] && previews[field] !== 'PDF_DOC') || !!files[field];
+  };
 
-            // Show file name in UI
-            setFormData(prev => ({
-                ...prev,
-                [name]: uploadedFiles[0].name
-            }));
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ borderRadius:14, border:'1px solid var(--theme-border)', overflow:'hidden' }}>
 
-            // Generate preview for the file
-            generatePreview(uploadedFiles[0], name);
-        }
-    };
+        {/* Section: Personal Details (read-only) */}
+        <div style={{ padding:'20px 24px', borderBottom:'1px solid var(--theme-border)', background:'var(--theme-bg-card)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+            <span style={{ width:4, height:18, borderRadius:2, background:'#6366f1', display:'inline-block' }} />
+            <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:700, color:'var(--theme-text-muted)', margin:0 }}>Personal Details</p>
+            <span style={{ fontSize:10, padding:'1px 6px', borderRadius:4, background:'rgba(99,102,241,0.1)', color:'#6366f1', fontWeight:600 }}>Read-only</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {[
+              { label:'First Name',   value:formData.firstname },
+              { label:'Last Name',    value:formData.lastname },
+              { label:'Date of Birth', value:formData.dateofbirth ? new Date(formData.dateofbirth).toLocaleDateString() : '' },
+              { label:'Phone',        value:formData.phone },
+              { label:'Email',        value:formData.email },
+            ].map(f => (
+              <div key={f.label}>
+                <label style={labelStyle}>{f.label}</label>
+                <input value={f.value} readOnly style={readonlyStyle} />
+              </div>
+            ))}
+          </div>
+        </div>
 
-    const generatePreview = (file: File, fieldName: string) => {
-        if (!file) return;
+        {/* Section: Additional Info */}
+        <div style={{ padding:'20px 24px', borderBottom:'1px solid var(--theme-border)', background:'var(--theme-bg-card)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+            <span style={{ width:4, height:18, borderRadius:2, background:'#10b981', display:'inline-block' }} />
+            <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:700, color:'var(--theme-text-muted)', margin:0 }}>Additional Information</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Education */}
+            <div>
+              <label style={labelStyle}>Education Level</label>
+              <select
+                value={formData.educationLevel || ''}
+                onChange={e => setFormData(p => ({ ...p, educationLevel: e.target.value }))}
+                style={{ ...inputStyle }}
+                onFocus={e => e.target.style.borderColor='#6366f1'}
+                onBlur={e => e.target.style.borderColor='var(--theme-border)'}
+              >
+                <option value="">Select education level</option>
+                {EDUCATION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
 
-        // If it's a PDF, show a PDF icon or the first page
-        if (file.type === 'application/pdf') {
-            setPreviews(prev => ({
-                ...prev,
-                [fieldName]: 'PDF Document'
-            }));
-        } else {
-            // If it's an image, create an object URL for preview
-            const objectUrl = URL.createObjectURL(file);
-            setPreviews(prev => ({
-                ...prev,
-                [fieldName]: objectUrl
-            }));
-        }
-    };
+            {/* Other education */}
+            {formData.educationLevel === 'other' && (
+              <div>
+                <label style={labelStyle}>Please specify</label>
+                <input
+                  type="text" placeholder="Your education level"
+                  value={formData.otherEducation || ''}
+                  onChange={e => setFormData(p => ({ ...p, otherEducation: e.target.value }))}
+                  style={inputStyle}
+                  onFocus={e => e.target.style.borderColor='#6366f1'}
+                  onBlur={e => e.target.style.borderColor='var(--theme-border)'}
+                />
+              </div>
+            )}
 
-    const openFileSelector = (ref: React.RefObject<HTMLInputElement>) => {
-        if (ref.current) {
-            ref.current.click();
-        }
-    };
+            {/* Employment */}
+            <div>
+              <label style={labelStyle}>Employment Status</label>
+              <div style={{ display:'flex', gap:10, marginTop:4 }}>
+                {(['yes','no'] as const).map(v => (
+                  <label key={v} style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'9px 16px', borderRadius:10, border:`1.5px solid ${formData.isEmployed===v ? '#6366f1' : 'var(--theme-border)'}`, background:formData.isEmployed===v ? 'rgba(99,102,241,0.08)' : 'var(--theme-bg-main)', flex:1, justifyContent:'center' }}>
+                    <input type="radio" value={v} checked={formData.isEmployed===v} onChange={() => setFormData(p => ({ ...p, isEmployed: v }))} style={{ accentColor:'#6366f1' }} />
+                    <span style={{ fontSize:13, fontWeight:600, color:formData.isEmployed===v ? '#6366f1' : 'var(--theme-text-muted)' }}>
+                      {v === 'yes' ? 'Employed' : 'Unemployed'}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setLoading(true);
+        {/* Section: Document Uploads */}
+        <div style={{ padding:'20px 24px', background:'var(--theme-bg-card)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+            <span style={{ width:4, height:18, borderRadius:2, background:'#f59e0b', display:'inline-block' }} />
+            <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:700, color:'var(--theme-text-muted)', margin:0 }}>Document Uploads</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {DOC_FIELDS.map(({ field, label, sub }) => (
+              <div key={field} style={{
+                padding:16, borderRadius:12, border:'1.5px solid var(--theme-border)',
+                background:'var(--theme-bg-main)', transition:'border-color 0.15s',
+              }}>
+                <input ref={docRefs[field]} name={field} type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={handleFileChange} className="hidden" />
 
-        try {
-            const token = localStorage.getItem('clientToken');
-
-            if (!token) {
-                toast.error("Please login to update your profile");
-                return;
-            }
-
-            // Create form data for multipart/form-data submission
-            const formDataToSubmit = new FormData();
-
-            // Add form fields
-            Object.keys(formData).forEach(key => {
-                // Skip the fixed fields that come from the user table
-                if (!['firstname', 'lastname', 'dateofbirth', 'phone', 'email'].includes(key)) {
-                    formDataToSubmit.append(key, formData[key as keyof typeof formData] as string);
-                }
-            });
-
-            // Add files if they exist
-            if (files.idDocument) {
-                formDataToSubmit.append('idDocument', files.idDocument);
-            }
-
-            if (files.address1Document) {
-                formDataToSubmit.append('address1Document', files.address1Document);
-            }
-
-            if (files.address2Document) {
-                formDataToSubmit.append('address2Document', files.address2Document);
-            }
-
-            const response = await axios.post(
-                `${API_BASE_URL}/api/profile/personal-info`,
-                formDataToSubmit,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'multipart/form-data'
-                    }
-                }
-            );
-
-            if (response.data.success) {
-                toast.success("Personal information updated successfully");
-
-                // Get the updated document paths from the response
-                const updatedData = response.data.data || {};
-
-                // Update the global profile data with the server paths
-                setProfileData((prev: any) => ({
-                    ...prev,
-                    personalInfo: {
-                        ...formData,
-                        // Update with server paths if available
-                        idDocument: updatedData.idDocument || formData.idDocument,
-                        address1Document: updatedData.address1Document || formData.address1Document,
-                        address2Document: updatedData.address2Document || formData.address2Document
-                    }
-                }));
-
-                // For each document field, update the preview state appropriately
-                ['idDocument', 'address1Document', 'address2Document'].forEach(field => {
-                    if (updatedData[field]) {
-                        const path = updatedData[field];
-                        // const isServerPath = path.includes('/') || path.includes('\\');
-                        const isPdf = path.toLowerCase().endsWith('.pdf');
-
-                        // For PDF files, store the path in both formData and previews
-                        if (isPdf) {
-                            // Update form data with server path
-                            setFormData(prev => ({
-                                ...prev,
-                                [field]: path
-                            }));
-
-                            // Update preview to ensure PDF view/download buttons appear
-                            setPreviews(prev => ({
-                                ...prev,
-                                [field]: path.startsWith('http') ?
-                                    path :
-                                    `${API_BASE_URL.replace('/api', '')}/${formatFilePath(path)}`
-                            }));
-                        }
-                        else {
-                            setPreviews(prev => ({
-                                ...prev,
-                                [field]: path.startsWith('http') ?
-                                    path :
-                                    `${API_BASE_URL.replace('/api', '')}/${formatFilePath(path)}`
-                            }));
-                            // Update preview URLs with server paths
-                            if (updatedData.idDocument) {
-                                setPreviews(prev => ({
-                                    ...prev,
-                                    idDocument: updatedData.idDocument.startsWith('http') ?
-                                        updatedData.idDocument :
-                                        `${API_BASE_URL.replace('/api', '')}/${updatedData.idDocument}`
-                                }));
-                            }
-
-                            if (updatedData.address1Document) {
-                                setPreviews(prev => ({
-                                    ...prev,
-                                    address1Document: updatedData.address1Document.startsWith('http') ?
-                                        updatedData.address1Document :
-                                        `${API_BASE_URL.replace('/api', '')}/${updatedData.address1Document}`
-                                }));
-                            }
-
-                            if (updatedData.address2Document) {
-                                setPreviews(prev => ({
-                                    ...prev,
-                                    address2Document: updatedData.address2Document.startsWith('http') ?
-                                        updatedData.address2Document :
-                                        `${API_BASE_URL.replace('/api', '')}/${updatedData.address2Document}`
-                                }));
-                            }
-                        }
-                    }
-                });
-            }
-        } catch (error) {
-            toast.error("Failed to update personal information");
-            console.error("Error updating personal info:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const formatFilePath = (path: string | undefined) => {
-        // Replace backslashes with forward slashes for URLs
-        return path ? path.replace(/\\/g, '/') : '';
-    };
-
-    // Function to render document preview
-    const renderDocumentPreview = (field: 'idDocument' | 'address1Document' | 'address2Document') => {
-        const preview = previews[field];
-        const fileName = formData[field];
-
-        // Check if we have a PDF by examining either the file name or preview URL
-        const isPdf =
-            (typeof fileName === 'string' && fileName.toLowerCase().endsWith('.pdf')) ||
-            (typeof preview === 'string' && preview.toLowerCase().endsWith('.pdf'));
-
-        if (isPdf) {
-            // Construct PDF URL
-            let pdfUrl = '';
-            if (preview && (preview.startsWith('http') || preview.includes('/'))) {
-                pdfUrl = preview;
-            } else if (typeof fileName === 'string') {
-                if (fileName.startsWith('http')) {
-                    pdfUrl = fileName;
-                } else if (fileName.includes('/') || fileName.includes('\\')) {
-                    pdfUrl = `${API_BASE_URL.replace('/api', '')}/${formatFilePath(fileName)}`;
-                }
-            }
-
-            if (pdfUrl) {
-                return (
-                    <div className="mt-2 space-y-2">
-                        <div className="flex gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => window.open(pdfUrl, '_blank')}
-                            >
-                                View PDF
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    const downloadLink = document.createElement('a');
-                                    downloadLink.href = pdfUrl;
-                                    downloadLink.download = pdfUrl.split('/').pop() || `${field}.pdf`;
-                                    document.body.appendChild(downloadLink);
-                                    downloadLink.click();
-                                    document.body.removeChild(downloadLink);
-                                }}
-                            >
-                                Download PDF
-                            </Button>
-                        </div>
-                    </div>
-                );
-            } else {
-                return <div className="mt-2">PDF will be viewable after saving</div>;
-            }
-        }
-        // Handle image previews
-        else if (preview && (preview.startsWith('blob:') || preview.startsWith('http'))) {
-            return (
-                <div className="mt-2 rounded border border-gray-300/80 w-fit p-2">
-                    <img
-                        src={preview}
-                        alt={`${field} preview`}
-                        className="max-w-full h-auto max-h-48 rounded"
-                        onClick={() => window.open(preview, '_blank')}
-                        style={{ cursor: 'pointer' }}
-                    />
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <FileText style={{ width:14, height:14, color:'var(--theme-text-muted)' }} />
+                    <p style={{ fontSize:13, fontWeight:700, color:'var(--theme-text-primary)', margin:0 }}>{label}</p>
+                  </div>
+                  {isDocUploaded(field) && (
+                    <CheckCircle style={{ width:14, height:14, color:'#10b981' }} />
+                  )}
                 </div>
-            );
-        } else if (typeof fileName === 'string' &&
-            (fileName.toLowerCase().endsWith('.jpg') ||
-                fileName.toLowerCase().endsWith('.jpeg') ||
-                fileName.toLowerCase().endsWith('.png'))) {
-            // For images with path but no preview yet
-            let imgUrl = '';
-            if (fileName.startsWith('http')) {
-                imgUrl = fileName;
-            } else if (fileName.includes('/')) {
-                imgUrl = `${API_BASE_URL.replace('/api', '')}/${fileName}`;
-            }
+                <p style={{ fontSize:11, color:'var(--theme-text-muted)', marginBottom:12 }}>{sub}</p>
 
-            if (imgUrl) {
-                return (
-                    <div className="mt-2 rounded border border-gray-300 p-2">
-                        <img
-                            src={imgUrl}
-                            alt={`${field} preview`}
-                            className="max-w-full h-auto max-h-48 rounded"
-                            onClick={() => window.open(imgUrl, '_blank')}
-                            style={{ cursor: 'pointer' }}
-                        />
-                    </div>
-                );
-            }
-        }
-        console.log(`Field: ${field}, FileName: ${fileName}, Preview: ${preview}`);
-
-        return null;
-    };
-
-
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-6 bg-card p-6 border rounded-lg shadow">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* First Name - Read only */}
-                <div className="space-y-2">
-                    <Label htmlFor="firstname">First Name</Label>
-                    <Input
-                        id="firstname"
-                        name="firstname"
-                        className='border-gray-600 dark:border-gray-600'
-                        value={formData.firstname}
-                        disabled
-                    />
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => docRefs[field].current?.click()}
+                    style={{
+                      display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8,
+                      fontSize:12, fontWeight:600, cursor:'pointer',
+                      background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.2)', color:'#6366f1',
+                    }}
+                  >
+                    <Upload style={{ width:12, height:12 }} /> Upload
+                  </button>
+                  <WebcamCapture onCapture={handleCaptured} fieldName={field} />
                 </div>
 
-                {/* Last Name - Read only */}
-                <div className="space-y-2">
-                    <Label htmlFor="lastname">Last Name</Label>
-                    <Input
-                        id="lastname"
-                        name="lastname"
-                        className='border-gray-600 dark:border-gray-600'
-                        value={formData.lastname}
-                        disabled
-                    />
-                </div>
+                {/* Preview */}
+                {renderDocPreview(field)}
 
-                {/* Date of Birth - Read only */}
-                <div className="space-y-2">
-                    <Label htmlFor="dateofbirth">Date of Birth</Label>
-                    <Input
-                        id="dateofbirth"
-                        name="dateofbirth"
-                        className='border-gray-600 dark:border-gray-600'
-                        value={formData.dateofbirth ? new Date(formData.dateofbirth).toLocaleDateString() : ''}
-                        disabled
-                    />
-                </div>
-
-                {/* Contact Number - Read only */}
-                <div className="space-y-2">
-                    <Label htmlFor="phone">Contact Number</Label>
-                    <Input
-                        id="phone"
-                        name="phone"
-                        className='border-gray-600 dark:border-gray-600'
-                        value={formData.phone}
-                        disabled
-                    />
-                </div>
-
-                {/* Email - Read only */}
-                <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                        id="email"
-                        name="email"
-                        className='border-gray-600 dark:border-gray-600'
-                        value={formData.email}
-                        disabled
-                    />
-                </div>
-
-                {/* Education Level - Editable */}
-                <div className="space-y-2">
-                    <Label htmlFor="educationLevel">Education Level</Label>
-                    <Select
-                        value={formData.educationLevel}
-                        onValueChange={(value) => handleSelectChange(value, 'educationLevel')}
-                    >
-                        <SelectTrigger className="w-full border-gray-600 dark:border-gray-600">
-                            <SelectValue placeholder="Select your education level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="secondary">Secondary</SelectItem>
-                            <SelectItem value="higher secondary">Higher Secondary</SelectItem>
-                            <SelectItem value="bachelor's degree">Bachelor's Degree</SelectItem>
-                            <SelectItem value="master's degree">Master's Degree</SelectItem>
-                            <SelectItem value="doctorate">Doctorate</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                {/* Other Education - Only shown if "Other" is selected */}
-                {formData.educationLevel === 'other' && (
-                    <div className="space-y-2">
-                        <Label htmlFor="otherEducation">Please Specify</Label>
-                        <Input
-                            id="otherEducation"
-                            name="otherEducation"
-                            value={formData.otherEducation || ''}
-                            onChange={handleChange}
-                            placeholder="Specify your education level"
-                            className='border-gray-600 dark:border-gray-600'
-                        />
-                    </div>
+                {/* File name after upload */}
+                {files[field] && (
+                  <p style={{ fontSize:10, color:'var(--theme-text-muted)', marginTop:6, wordBreak:'break-all' }}>
+                    📎 {files[field]!.name}
+                  </p>
                 )}
+              </div>
+            ))}
+          </div>
+        </div>
 
-                {/* Employment Status - Editable */}
-                <div className="space-y-2">
-                    <Label>Employment Status</Label>
-                    <RadioGroup
-                        value={formData.isEmployed}
-                        onValueChange={(value) => handleSelectChange(value, 'isEmployed')}
-                        className="flex space-x-4"
-                    >
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="yes" id="employed-yes" />
-                            <Label htmlFor="employed-yes">Yes</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="no" id="employed-no" />
-                            <Label htmlFor="employed-no">No</Label>
-                        </div>
-                    </RadioGroup>
-                </div>
-            </div>
-
-            <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Document Uploads</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-                    {/* ID Document Upload - Enhanced with camera and preview */}
-                    <div className="space-y-2 p-4 border rounded-lg bg-card shadow-md">
-                        <Label htmlFor="idDocument">ID Document (Image/PDF)</Label>
-
-                        <div className="flex flex-col sm:flex-row gap-2">
-                            {/* Hidden file input */}
-                            <Input
-                                ref={idDocumentRef}
-                                id="idDocument"
-                                name="idDocument"
-                                type="file"
-                                accept=".jpg,.jpeg,.png,.pdf"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-
-                            {/* Hidden front camera input - works on all devices */}
-                            <Input
-                                ref={idFrontCameraRef}
-                                id="idFrontCamera"
-                                name="idDocument"
-                                type="file"
-                                accept="image/*"
-                                capture="user"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-
-                            {/* Hidden rear camera input - works on all devices */}
-                            <Input
-                                ref={idRearCameraRef}
-                                id="idRearCamera"
-                                name="idDocument"
-                                type="file"
-                                accept="image/*"
-                                capture="environment"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-
-                            {/* Upload button */}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => openFileSelector(idDocumentRef)}
-                                className="flex items-center"
-                            >
-                                <Upload className="mr-2 h-4 w-4" />
-                                Upload
-                            </Button>
-
-                            <WebcamCapture
-                                onCapture={(file: File, fieldName: string) => {
-                                    // Handle the captured image
-                                    setFiles(prev => ({
-                                        ...prev,
-                                        [fieldName]: file
-                                    }));
-
-                                    // Update form data to show file name
-                                    setFormData(prev => ({
-                                        ...prev,
-                                        [fieldName]: file.name
-                                    }));
-
-                                    // Generate preview
-                                    generatePreview(file, fieldName);
-                                }}
-                                fieldName="idDocument" // Change this for each form field
-                            />
-                        </div>
-
-                        {/* Preview */}
-                        {renderDocumentPreview('idDocument')}
-                    </div>
-
-                    {/* Address1 Document Upload - Enhanced with camera and preview */}
-                    <div className="space-y-2 p-4 border rounded-lg bg-card shadow-md">
-                        <Label htmlFor="address1Document">Address 1 Document (Image/PDF)</Label>
-                        <div className="flex flex-col sm:flex-row gap-2">
-                            {/* Hidden file input */}
-                            <Input
-                                ref={address1DocumentRef}
-                                id="address1Document"
-                                name="address1Document"
-                                type="file"
-                                accept=".jpg,.jpeg,.png,.pdf"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-
-                            {/* Hidden front camera input */}
-                            <Input
-                                ref={address1FrontCameraRef}
-                                id="address1FrontCamera"
-                                name="address1Document"
-                                type="file"
-                                accept="image/*"
-                                capture="user"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-
-                            {/* Hidden rear camera input */}
-                            <Input
-                                ref={address1RearCameraRef}
-                                id="address1RearCamera"
-                                name="address1Document"
-                                type="file"
-                                accept="image/*"
-                                capture="environment"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-
-                            {/* Upload button */}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => openFileSelector(address1DocumentRef)}
-                                className="flex items-center"
-                            >
-                                <Upload className="mr-2 h-4 w-4" />
-                                Upload
-                            </Button>
-
-                            <WebcamCapture
-                                onCapture={(file: File, fieldName: string) => {
-                                    // Handle the captured image
-                                    setFiles(prev => ({
-                                        ...prev,
-                                        [fieldName]: file
-                                    }));
-
-                                    // Update form data to show file name
-                                    setFormData(prev => ({
-                                        ...prev,
-                                        [fieldName]: file.name
-                                    }));
-
-                                    // Generate preview
-                                    generatePreview(file, fieldName);
-                                }}
-                                fieldName="address1Document" // Change this for each form field
-                            />
-
-                        </div>
-
-                        {/* Preview */}
-                        {renderDocumentPreview('address1Document')}
-                    </div>
-
-                    {/* Address2 Document Upload - Enhanced with camera and preview */}
-                    <div className="space-y-2 p-4 border rounded-lg bg-card shadow-md">
-                        <Label htmlFor="address2Document">Address 2 Document (Image/PDF)</Label>
-
-                        <div className="flex flex-col sm:flex-row gap-2">
-                            {/* Hidden file input */}
-                            <Input
-                                ref={address2DocumentRef}
-                                id="address2Document"
-                                name="address2Document"
-                                type="file"
-                                accept=".jpg,.jpeg,.png,.pdf"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-
-                            {/* Hidden front camera input */}
-                            <Input
-                                ref={address2FrontCameraRef}
-                                id="address2FrontCamera"
-                                name="address2Document"
-                                type="file"
-                                accept="image/*"
-                                capture="user"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-
-                            {/* Hidden rear camera input */}
-                            <Input
-                                ref={address2RearCameraRef}
-                                id="address2RearCamera"
-                                name="address2Document"
-                                type="file"
-                                accept="image/*"
-                                capture="environment"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-
-                            {/* Upload button */}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => openFileSelector(address2DocumentRef)}
-                                className="flex items-center"
-                            >
-                                <Upload className="mr-2 h-4 w-4" />
-                                Upload
-                            </Button>
-
-
-                            <WebcamCapture
-                                onCapture={(file: File, fieldName: string) => {
-                                    // Handle the captured image
-                                    setFiles(prev => ({
-                                        ...prev,
-                                        [fieldName]: file
-                                    }));
-
-                                    // Update form data to show file name
-                                    setFormData(prev => ({
-                                        ...prev,
-                                        [fieldName]: file.name
-                                    }));
-
-                                    // Generate preview
-                                    generatePreview(file, fieldName);
-                                }}
-                                fieldName="address2Document" // Change this for each form field
-                            />
-                        </div>
-
-                        {/* Preview */}
-                        {renderDocumentPreview('address2Document')}
-                    </div>
-                </div>
-            </div>
-
-            {/* Submit Button */}
-            <Button
-                type="submit"
-                className="w-full md:w-auto"
-                disabled={loading}
-            >
-                {loading ? (
-                    <>
-                        <span className="animate-spin mr-2">&#10227;</span>
-                        Updating...
-                    </>
-                ) : 'Update Personal Information'}
-            </Button>
-        </form>
-    );
+        {/* Footer */}
+        <div style={{ padding:'16px 24px', background:'var(--theme-bg-main)', borderTop:'1px solid var(--theme-border)', display:'flex', justifyContent:'flex-end' }}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              display:'flex', alignItems:'center', gap:8, padding:'10px 24px', borderRadius:10,
+              border:'none', cursor:'pointer', fontSize:14, fontWeight:700,
+              background:'linear-gradient(135deg, #6366f1, #8b5cf6)', color:'white',
+              opacity: loading ? 0.75 : 1,
+            }}
+          >
+            {loading ? (
+              <><div style={{ width:14, height:14, border:'2px solid white', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />Saving…</>
+            ) : (
+              <><Save style={{ width:14, height:14 }} />Save Personal Info</>
+            )}
+          </button>
+        </div>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </form>
+  );
 };
 
 export default PersonalInfoForm;

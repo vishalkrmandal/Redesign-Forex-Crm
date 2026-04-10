@@ -10,7 +10,7 @@ import {
 import axios from "axios"
 import ExcelJS from 'exceljs'
 import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -187,44 +187,46 @@ export default function TransactionHistory() {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (response.data.success) {
-        const doc = new jsPDF()
-        doc.setFontSize(16); doc.text("Transaction History", 14, 15)
-        const dateStr = new Date().toLocaleDateString()
-        doc.setFontSize(10); doc.text(`Generated: ${dateStr}`, 14, 25)
-        let y = 35
-        const marginLeft = 10, tableWidth = 182, lineH = 6
-        const colWidths = [12, 38, 18, 35, 22, 35, 22]
-        const colPos: number[] = [marginLeft]
-        for (let i = 0; i < colWidths.length - 1; i++) colPos.push(colPos[i] + colWidths[i])
-        const drawBorders = (startY: number, endY: number) => {
-          colPos.forEach(p => doc.line(p, startY, p, endY))
-          doc.line(colPos[colPos.length-1]+colWidths[colWidths.length-1], startY, colPos[colPos.length-1]+colWidths[colWidths.length-1], endY)
-          doc.line(marginLeft, startY, marginLeft+tableWidth, startY)
-          doc.line(marginLeft, endY, marginLeft+tableWidth, endY)
-        }
-        doc.setFillColor(66,66,66); doc.rect(marginLeft, y, tableWidth, lineH, 'F')
-        doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont('','bold')
-        ['S.No','Account','Type','Description','Amount','Date & Time','Status'].forEach((h,i) => {
-          doc.text(h, colPos[i]+1, y+5)
+        const doc = new jsPDF({ orientation: 'landscape' })
+        const dateStr = new Date().toLocaleDateString('en-GB').replace(/\//g, '-')
+
+        // Title
+        doc.setFontSize(18)
+        doc.setTextColor(40, 40, 40)
+        doc.text('Transaction History', 14, 18)
+        doc.setFontSize(10)
+        doc.setTextColor(120, 120, 120)
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 26)
+
+        // Table using autoTable plugin
+        autoTable(doc, {
+          startY: 34,
+          head: [['#', 'Account', 'Type', 'Description', 'Amount', 'Date & Time', 'Status']],
+          body: response.data.data.map((t: Transaction, idx: number) => [
+            idx + 1,
+            t.account || '',
+            t.type || '',
+            t.description || '',
+            t.amount || '',
+            t.formattedDate || (t.date ? new Date(t.date).toLocaleString() : ''),
+            t.status || '',
+          ]),
+          styles: { fontSize: 8, cellPadding: 3 },
+          headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [248, 249, 250] },
+          columnStyles: {
+            0: { cellWidth: 10 },
+            3: { cellWidth: 60 },
+            5: { cellWidth: 40 },
+          },
         })
-        drawBorders(y, y+lineH); y += lineH
-        doc.setTextColor(0,0,0); doc.setFont('','normal'); doc.setFontSize(7)
-        response.data.data.forEach((t: Transaction, idx: number) => {
-          if (y > doc.internal.pageSize.height - 30) { doc.addPage(); y = 20 }
-          if (idx % 2 === 0) { doc.setFillColor(248,249,250); doc.rect(marginLeft, y, tableWidth, lineH, 'F') }
-          const row = [(idx+1).toString(), t.account||'', t.type||'', t.description||'', t.amount||'',
-            t.formattedDate || (t.date ? new Date(t.date).toLocaleString() : ''), t.status||'']
-          row.forEach((d,ci) => {
-            let text = d
-            const max = Math.floor((colWidths[ci]-2) / 1.2)
-            if (text.length > max) text = text.substring(0, max-3)+'...'
-            doc.text(text, colPos[ci]+1, y+5)
-          })
-          drawBorders(y, y+lineH); y += lineH
-        })
-        doc.save(`transactions_${dateStr.replace(/\//g,'-')}.pdf`)
+
+        doc.save(`transactions_${dateStr}.pdf`)
       }
-    } catch { setError("Failed to export to PDF.") }
+    } catch (err) {
+      console.error('PDF export error:', err)
+      setError("Failed to export to PDF.")
+    }
   }
 
   const formatDate = (d: string) =>

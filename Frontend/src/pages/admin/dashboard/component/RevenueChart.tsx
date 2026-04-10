@@ -1,268 +1,176 @@
-// Frontend/src/components/admin/dashboard/RevenueChart.tsx
+// Frontend/src/pages/admin/dashboard/component/RevenueChart.tsx
 import React, { useState } from 'react';
 import {
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    Legend,
-    BarChart,
-    Bar,
-    Area,
-    AreaChart
+  ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Legend, defs
 } from 'recharts';
-import { TrendingUp, BarChart3, LineChart as LineChartIcon } from 'lucide-react';
+import { TrendingUp, ArrowDownCircle, ArrowUpCircle, DollarSign } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface RevenueChartProps {
-    data: Array<{
-        month: string;
-        deposits: number;
-        withdrawals: number;
-        net: number;
-    }>;
+  data: Array<{
+    month: string;
+    deposits: number;
+    withdrawals: number;
+    net: number;
+  }>;
 }
 
-const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
-    const [chartType, setChartType] = useState<'line' | 'bar' | 'area'>('line');
+const fmt = (v: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(v);
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(value);
-    };
+const fmtFull = (v: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
 
-    const CustomTooltip = ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="bg-card p-4 rounded-lg shadow-lg">
-                    <p className="font-semibold text-gray-900 dark:text-white mb-2">{label}</p>
-                    {payload.map((entry: any, index: number) => (
-                        <p key={index} className="text-sm" style={{ color: entry.color }}>
-                            {`${entry.name}: ${formatCurrency(entry.value)}`}
-                        </p>
-                    ))}
-                </div>
-            );
-        }
-        return null;
-    };
-
-    const renderChart = () => {
-        const commonProps = {
-            data,
-            margin: { top: 20, right: 30, left: 20, bottom: 5 }
-        };
-
-        switch (chartType) {
-            case 'bar':
-                return (
-                    <BarChart {...commonProps}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                        <XAxis
-                            dataKey="month"
-                            stroke="#6B7280"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                        />
-                        <YAxis
-                            stroke="#6B7280"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={formatCurrency}
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend />
-                        <Bar dataKey="deposits" fill="#10B981" name="Deposits" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="withdrawals" fill="#EF4444" name="Withdrawals" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                );
-
-            case 'area':
-                return (
-                    <AreaChart {...commonProps}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                        <XAxis
-                            dataKey="month"
-                            stroke="#6B7280"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                        />
-                        <YAxis
-                            stroke="#6B7280"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={formatCurrency}
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend />
-                        <Area
-                            type="monotone"
-                            dataKey="deposits"
-                            stackId="1"
-                            stroke="#10B981"
-                            fill="#10B981"
-                            fillOpacity={0.6}
-                            name="Deposits"
-                        />
-                        <Area
-                            type="monotone"
-                            dataKey="withdrawals"
-                            stackId="1"
-                            stroke="#EF4444"
-                            fill="#EF4444"
-                            fillOpacity={0.6}
-                            name="Withdrawals"
-                        />
-                    </AreaChart>
-                );
-
-            default:
-                return (
-                    <LineChart {...commonProps}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                        <XAxis
-                            dataKey="month"
-                            stroke="#6B7280"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                        />
-                        <YAxis
-                            stroke="#6B7280"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={formatCurrency}
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend />
-                        <Line
-                            type="monotone"
-                            dataKey="deposits"
-                            stroke="#10B981"
-                            strokeWidth={3}
-                            dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }}
-                            activeDot={{ r: 6, stroke: '#10B981', strokeWidth: 2 }}
-                            name="Deposits"
-                        />
-                        <Line
-                            type="monotone"
-                            dataKey="withdrawals"
-                            stroke="#EF4444"
-                            strokeWidth={3}
-                            dot={{ fill: '#EF4444', strokeWidth: 2, r: 4 }}
-                            activeDot={{ r: 6, stroke: '#EF4444', strokeWidth: 2 }}
-                            name="Withdrawals"
-                        />
-                        <Line
-                            type="monotone"
-                            dataKey="net"
-                            stroke="#3B82F6"
-                            strokeWidth={3}
-                            strokeDasharray="5 5"
-                            dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
-                            activeDot={{ r: 6, stroke: '#3B82F6', strokeWidth: 2 }}
-                            name="Net Revenue"
-                        />
-                    </LineChart>
-                );
-        }
-    };
-
-    const totalDeposits = data.reduce((sum, item) => sum + item.deposits, 0);
-    const totalWithdrawals = data.reduce((sum, item) => sum + item.withdrawals, 0);
-    const netRevenue = totalDeposits - totalWithdrawals;
-
-    return (
-        <div className="bg-card rounded-xl shadow-sm p-3 lg:p-8 h-full flex flex-col">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                <div className="flex items-center gap-3 mb-4 sm:mb-0">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                        <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            Revenue Analytics
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Last 12 months performance
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setChartType('line')}
-                        className={`p-2 rounded-lg transition-colors ${chartType === 'line'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-background text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                            }`}
-                    >
-                        <LineChartIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => setChartType('bar')}
-                        className={`p-2 rounded-lg transition-colors ${chartType === 'bar'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                            }`}
-                    >
-                        <BarChart3 className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => setChartType('area')}
-                        className={`p-2 rounded-lg transition-colors ${chartType === 'area'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                            }`}
-                    >
-                        <TrendingUp className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
-
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2 p-0.5">
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-                    <p className="text-sm text-green-600 dark:text-green-400 font-medium">Total Deposits</p>
-                    <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-                        {formatCurrency(totalDeposits)}
-                    </p>
-                </div>
-                <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
-                    <p className="text-sm text-red-600 dark:text-red-400 font-medium">Total Withdrawals</p>
-                    <p className="text-2xl font-bold text-red-700 dark:text-red-300">
-                        {formatCurrency(totalWithdrawals)}
-                    </p>
-                </div>
-                <div className={`rounded-lg p-4 ${netRevenue >= 0 ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
-                    <p className={`text-sm font-medium ${netRevenue >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
-                        Net Revenue
-                    </p>
-                    <p className={`text-2xl font-bold ${netRevenue >= 0 ? 'text-blue-700 dark:text-blue-300' : 'text-red-700 dark:text-red-300'}`}>
-                        {formatCurrency(netRevenue)}
-                    </p>
-                </div>
-            </div>
-
-            {/* Chart */}
-            <div className="h-80 -ml-10 -mr-3 lg:-ml-6">
-                <ResponsiveContainer width="100%" height="100%">
-                    {renderChart()}
-                </ResponsiveContainer>
-            </div>
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl p-3 shadow-2xl text-xs min-w-[150px]"
+      style={{ backgroundColor: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+      <p className="font-bold mb-2 text-sm" style={{ color: 'var(--theme-text-primary)' }}>{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <div key={i} className="flex items-center justify-between gap-4 mb-1">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
+            <span style={{ color: 'var(--theme-text-muted)' }}>{entry.name}</span>
+          </div>
+          <span className="font-semibold" style={{ color: entry.color }}>{fmt(entry.value)}</span>
         </div>
-    );
+      ))}
+    </div>
+  );
+};
+
+const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
+  const [hideLine, setHideLine] = useState<Record<string, boolean>>({});
+
+  const totalDeposits = data.reduce((s, d) => s + d.deposits, 0);
+  const totalWithdrawals = data.reduce((s, d) => s + d.withdrawals, 0);
+  const netRevenue = totalDeposits - totalWithdrawals;
+
+  const summaryCards = [
+    { label: 'Total Deposits', value: fmtFull(totalDeposits), icon: ArrowDownCircle, color: '#10b981' },
+    { label: 'Total Withdrawals', value: fmtFull(totalWithdrawals), icon: ArrowUpCircle, color: '#ef4444' },
+    { label: 'Net Revenue', value: fmtFull(netRevenue), icon: DollarSign, color: netRevenue >= 0 ? '#6366f1' : '#ef4444' },
+  ];
+
+  const toggle = (key: string) => setHideLine(p => ({ ...p, [key]: !p[key] }));
+
+  return (
+    <div className="rounded-2xl p-5 h-full flex flex-col"
+      style={{ backgroundColor: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl p-2" style={{ background: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)' }}>
+            <TrendingUp className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--theme-text-primary)' }}>Revenue Analytics</h3>
+            <p className="text-[11px]" style={{ color: 'var(--theme-text-muted)' }}>Last 12 months performance</p>
+          </div>
+        </div>
+
+        {/* Legend toggles */}
+        <div className="flex items-center gap-2">
+          {[
+            { key: 'deposits', label: 'Deposits', color: '#10b981' },
+            { key: 'withdrawals', label: 'Withdrawals', color: '#ef4444' },
+            { key: 'net', label: 'Net', color: '#6366f1' },
+          ].map(item => (
+            <button
+              key={item.key}
+              onClick={() => toggle(item.key)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all"
+              style={{
+                background: hideLine[item.key] ? 'transparent' : `${item.color}15`,
+                border: `1px solid ${hideLine[item.key] ? 'var(--theme-border)' : item.color + '40'}`,
+                color: hideLine[item.key] ? 'var(--theme-text-disabled)' : item.color,
+                textDecoration: hideLine[item.key] ? 'line-through' : 'none',
+              }}
+            >
+              <span className="w-2 h-2 rounded-full" style={{ background: hideLine[item.key] ? 'var(--theme-border)' : item.color }} />
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        {summaryCards.map(card => (
+          <motion.div
+            key={card.label}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl p-3"
+            style={{ background: `${card.color}10`, border: `1px solid ${card.color}30` }}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <card.icon className="w-3.5 h-3.5" style={{ color: card.color }} />
+              <p className="text-[10px] font-medium" style={{ color: 'var(--theme-text-muted)' }}>{card.label}</p>
+            </div>
+            <p className="text-sm font-bold" style={{ color: card.color }}>{card.value}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Chart */}
+      <div className="flex-1 min-h-[200px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gradDeposits" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gradWithdrawals" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gradNet" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-border)" vertical={false} opacity={0.5} />
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 11, fill: 'var(--theme-text-muted)' }}
+              axisLine={false} tickLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: 'var(--theme-text-muted)' }}
+              axisLine={false} tickLine={false}
+              tickFormatter={v => fmt(v)}
+              width={60}
+            />
+            <Tooltip content={<CustomTooltip />} />
+
+            {!hideLine['deposits'] && (
+              <Area type="monotone" dataKey="deposits" name="Deposits"
+                stroke="#10b981" strokeWidth={2} fill="url(#gradDeposits)"
+                dot={false} activeDot={{ r: 5, fill: '#10b981', stroke: 'var(--theme-bg-card)', strokeWidth: 2 }}
+              />
+            )}
+            {!hideLine['withdrawals'] && (
+              <Area type="monotone" dataKey="withdrawals" name="Withdrawals"
+                stroke="#ef4444" strokeWidth={2} fill="url(#gradWithdrawals)"
+                dot={false} activeDot={{ r: 5, fill: '#ef4444', stroke: 'var(--theme-bg-card)', strokeWidth: 2 }}
+              />
+            )}
+            {!hideLine['net'] && (
+              <Line type="monotone" dataKey="net" name="Net Revenue"
+                stroke="#6366f1" strokeWidth={2.5} strokeDasharray="5 4"
+                dot={false} activeDot={{ r: 5, fill: '#6366f1', stroke: 'var(--theme-bg-card)', strokeWidth: 2 }}
+              />
+            )}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
 };
 
 export default RevenueChart;

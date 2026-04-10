@@ -1,18 +1,14 @@
 // Frontend/src/pages/auth/sign-in/components/SignInCard.tsx
-
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Eye, EyeOff, Mail, Lock, LogIn, UserPlus, Shield, Users, Crown, X, UserCheck } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Eye, EyeOff, LogIn, UserPlus, Shield, Users, Crown, X, UserCheck,
+  TrendingUp, BarChart2, Globe, ChevronRight, Mail, Lock
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import ForgotPassword from './ForgotPassword';
@@ -20,445 +16,430 @@ import ForgotPassword from './ForgotPassword';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3210';
 
 const loginSchema = z.object({
-    email: z.string().email('Please enter a valid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    rememberMe: z.boolean().default(false)
+  email: z.string().email('Enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  rememberMe: z.boolean().default(false),
 });
 
-// Role configuration
 const ROLE_CONFIG = {
-    client: {
-        title: 'Client Portal',
-        description: 'Access your trading account',
-        icon: Users,
-        gradient: 'from-blue-500 to-purple-600',
-        textGradient: 'from-blue-600 to-purple-600',
-        path: '/login'
-    },
-    admin: {
-        title: 'Admin Dashboard',
-        description: 'Manage users and system settings',
-        icon: Shield,
-        gradient: 'from-green-500 to-blue-600',
-        textGradient: 'from-green-600 to-blue-600',
-        path: '/login/admin'
-    },
-    superadmin: {
-        title: 'Super Admin',
-        description: 'Full system administration',
-        icon: Crown,
-        gradient: 'from-purple-500 to-pink-600',
-        textGradient: 'from-purple-600 to-pink-600',
-        path: '/login/superadmin'
-    },
-    agent: {
-        title: 'Agent Portal',
-        description: 'Manage your clients and commissions',
-        icon: UserPlus,
-        gradient: 'from-orange-500 to-red-600',
-        textGradient: 'from-orange-600 to-red-600',
-        path: '/login/agent'
-    }
+  client:     { label: 'Client',      icon: Users,   gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)', accent: '#6366f1', path: '/' },
+  admin:      { label: 'Admin',       icon: Shield,  gradient: 'linear-gradient(135deg, #10b981, #06b6d4)', accent: '#10b981', path: '/login/admin' },
+  superadmin: { label: 'Super Admin', icon: Crown,   gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)', accent: '#f59e0b', path: '/login/superadmin' },
+  agent:      { label: 'Agent',       icon: UserPlus,gradient: 'linear-gradient(135deg, #ec4899, #f97316)', accent: '#ec4899', path: '/login/agent' },
 };
 
-// Role visibility rules
-const ROLE_VISIBILITY = {
-    client: ['client'],
-    agent: ['agent'],
-    admin: ['client', 'admin'],
-    superadmin: ['client', 'agent', 'admin', 'superadmin']
+const ROLE_VISIBILITY: Record<string, string[]> = {
+  client: ['client'],
+  agent: ['agent'],
+  admin: ['client', 'admin'],
+  superadmin: ['client', 'agent', 'admin', 'superadmin'],
 };
+
+const BENEFITS = [
+  { icon: TrendingUp, title: 'Real-time Trading', desc: 'Monitor live MT5 positions and market data' },
+  { icon: BarChart2,  title: 'Portfolio Analytics', desc: 'Track performance across all accounts' },
+  { icon: Globe,      title: 'Multi-market Access', desc: 'Forex, indices, commodities, crypto' },
+];
 
 interface SignInCardProps {
-    loginType?: 'client' | 'admin' | 'superadmin' | 'agent';
+  loginType?: 'client' | 'admin' | 'superadmin' | 'agent';
 }
 
 export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
-    const { getAllActiveSessions, hasValidSession } = useAuth();
-    const navigate = useNavigate();
-    const [showPassword, setShowPassword] = React.useState(false);
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const [showForgotPassword, setShowForgotPassword] = React.useState(false);
-    const [showExistingSession, setShowExistingSession] = React.useState(false);
+  const { getAllActiveSessions, hasValidSession } = useAuth();
+  const navigate = useNavigate();
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [showForgotPassword, setShowForgotPassword] = React.useState(false);
+  const [showExistingSession, setShowExistingSession] = React.useState(false);
 
-    // Get role configuration
-    const roleConfig = ROLE_CONFIG[loginType];
-    const activeSessions = getAllActiveSessions();
+  const role = ROLE_CONFIG[loginType];
+  const activeSessions = getAllActiveSessions();
 
-    const form = useForm<z.infer<typeof loginSchema>>({
-        resolver: zodResolver(loginSchema),
-        defaultValues: {
-            email: '',
-            password: '',
-            rememberMe: false
-        }
-    });
+  const form = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: localStorage.getItem(`rememberedEmail_${loginType}`) || '',
+      password: '',
+      rememberMe: !!localStorage.getItem(`rememberedEmail_${loginType}`),
+    },
+  });
 
-    React.useEffect(() => {
-        const currentRoleToken = localStorage.getItem(`${loginType}Token`);
-        const currentRoleUser = localStorage.getItem(`${loginType}User`);
-
-        if (currentRoleToken && currentRoleUser) {
-            try {
-                const user = JSON.parse(currentRoleUser);
-                if (user && user.role === loginType) {
-                    setShowExistingSession(true);
-                }
-            } catch (error) {
-                localStorage.removeItem(`${loginType}Token`);
-                localStorage.removeItem(`${loginType}User`);
-            }
-        }
-    }, [loginType]);
-
-    const handleUseExistingSession = () => {
-        const defaultPaths = {
-            client: '/client/dashboard',
-            admin: '/admin/dashboard',
-            agent: '/agent/dashboard',
-            superadmin: '/superadmin/configure'
-        };
-        navigate(defaultPaths[loginType]);
-    };
-
-    const handleLoginAsNewUser = () => {
+  React.useEffect(() => {
+    const token = localStorage.getItem(`${loginType}Token`);
+    const userStr = localStorage.getItem(`${loginType}User`);
+    if (token && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user?.role === loginType) setShowExistingSession(true);
+      } catch {
         localStorage.removeItem(`${loginType}Token`);
         localStorage.removeItem(`${loginType}User`);
-        setShowExistingSession(false);
-        toast.info(`Previous ${loginType} session cleared. You can now login as a different user.`);
+      }
+    }
+  }, [loginType]);
+
+  const handleUseExistingSession = () => {
+    const paths: Record<string, string> = {
+      client: '/client/dashboard', admin: '/admin/dashboard',
+      agent: '/agent/dashboard', superadmin: '/superadmin/configure',
     };
+    navigate(paths[loginType]);
+  };
 
-    const handleLogoutFromRole = () => {
-        localStorage.removeItem(`${loginType}Token`);
-        localStorage.removeItem(`${loginType}User`);
-        setShowExistingSession(false);
-        toast.success(`Logged out from ${loginType} session`);
-    };
+  const handleLoginAsNewUser = () => {
+    localStorage.removeItem(`${loginType}Token`);
+    localStorage.removeItem(`${loginType}User`);
+    setShowExistingSession(false);
+    toast.info('Previous session cleared.');
+  };
 
-    const onSubmit = async (values: z.infer<typeof loginSchema>) => {
-        setIsSubmitting(true);
+  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: values.email, password: values.password, loginType }),
+      });
+      const data = await response.json();
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email: values.email,
-                    password: values.password,
-                    loginType: loginType
-                }),
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                const userRole = data.user.role;
-
-                if (userRole !== loginType) {
-                    const correctPath = userRole === 'client' ? '/login' : `/login/${userRole}`;
-                    toast.error(`This login interface is for ${loginType}s only. Your account role is ${userRole}. Please use ${correctPath}`);
-
-                    setTimeout(() => {
-                        navigate(correctPath);
-                    }, 2000);
-
-                    setIsSubmitting(false);
-                    return;
-                }
-
-                localStorage.setItem(`${userRole}Token`, data.token);
-                localStorage.setItem(`${userRole}User`, JSON.stringify(data.user));
-
-                if (data.user.isEmailVerified === true) {
-                    toast.success('Login successful! Redirecting...', { duration: 2000 });
-
-                    setTimeout(() => {
-                        if (userRole === 'superadmin') {
-                            window.location.href = '/superadmin/configure';
-                        } else if (userRole === 'agent') {
-                            window.location.href = '/agent/dashboard';
-                        } else if (userRole === 'admin') {
-                            window.location.href = '/admin/dashboard';
-                        } else {
-                            window.location.href = '/client/dashboard';
-                        }
-                    }, 1000);
-                } else {
-                    toast.error('Please verify your email address first');
-                }
-            } else {
-                toast.error(data.message || 'Login failed');
-            }
-        } catch (error) {
-            console.error('Login error:', error);
-            toast.error('An error occurred during login');
-        } finally {
-            setIsSubmitting(false);
+      if (data.success) {
+        const userRole = data.user.role;
+        if (userRole !== loginType) {
+          const correctPath = userRole === 'client' ? '/' : `/login/${userRole}`;
+          toast.error(`Wrong portal. Please use ${correctPath}`);
+          setTimeout(() => navigate(correctPath), 2000);
+          setIsSubmitting(false);
+          return;
         }
-    };
 
-    const RoleSwitcher = () => {
-        const visibleRoles = ROLE_VISIBILITY[loginType];
+        // Remember Me
+        if (values.rememberMe) {
+          localStorage.setItem(`rememberedEmail_${loginType}`, values.email);
+        } else {
+          localStorage.removeItem(`rememberedEmail_${loginType}`);
+        }
 
-        return (
-            <div className="mb-4">
-                <div className="flex flex-wrap gap-2 justify-center">
-                    {Object.entries(ROLE_CONFIG)
-                        .filter(([role]) => visibleRoles.includes(role))
-                        .map(([role, config]) => {
-                            const isActive = loginType === role;
-                            const hasSession = hasValidSession(role);
+        localStorage.setItem(`${userRole}Token`, data.token);
+        localStorage.setItem(`${userRole}User`, JSON.stringify(data.user));
 
-                            return (
-                                <Button
-                                    key={role}
-                                    variant={isActive ? "default" : "outline"}
-                                    size="sm"
-                                    className={`capitalize relative ${isActive ? `bg-gradient-to-r ${config.gradient} text-white` : ''}`}
-                                    onClick={() => navigate(config.path)}
-                                >
-                                    <config.icon className="w-3 h-3 mr-1" />
-                                    {role}
-                                    {hasSession && !isActive && (
-                                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></div>
-                                    )}
-                                </Button>
-                            );
-                        })}
-                </div>
+        if (data.user.isEmailVerified) {
+          toast.success('Login successful! Redirecting…');
+          setTimeout(() => {
+            const redirectMap: Record<string, string> = {
+              superadmin: '/superadmin/configure', agent: '/agent/dashboard',
+              admin: '/admin/dashboard', client: '/client/dashboard',
+            };
+            window.location.href = redirectMap[userRole];
+          }, 800);
+        } else {
+          toast.error('Please verify your email address first.');
+        }
+      } else {
+        toast.error(data.message || 'Login failed');
+      }
+    } catch {
+      toast.error('An error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const visibleRoles = ROLE_VISIBILITY[loginType];
+  const existingUser = (() => {
+    try { return JSON.parse(localStorage.getItem(`${loginType}User`) || 'null'); } catch { return null; }
+  })();
+
+  return (
+    <>
+      <div style={{
+        position: 'fixed', inset: 0, display: 'flex',
+        background: 'var(--theme-bg-main)',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+      }}>
+
+        {/* ── LEFT PANEL ──────────────────────────────────────────────── */}
+        <div
+          className="hidden lg:flex lg:flex-col lg:justify-between"
+          style={{
+            width: '42%', flexShrink: 0, padding: '48px 40px',
+            background: 'linear-gradient(160deg, #0f0c29 0%, #302b63 55%, #24243e 100%)',
+            position: 'relative', overflow: 'hidden',
+          }}
+        >
+          {/* Decorative orbs */}
+          <div style={{ position:'absolute', top:-80, right:-80, width:320, height:320, borderRadius:'50%', background:'rgba(99,102,241,0.15)', filter:'blur(60px)', pointerEvents:'none' }} />
+          <div style={{ position:'absolute', bottom:-60, left:-60, width:240, height:240, borderRadius:'50%', background:'rgba(139,92,246,0.12)', filter:'blur(50px)', pointerEvents:'none' }} />
+
+          {/* Brand */}
+          <div>
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:48 }}>
+              <img src="/favicon.png" alt="Logo" style={{ width:48, height:48, objectFit:'contain', borderRadius:10 }} />
+              <div>
+                <p style={{ color:'white', fontWeight:800, fontSize:18, lineHeight:1, margin:0 }}>OXOTrade</p>
+                <p style={{ color:'rgba(255,255,255,0.5)', fontSize:11, margin:0 }}>Professional Trading Platform</p>
+              </div>
             </div>
-        );
-    };
 
-    const ExistingSessionAlert = () => {
-        if (!showExistingSession) return null;
+            <h1 style={{ color:'white', fontSize:32, fontWeight:900, lineHeight:1.2, marginBottom:16 }}>
+              Trade smarter,<br />
+              <span style={{ background:'linear-gradient(90deg,#a5b4fc,#818cf8)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                earn better
+              </span>
+            </h1>
+            <p style={{ color:'rgba(255,255,255,0.55)', fontSize:14, lineHeight:1.7, marginBottom:40, maxWidth:320 }}>
+              Access real-time markets, manage your portfolio, and grow your investments with confidence.
+            </p>
 
-        const userStr = localStorage.getItem(`${loginType}User`);
-        const user = userStr ? JSON.parse(userStr) : null;
-
-        return (
-            <Alert className="mb-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
-                <UserCheck className="h-4 w-4 text-blue-600" />
-                <div className="ml-2">
-                    <AlertDescription className="text-blue-800 dark:text-blue-200">
-                        <div className="text-sm font-medium mb-2">
-                            Already logged in as: <strong>{user?.firstname} {user?.lastname}</strong>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Button
-                                size="sm"
-                                onClick={handleUseExistingSession}
-                                className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                                Continue as {user?.firstname}
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleLoginAsNewUser}
-                                className="h-7 text-xs border-blue-600 text-blue-600 hover:bg-blue-50"
-                            >
-                                Login as Different User
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleLogoutFromRole}
-                                className="h-7 text-xs border-red-600 text-red-600 hover:bg-red-50"
-                            >
-                                <X className="w-3 h-3 mr-1" />
-                                Logout
-                            </Button>
-                        </div>
-                    </AlertDescription>
+            {/* Benefits */}
+            <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+              {BENEFITS.map(b => (
+                <div key={b.title} style={{ display:'flex', alignItems:'flex-start', gap:14 }}>
+                  <div style={{
+                    width:38, height:38, borderRadius:10, flexShrink:0,
+                    background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                  }}>
+                    <b.icon style={{ width:16, height:16, color:'#a5b4fc' }} />
+                  </div>
+                  <div>
+                    <p style={{ color:'white', fontWeight:600, fontSize:13, margin:0, marginBottom:2 }}>{b.title}</p>
+                    <p style={{ color:'rgba(255,255,255,0.45)', fontSize:12, margin:0 }}>{b.desc}</p>
+                  </div>
                 </div>
-            </Alert>
-        );
-    };
+              ))}
+            </div>
+          </div>
 
-    return (
-        <>
-            <Card className="w-full max-w-md shadow-2xl border-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
-                <CardHeader className="text-center space-y-2 pb-4 pt-6">
-                    {/* Logo */}
-                    <div className="mx-auto flex items-center justify-center -my-6">
-                        <img
-                            src="/favicon.png"
-                            alt="Logo"
-                            className="w-40 h-40 object-contain"
-                        />
-                    </div>
+          {/* Bottom */}
+          <p style={{ color:'rgba(255,255,255,0.25)', fontSize:11 }}>
+            © {new Date().getFullYear()} OXOTrade. Secure platform.
+          </p>
+        </div>
 
-                    {/* Title */}
-                    <CardTitle className={`text-2xl font-bold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent`}>
-                        {roleConfig.title}
-                    </CardTitle>
+        {/* ── RIGHT PANEL ─────────────────────────────────────────────── */}
+        <div style={{
+          flex:1, overflowY:'auto', display:'flex', alignItems:'center', justifyContent:'center',
+          padding: '32px 24px',
+        }}>
+          <div style={{ width:'100%', maxWidth:420 }}>
 
-                    {/* Description */}
-                    <CardDescription className="text-sm text-muted-foreground">
-                        {roleConfig.description}
-                    </CardDescription>
-                </CardHeader>
+            {/* Mobile logo */}
+            <div className="flex lg:hidden" style={{ alignItems:'center', gap:10, marginBottom:28 }}>
+              <img src="/favicon.png" alt="Logo" style={{ width:36, height:36, objectFit:'contain', borderRadius:8 }} />
+              <p style={{ fontWeight:800, fontSize:16, color:'var(--theme-text-primary)', margin:0 }}>OXOTrade</p>
+            </div>
 
-                <CardContent className="px-6 pb-6">
-                    {/* Role Switcher */}
-                    <RoleSwitcher />
+            <h2 style={{ fontSize:26, fontWeight:900, color:'var(--theme-text-primary)', margin:0, marginBottom:6 }}>
+              Welcome back
+            </h2>
+            <p style={{ fontSize:13, color:'var(--theme-text-muted)', marginBottom:28 }}>
+              Sign in to your {ROLE_CONFIG[loginType].label.toLowerCase()} account
+            </p>
 
-                    {/* Existing Session Alert */}
-                    <ExistingSessionAlert />
+            {/* Role switcher */}
+            {visibleRoles.length > 1 && (
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:20 }}>
+                {Object.entries(ROLE_CONFIG)
+                  .filter(([r]) => visibleRoles.includes(r))
+                  .map(([r, cfg]) => {
+                    const active = loginType === r;
+                    const has = hasValidSession(r);
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => navigate(cfg.path)}
+                        style={{
+                          position:'relative', display:'flex', alignItems:'center', gap:5,
+                          padding:'5px 12px', borderRadius:8, border:'none', cursor:'pointer',
+                          fontSize:12, fontWeight:600,
+                          background: active ? cfg.gradient : 'var(--theme-bg-card)',
+                          color: active ? 'white' : 'var(--theme-text-muted)',
+                          border: active ? 'none' : '1px solid var(--theme-border)',
+                          transition:'all 0.15s',
+                        }}
+                      >
+                        <cfg.icon style={{ width:11, height:11 }} />
+                        {cfg.label}
+                        {has && !active && (
+                          <span style={{ position:'absolute', top:-3, right:-3, width:8, height:8, borderRadius:'50%', background:'#10b981', border:'2px solid var(--theme-bg-card)' }} />
+                        )}
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
 
-                    {/* Other active sessions info */}
-                    {activeSessions.filter(session => session !== loginType).length > 0 && (
-                        <Alert className="mb-4 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
-                            <AlertDescription className="text-xs text-green-800 dark:text-green-200">
-                                Other active sessions: {activeSessions.filter(session => session !== loginType).join(', ')}
-                            </AlertDescription>
-                        </Alert>
-                    )}
+            {/* Existing session banner */}
+            {showExistingSession && existingUser && (
+              <div style={{
+                padding:14, borderRadius:12, marginBottom:20,
+                background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.25)',
+              }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                  <UserCheck style={{ width:16, height:16, color:'#6366f1' }} />
+                  <p style={{ fontSize:13, fontWeight:600, color:'var(--theme-text-primary)', margin:0 }}>
+                    Logged in as {existingUser.firstname} {existingUser.lastname}
+                  </p>
+                </div>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                  <button
+                    onClick={handleUseExistingSession}
+                    style={{ padding:'6px 12px', borderRadius:8, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:'#6366f1', color:'white' }}
+                  >Continue</button>
+                  <button
+                    onClick={handleLoginAsNewUser}
+                    style={{ padding:'6px 12px', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:600, background:'var(--theme-bg-card)', color:'var(--theme-text-primary)', border:'1px solid var(--theme-border)' }}
+                  >Switch Account</button>
+                  <button
+                    onClick={() => { localStorage.removeItem(`${loginType}Token`); localStorage.removeItem(`${loginType}User`); setShowExistingSession(false); }}
+                    style={{ padding:'6px 12px', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:600, background:'rgba(239,68,68,0.1)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.2)' }}
+                  >
+                    <X style={{ width:11, height:11, display:'inline', marginRight:4 }} />
+                    Logout
+                  </button>
+                </div>
+              </div>
+            )}
 
-                    {/* Login Form */}
-                    {!showExistingSession && (
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Other active sessions */}
+            {activeSessions.filter(s => s !== loginType).length > 0 && (
+              <div style={{ padding:'8px 12px', borderRadius:8, marginBottom:16, fontSize:11, color:'#10b981', background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.2)' }}>
+                Other active: {activeSessions.filter(s => s !== loginType).join(', ')}
+              </div>
+            )}
 
-                                {/* Email */}
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-sm flex items-center gap-1.5">
-                                                <Mail className="w-3.5 h-3.5" />
-                                                Email Address
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    placeholder="Enter your email"
-                                                    type="email"
-                                                    className="h-10 text-sm bg-background/50"
-                                                    {...field}
-                                                />
-                                            </FormControl>
-                                            <FormMessage className="text-xs" />
-                                        </FormItem>
-                                    )}
-                                />
+            {/* Form */}
+            {!showExistingSession && (
+              <form onSubmit={form.handleSubmit(onSubmit)}>
 
-                                {/* Password */}
-                                <FormField
-                                    control={form.control}
-                                    name="password"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <div className="flex items-center justify-between">
-                                                <FormLabel className="text-sm flex items-center gap-1.5">
-                                                    <Lock className="w-3.5 h-3.5" />
-                                                    Password
-                                                </FormLabel>
-                                                <Button
-                                                    type="button"
-                                                    variant="link"
-                                                    className={`p-0 h-auto text-xs font-medium bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
-                                                    onClick={() => setShowForgotPassword(true)}
-                                                >
-                                                    Forgot password?
-                                                </Button>
-                                            </div>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Input
-                                                        placeholder="Enter your password"
-                                                        type={showPassword ? "text" : "password"}
-                                                        className="h-10 text-sm bg-background/50 pr-10"
-                                                        {...field}
-                                                    />
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                                        onClick={() => setShowPassword(!showPassword)}
-                                                    >
-                                                        {showPassword ? (
-                                                            <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-                                                        ) : (
-                                                            <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                                                        )}
-                                                    </Button>
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage className="text-xs" />
-                                        </FormItem>
-                                    )}
-                                />
+                {/* Email */}
+                <div style={{ marginBottom:16 }}>
+                  <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--theme-text-muted)', marginBottom:6 }}>
+                    Email Address
+                  </label>
+                  <div style={{ position:'relative' }}>
+                    <Mail style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', width:16, height:16, color:'var(--theme-text-disabled)' }} />
+                    <input
+                      type="email"
+                      placeholder="your@email.com"
+                      {...form.register('email')}
+                      style={{
+                        width:'100%', height:48, paddingLeft:44, paddingRight:16, borderRadius:12,
+                        fontSize:14, outline:'none', boxSizing:'border-box',
+                        background:'var(--theme-bg-card)', border:'1.5px solid var(--theme-border)',
+                        color:'var(--theme-text-primary)', transition:'border-color 0.15s',
+                      }}
+                      onFocus={e => e.target.style.borderColor = role.accent}
+                      onBlur={e => e.target.style.borderColor = 'var(--theme-border)'}
+                    />
+                  </div>
+                  {form.formState.errors.email && (
+                    <p style={{ fontSize:11, color:'#ef4444', marginTop:4 }}>{form.formState.errors.email.message}</p>
+                  )}
+                </div>
 
-                                {/* Remember Me */}
-                                <FormField
-                                    control={form.control}
-                                    name="rememberMe"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                                            <FormControl>
-                                                <Checkbox
-                                                    checked={field.value}
-                                                    onCheckedChange={field.onChange}
-                                                    className="w-4 h-4"
-                                                />
-                                            </FormControl>
-                                            <FormLabel className="text-sm font-medium cursor-pointer">
-                                                Remember me
-                                            </FormLabel>
-                                        </FormItem>
-                                    )}
-                                />
+                {/* Password */}
+                <div style={{ marginBottom:20 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                    <label style={{ fontSize:12, fontWeight:600, color:'var(--theme-text-muted)' }}>Password</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      style={{ fontSize:12, fontWeight:600, color:role.accent, background:'none', border:'none', cursor:'pointer', padding:0 }}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  <div style={{ position:'relative' }}>
+                    <Lock style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', width:16, height:16, color:'var(--theme-text-disabled)' }} />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Enter your password"
+                      {...form.register('password')}
+                      style={{
+                        width:'100%', height:48, paddingLeft:44, paddingRight:48, borderRadius:12,
+                        fontSize:14, outline:'none', boxSizing:'border-box',
+                        background:'var(--theme-bg-card)', border:'1.5px solid var(--theme-border)',
+                        color:'var(--theme-text-primary)', transition:'border-color 0.15s',
+                      }}
+                      onFocus={e => e.target.style.borderColor = role.accent}
+                      onBlur={e => e.target.style.borderColor = 'var(--theme-border)'}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', padding:0, color:'var(--theme-text-muted)' }}
+                    >
+                      {showPassword ? <EyeOff style={{ width:16, height:16 }} /> : <Eye style={{ width:16, height:16 }} />}
+                    </button>
+                  </div>
+                  {form.formState.errors.password && (
+                    <p style={{ fontSize:11, color:'#ef4444', marginTop:4 }}>{form.formState.errors.password.message}</p>
+                  )}
+                </div>
 
-                                {/* Submit Button */}
-                                <Button
-                                    type="submit"
-                                    className={`w-full h-10 text-sm font-semibold bg-gradient-to-r ${roleConfig.gradient} hover:opacity-90 shadow-md hover:shadow-lg transition-all duration-300`}
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? (
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                            Signing in...
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2">
-                                            <LogIn className="w-3.5 h-3.5" />
-                                            Sign In as {loginType.charAt(0).toUpperCase() + loginType.slice(1)}
-                                        </div>
-                                    )}
-                                </Button>
+                {/* Remember Me */}
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:24 }}>
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    {...form.register('rememberMe')}
+                    style={{ width:16, height:16, accentColor:role.accent, cursor:'pointer' }}
+                  />
+                  <label htmlFor="rememberMe" style={{ fontSize:13, color:'var(--theme-text-muted)', cursor:'pointer', userSelect:'none' }}>
+                    Remember me
+                  </label>
+                </div>
 
-                                {/* Signup link — clients only */}
-                                {loginType === 'client' && (
-                                    <div className="text-center pt-1">
-                                        <p className="text-sm text-muted-foreground">
-                                            Don't have an account?{" "}
-                                            <Button
-                                                variant="link"
-                                                className={`p-0 h-auto text-sm font-semibold bg-gradient-to-r ${roleConfig.textGradient} bg-clip-text text-transparent hover:opacity-80`}
-                                                onClick={() => navigate('/signup')}
-                                            >
-                                                <UserPlus className="w-3.5 h-3.5 mr-1" />
-                                                Create account
-                                            </Button>
-                                        </p>
-                                    </div>
-                                )}
-                            </form>
-                        </Form>
-                    )}
-                </CardContent>
-            </Card>
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  style={{
+                    width:'100%', height:48, borderRadius:12, border:'none', cursor:'pointer',
+                    background: role.gradient, color:'white', fontSize:14, fontWeight:700,
+                    display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                    opacity: isSubmitting ? 0.75 : 1, transition:'opacity 0.15s',
+                    boxShadow: `0 4px 20px rgba(99,102,241,0.3)`,
+                  }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div style={{ width:16, height:16, border:'2px solid white', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
+                      Signing in…
+                    </>
+                  ) : (
+                    <>
+                      <LogIn style={{ width:16, height:16 }} />
+                      Sign in as {ROLE_CONFIG[loginType].label}
+                    </>
+                  )}
+                </button>
 
-            <ForgotPassword
-                open={showForgotPassword}
-                handleClose={() => setShowForgotPassword(false)}
-            />
-        </>
-    );
+                {/* Signup link */}
+                {loginType === 'client' && (
+                  <div style={{ textAlign:'center', marginTop:20 }}>
+                    <span style={{ fontSize:13, color:'var(--theme-text-muted)' }}>Don't have an account?{' '}</span>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/signup')}
+                      style={{ fontSize:13, fontWeight:700, color:role.accent, background:'none', border:'none', cursor:'pointer', padding:0, display:'inline-flex', alignItems:'center', gap:4 }}
+                    >
+                      Create account <ChevronRight style={{ width:13, height:13 }} />
+                    </button>
+                  </div>
+                )}
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      <ForgotPassword open={showForgotPassword} handleClose={() => setShowForgotPassword(false)} />
+    </>
+  );
 }

@@ -251,6 +251,8 @@ export default function NotificationDropdown({
                                 <div
                                     key={notificationId || `notification-${index}`}
                                     className={styling.container}
+                                    onClick={() => !isRead && notificationId && handleMarkAsRead(notificationId)}
+                                    style={{ cursor: !isRead ? 'pointer' : 'default' }}
                                 >
                                     <div className="flex items-start space-x-2">
                                         {/* Unread indicator */}
