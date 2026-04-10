@@ -1,6 +1,6 @@
 // Frontend/src/pages/client/financial/Withdrawal.tsx
-import { useState, useEffect } from "react";
-import { Wallet, AlertCircle, Loader, CheckCircle2, Building2, Bitcoin, Shield, ChevronRight, ChevronDown, Copy } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Wallet, AlertCircle, Loader, CheckCircle2, Building2, Bitcoin, Shield, ChevronRight, ChevronDown, Copy, KeyRound, Mail, RefreshCw } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -147,6 +147,15 @@ export default function Withdrawal() {
   const [bankDetails, setBankDetails] = useState<BankDetails>({ bankName: "", accountHolderName: "", accountNumber: "", ifscCode: "" });
   const [eWalletDetails, setEWalletDetails] = useState<EWalletDetails>({ walletId: "", type: "" });
 
+  // OTP state
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [otpKey, setOtpKey] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpResendCooldown, setOtpResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const getToken = () => localStorage.getItem("clientToken");
   const authHeaders = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
 
@@ -237,12 +246,69 @@ export default function Withdrawal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || Number(amount) < 1) return void toast.error("Minimum withdrawal is $1");
+    const acc = accounts.find(a => a._id === selectedAccount);
+    if (!acc) return void toast.error("Select an account");
+    if (Number(amount) > acc.balance) return void toast.error("Amount exceeds available balance");
+    // Open OTP verification before submitting
+    setOtpOpen(true);
+    setOtpSent(false);
+    setOtpValue('');
+    setOtpKey('');
+    sendWithdrawalOTP();
+  };
+
+  const sendWithdrawalOTP = async () => {
+    try {
+      setOtpLoading(true);
+      const token = getToken();
+      const response = await axios.post(`${API_BASE_URL}/api/otp/withdrawal/send`,
+        { amount, accountId: selectedAccount, paymentMethod: method === 'ewallet' ? eWalletType : method },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.data.success) {
+        setOtpKey(response.data.otpKey);
+        setOtpSent(true);
+        toast.success('OTP sent to your registered email');
+        setOtpResendCooldown(60);
+        if (cooldownRef.current) clearInterval(cooldownRef.current);
+        cooldownRef.current = setInterval(() => {
+          setOtpResendCooldown(prev => { if (prev <= 1) { clearInterval(cooldownRef.current!); return 0; } return prev - 1; });
+        }, 1000);
+      }
+    } catch {
+      toast.error('Failed to send OTP. Please try again.');
+      setOtpOpen(false);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const verifyWithdrawalOTP = async () => {
+    if (otpValue.length !== 6) return void toast.error('Enter a valid 6-digit OTP');
+    try {
+      setOtpLoading(true);
+      const token = getToken();
+      const verifyRes = await axios.post(`${API_BASE_URL}/api/otp/withdrawal/verify`,
+        { otpKey, otp: otpValue },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (verifyRes.data.success) {
+        toast.success('OTP verified! Processing withdrawal...');
+        setOtpOpen(false);
+        await submitWithdrawal();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Invalid OTP. Please try again.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const submitWithdrawal = async () => {
     setIsSubmitting(true);
     try {
       const acc = accounts.find(a => a._id === selectedAccount);
-      if (!acc) return void toast.error("Select an account");
-      if (Number(amount) > acc.balance) return void toast.error("Amount exceeds available balance");
-
+      if (!acc) return;
       await axios.post(`${API_BASE_URL}/api/withdrawals`, {
         accountId: selectedAccount,
         accountNumber: acc.mt5Account,
@@ -252,7 +318,6 @@ export default function Withdrawal() {
         bankDetails: method === "bank" ? bankDetails : undefined,
         eWalletDetails: method === "ewallet" ? eWalletDetails : undefined
       }, authHeaders());
-
       const res = await axios.get(`${API_BASE_URL}/api/withdrawals/user`, authHeaders());
       setWithdrawalHistory(res.data.data);
       setAmount(""); setMethod(""); setEWalletType(""); setHasOpenTrades(false); setStep(0);
@@ -560,13 +625,13 @@ export default function Withdrawal() {
             type="submit"
             whileTap={{ scale: 0.97 }}
             disabled={isSubmitting || !amount || Number(amount) < 1}
-            className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+            className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
             style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
             {isSubmitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader className="w-4 h-4 animate-spin" />Processing…
-              </span>
-            ) : 'Confirm Withdrawal Request'}
+              <><Loader className="w-4 h-4 animate-spin" />Processing…</>
+            ) : (
+              <><KeyRound className="w-4 h-4" />Verify & Submit Withdrawal</>
+            )}
           </motion.button>
         </form>
       </StepWrapper>
@@ -652,6 +717,101 @@ export default function Withdrawal() {
           )}
         </div>
       </div>
+      {/* ── Withdrawal OTP Modal ─────────────────────────────────────────── */}
+      <AnimatePresence>
+        {otpOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setOtpOpen(false); }}>
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+              className="w-full max-w-sm rounded-2xl overflow-hidden"
+              style={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+              {/* Header */}
+              <div className="p-6 pb-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
+                    <KeyRound className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold" style={{ color: 'var(--theme-text-primary)' }}>Verify Withdrawal</h3>
+                    <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>OTP verification required</p>
+                  </div>
+                </div>
+                <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)' }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Mail className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--theme-text-muted)' }} />
+                    <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
+                      {!otpSent ? 'Sending OTP to your registered email…' : 'A 6-digit OTP has been sent to your email. Enter it below to confirm the withdrawal.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 pt-2" style={{ borderTop: '1px solid var(--theme-border)' }}>
+                    <p className="text-xs font-semibold" style={{ color: 'var(--theme-text-primary)' }}>Amount: </p>
+                    <p className="text-sm font-bold text-red-500">${Number(amount).toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+              {/* OTP Input */}
+              <div className="px-6 pb-4">
+                {!otpSent && otpLoading ? (
+                  <div className="flex justify-center py-6">
+                    <Loader className="w-8 h-8 animate-spin" style={{ color: 'var(--theme-primary)' }} />
+                  </div>
+                ) : (
+                  <>
+                    <label className="text-xs font-semibold block mb-2" style={{ color: 'var(--theme-text-muted)' }}>Enter 6-Digit OTP</label>
+                    <input
+                      type="text" inputMode="numeric" maxLength={6}
+                      value={otpValue}
+                      onChange={e => setOtpValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="• • • • • •"
+                      className="w-full text-center tracking-[0.5em] text-2xl font-mono rounded-xl px-4 py-3 outline-none transition-all"
+                      style={{
+                        background: 'var(--theme-bg-main)', border: '2px solid',
+                        borderColor: otpValue.length === 6 ? '#10b981' : 'var(--theme-border)',
+                        color: 'var(--theme-text-primary)'
+                      }}
+                      autoFocus
+                    />
+                    <div className="flex justify-center mt-3">
+                      {otpResendCooldown > 0 ? (
+                        <p className="text-xs" style={{ color: 'var(--theme-text-disabled)' }}>Resend in {otpResendCooldown}s</p>
+                      ) : (
+                        <button type="button" onClick={() => { setOtpValue(''); sendWithdrawalOTP(); }}
+                          disabled={otpLoading}
+                          className="flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
+                          style={{ color: 'var(--theme-primary)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          <RefreshCw className="w-3 h-3" />Resend OTP
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+              {/* Actions */}
+              <div className="px-6 pb-6 flex gap-3">
+                <button type="button" onClick={() => setOtpOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
+                  style={{ background: 'var(--theme-bg-main)', border: '1px solid var(--theme-border)', color: 'var(--theme-text-primary)' }}>
+                  Cancel
+                </button>
+                <motion.button
+                  type="button" whileTap={{ scale: 0.97 }}
+                  onClick={verifyWithdrawalOTP}
+                  disabled={otpLoading || otpValue.length !== 6}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
+                  {otpLoading ? <><Loader className="w-4 h-4 animate-spin" />Verifying…</> : <><CheckCircle2 className="w-4 h-4" />Verify & Submit</>}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

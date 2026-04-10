@@ -15,6 +15,7 @@ import {
   TrendingUp,
   BarChart2,
   ChevronDown,
+  ShieldCheck,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -49,6 +50,7 @@ const sections: NavSection[] = [
       { title: "Deposits", icon: ArrowDownCircle, path: "/admin/features/deposits" },
       { title: "Withdrawals", icon: ArrowUpCircle, path: "/admin/features/withdrawals" },
       { title: "Transactions", icon: Receipt, path: "/admin/features/transactions" },
+      { title: "KYC Verification", icon: ShieldCheck, path: "/admin/features/kyc-verification" },
     ],
   },
   {

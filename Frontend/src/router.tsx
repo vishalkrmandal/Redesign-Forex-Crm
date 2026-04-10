@@ -39,6 +39,7 @@ import ClientsPage from './pages/admin/features/ClientsPage';
 import DepositsPage from './pages/admin/features/DepositsPage';
 import WithdrawalsPage from './pages/admin/features/WithdrawalsPage';
 import TransactionsPage from './pages/admin/features/TransactionsPage';
+import KYCVerificationPage from './pages/admin/features/KYCVerificationPage';
 import IBPartnersPage from './pages/admin/Ibpartner/IBPartnersPage';
 import ConfigurationPage from './pages/admin/configure/ConfigurePage';
 import ClientTickets from './pages/admin/support/admin/ticket/ClientTickets';
@@ -313,6 +314,10 @@ const routes: RouteObject[] = [
               {
                 path: 'transactions',
                 element: <TransactionsPage />
+              },
+              {
+                path: 'kyc-verification',
+                element: <KYCVerificationPage />
               }
             ]
           },

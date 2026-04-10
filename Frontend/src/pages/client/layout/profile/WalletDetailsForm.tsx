@@ -1,9 +1,9 @@
-// Frontend/src/pages/client/layout/profile/WalletDetailsForm.tsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Save, Copy, Check, ShieldCheck, Wallet } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Save, Loader2, Copy, CheckCircle2 } from 'lucide-react';
+import OTPVerification from './OTPVerification';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -17,297 +17,156 @@ interface WalletDetailsFormProps {
   setProfileData: (data: any) => void;
 }
 
-/* ── Per-token config ────────────────────────────────────────────────────── */
 const WALLETS = [
-  {
-    key: 'tetherWalletAddress',
-    label: 'Tether (USDT) Wallet',
-    symbol: 'USDT',
-    placeholder: 'Enter USDT wallet address (TRC20 / ERC20)',
-    color: '#26a17b',
-    bg: 'rgba(38,161,123,0.1)',
-    border: 'rgba(38,161,123,0.25)',
-    logo: '₮',
-    network: 'TRC20 / ERC20',
-  },
-  {
-    key: 'ethWalletAddress',
-    label: 'Ethereum (ETH) Wallet',
-    symbol: 'ETH',
-    placeholder: '0x... (ERC20 address)',
-    color: '#627eea',
-    bg: 'rgba(98,126,234,0.1)',
-    border: 'rgba(98,126,234,0.25)',
-    logo: 'Ξ',
-    network: 'ERC20',
-  },
-  {
-    key: 'trxWalletAddress',
-    label: 'TRON (TRX) Wallet',
-    symbol: 'TRX',
-    placeholder: 'T... (TRON address)',
-    color: '#ef4444',
-    bg: 'rgba(239,68,68,0.1)',
-    border: 'rgba(239,68,68,0.25)',
-    logo: 'T',
-    network: 'TRC20',
-  },
+  { name: 'tetherWalletAddress' as const, label: 'USDT (Tether)', placeholder: 'Enter USDT wallet address', icon: '₮', color: '#26a17b', bgGradient: 'linear-gradient(135deg, #1a5c45, #26a17b)', network: 'TRC-20 / ERC-20' },
+  { name: 'ethWalletAddress' as const, label: 'Ethereum (ETH)', placeholder: 'Enter ETH wallet address (0x...)', icon: 'Ξ', color: '#627eea', bgGradient: 'linear-gradient(135deg, #1a2850, #627eea)', network: 'ERC-20' },
+  { name: 'trxWalletAddress' as const, label: 'TRON (TRX)', placeholder: 'Enter TRX wallet address (T...)', icon: 'T', color: '#ef0027', bgGradient: 'linear-gradient(135deg, #4a0010, #ef0027)', network: 'TRC-20' },
 ];
 
-const SectionHead = ({ color, label }: { color: string; label: string }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-    <div style={{ width: 4, height: 18, borderRadius: 2, background: color, flexShrink: 0 }} />
-    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', letterSpacing: '0.09em', textTransform: 'uppercase' }}>
-      {label}
-    </span>
-  </div>
-);
-
 const WalletDetailsForm: React.FC<WalletDetailsFormProps> = ({ initialData, setProfileData }) => {
-  const [formData, setFormData] = useState({
-    tetherWalletAddress: initialData.tetherWalletAddress || '',
-    ethWalletAddress: initialData.ethWalletAddress || '',
-    trxWalletAddress: initialData.trxWalletAddress || '',
-  });
+  const [formData, setFormData] = useState(initialData);
   const [loading, setLoading] = useState(false);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<any>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    setFormData({
-      tetherWalletAddress: initialData.tetherWalletAddress || '',
-      ethWalletAddress: initialData.ethWalletAddress || '',
-      trxWalletAddress: initialData.trxWalletAddress || '',
-    });
-  }, [initialData]);
-
-  const handleChange = (key: string, value: string) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
-    setSaved(false);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCopy = (key: string, value: string) => {
+  const handleCopy = (field: string, value: string) => {
     if (!value) return;
-    navigator.clipboard.writeText(value).then(() => {
-      setCopied(key);
-      setTimeout(() => setCopied(null), 1800);
-      toast.success('Address copied to clipboard');
-    });
+    navigator.clipboard.writeText(value);
+    setCopiedField(field);
+    toast.success('Address copied!');
+    setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setPendingFormData(formData);
+    setOtpDialogOpen(true);
+  };
+
+  const handleOTPVerified = async () => {
+    if (!pendingFormData) return;
     setLoading(true);
     try {
       const token = localStorage.getItem('clientToken');
-      if (!token) { toast.error('Please login to update wallet details'); return; }
-      const res = await axios.post(`${API_BASE_URL}/api/profile/wallet-details`, formData, {
-        headers: { Authorization: `Bearer ${token}` },
+      const sessionId = sessionStorage.getItem('sessionId');
+      const sessionToken = sessionStorage.getItem('sessionToken');
+      if (!token) { toast.error("Please login to update your wallet details"); return; }
+
+      const response = await axios.post(`${API_BASE_URL}/api/profile/wallet-details`, pendingFormData, {
+        headers: { Authorization: `Bearer ${token}`, 'x-session-id': sessionId || '', 'x-session-token': sessionToken || '' }
       });
-      if (res.data.success) {
-        toast.success('Wallet details updated successfully');
-        setSaved(true);
-        setProfileData((prev: any) => ({ ...prev, walletDetails: formData }));
+
+      if (response.data.success) {
+        toast.success("Wallet details updated. Pending KYC verification.");
+        setProfileData((prev: { walletDetails?: typeof formData }) => ({ ...prev, walletDetails: pendingFormData }));
       }
     } catch {
-      toast.error('Failed to update wallet details');
+      toast.error("Failed to update wallet details");
     } finally {
       setLoading(false);
     }
   };
 
-  const hasData = Object.values(formData).some(v => v.trim() !== '');
-
   return (
     <form onSubmit={handleSubmit}>
+      <div className="space-y-4">
 
-      {/* ── Security Notice ──────────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'flex-start', gap: 12,
-        padding: '14px 16px', borderRadius: 12, marginBottom: 24,
-        background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)',
-      }}>
-        <ShieldCheck style={{ width: 18, height: 18, color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
-        <div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b', margin: '0 0 2px' }}>
-            Crypto Wallet Security
-          </p>
-          <p style={{ fontSize: 12, color: 'var(--theme-text-muted)', margin: 0, lineHeight: 1.5 }}>
-            Double-check your wallet addresses before saving. Incorrect addresses may result in permanent loss of funds. We are not liable for errors.
-          </p>
+        {/* Info Banner */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl px-5 py-4 flex items-start gap-3"
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08))', border: '1px solid rgba(99,102,241,0.2)' }}>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(99,102,241,0.15)' }}>
+            <span className="text-sm font-bold" style={{ color: '#6366f1' }}>₿</span>
+          </div>
+          <div>
+            <p className="text-sm font-bold" style={{ color: 'var(--theme-text-primary)' }}>Crypto Wallet Addresses</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--theme-text-muted)' }}>
+              Add your wallet addresses for crypto withdrawals. Double-check — crypto transactions are irreversible.
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Wallet Cards */}
+        <div className="space-y-3">
+          {WALLETS.map(({ name, label, placeholder, icon, color, bgGradient, network }, idx) => {
+            const value = formData[name] || '';
+            const hasValue = !!value.trim();
+            const isFocused = focusedField === name;
+            const isCopied = copiedField === name;
+
+            return (
+              <motion.div key={name}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.06 }}
+                className="rounded-2xl overflow-hidden"
+                style={{ background: 'var(--theme-bg-card)', border: `1px solid ${isFocused ? color + '60' : 'var(--theme-border)'}`, transition: 'border-color 0.2s' }}>
+                <div className="px-5 py-3 flex items-center gap-3" style={{ background: bgGradient }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/15 font-bold text-white text-base">{icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-bold text-sm">{label}</p>
+                    <p className="text-white/50 text-[10px]">{network}</p>
+                  </div>
+                  {hasValue && (
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                      className="w-6 h-6 rounded-full flex items-center justify-center bg-white/20">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                    </motion.div>
+                  )}
+                </div>
+                <div className="px-5 py-4">
+                  <div className="relative">
+                    <input name={name} type="text" value={value} onChange={handleChange}
+                      placeholder={placeholder}
+                      className="w-full pr-12 pl-4 py-2.5 rounded-xl text-sm font-mono outline-none transition-all"
+                      style={{
+                        background: 'var(--theme-bg-main)',
+                        border: `1.5px solid ${isFocused ? color : hasValue ? `${color}50` : 'var(--theme-border)'}`,
+                        color: 'var(--theme-text-primary)'
+                      }}
+                      onFocus={() => setFocusedField(name)}
+                      onBlur={() => setFocusedField(null)} />
+                    {hasValue && (
+                      <button type="button" onClick={() => handleCopy(name, value)}
+                        className="absolute inset-y-0 right-3 flex items-center justify-center w-8 transition-opacity hover:opacity-70">
+                        {isCopied ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" style={{ color: 'var(--theme-text-muted)' }} />}
+                      </button>
+                    )}
+                  </div>
+                  {hasValue && (
+                    <p className="text-[10px] mt-1.5 truncate" style={{ color: 'var(--theme-text-disabled)' }}>
+                      {value.slice(0, 12)}…{value.slice(-8)}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
+
+        {/* Footer */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+          className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl px-5 py-4"
+          style={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+          <p className="text-xs text-center sm:text-left" style={{ color: 'var(--theme-text-muted)' }}>
+            Changes require OTP verification and admin KYC approval.
+          </p>
+          <motion.button type="submit" whileTap={{ scale: 0.97 }} disabled={loading}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60 flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Saving…</> : <><Save className="w-4 h-4" />Save & Verify</>}
+          </motion.button>
+        </motion.div>
       </div>
 
-      {/* ── Wallet Cards ─────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
-        {WALLETS.map((wallet, idx) => {
-          const isFocused = focusedField === wallet.key;
-          const value = (formData as any)[wallet.key] as string;
-          const hasValue = value.trim() !== '';
-
-          return (
-            <motion.div
-              key={wallet.key}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: idx * 0.06 }}
-              style={{
-                background: 'var(--theme-bg-card)', borderRadius: 16,
-                border: `1px solid ${isFocused ? wallet.color : hasValue ? wallet.border : 'var(--theme-border)'}`,
-                overflow: 'hidden',
-                boxShadow: isFocused ? `0 0 0 3px ${wallet.color}20` : 'none',
-                transition: 'border-color 0.15s, box-shadow 0.15s',
-              }}
-            >
-              {/* Card header */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '14px 18px',
-                background: hasValue ? wallet.bg : 'transparent',
-                borderBottom: `1px solid ${hasValue ? wallet.border : 'var(--theme-border)'}`,
-                transition: 'background 0.2s',
-              }}>
-                {/* Token logo */}
-                <div style={{
-                  width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                  background: wallet.bg, border: `1px solid ${wallet.border}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 16, fontWeight: 900, color: wallet.color,
-                  fontFamily: 'monospace',
-                }}>
-                  {wallet.logo}
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--theme-text-primary)', marginBottom: 2 }}>
-                    {wallet.label}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
-                      background: wallet.bg, color: wallet.color, border: `1px solid ${wallet.border}`,
-                      textTransform: 'uppercase', letterSpacing: '0.07em',
-                    }}>
-                      {wallet.symbol}
-                    </span>
-                    <span style={{ fontSize: 11, color: 'var(--theme-text-disabled)' }}>{wallet.network}</span>
-                  </div>
-                </div>
-
-                {/* Filled dot */}
-                {hasValue && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: wallet.color }} />
-                    <span style={{ fontSize: 11, color: wallet.color, fontWeight: 600 }}>Saved</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Input area */}
-              <div style={{ padding: 18 }}>
-                <label style={{
-                  display: 'block', fontSize: 11, fontWeight: 700,
-                  color: isFocused ? wallet.color : 'var(--theme-text-muted)',
-                  marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.07em',
-                  transition: 'color 0.15s',
-                }}>
-                  Wallet Address
-                </label>
-
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {/* Wallet icon */}
-                  <div style={{
-                    width: 40, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, borderRadius: 10,
-                    background: isFocused ? wallet.bg : 'var(--theme-bg-main)',
-                    border: `1px solid ${isFocused ? wallet.border : 'var(--theme-border)'}`,
-                    transition: 'all 0.15s',
-                  }}>
-                    <Wallet style={{ width: 16, height: 16, color: isFocused ? wallet.color : 'var(--theme-text-disabled)' }} />
-                  </div>
-
-                  <input
-                    type="text"
-                    value={value}
-                    onChange={e => handleChange(wallet.key, e.target.value)}
-                    placeholder={wallet.placeholder}
-                    onFocus={() => setFocusedField(wallet.key)}
-                    onBlur={() => setFocusedField(null)}
-                    style={{
-                      flex: 1, height: 44, paddingLeft: 14, paddingRight: 14, borderRadius: 10,
-                      border: `1.5px solid ${isFocused ? wallet.color : hasValue ? wallet.border : 'var(--theme-border)'}`,
-                      outline: 'none', fontSize: 13, fontFamily: 'monospace',
-                      background: 'var(--theme-bg-main)',
-                      color: 'var(--theme-text-primary)',
-                      transition: 'border-color 0.15s',
-                    }}
-                  />
-
-                  {/* Copy button */}
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(wallet.key, value)}
-                    disabled={!hasValue}
-                    title={hasValue ? 'Copy address' : 'No address to copy'}
-                    style={{
-                      width: 44, height: 44, borderRadius: 10, border: `1px solid ${hasValue ? wallet.border : 'var(--theme-border)'}`,
-                      background: hasValue ? wallet.bg : 'var(--theme-bg-main)',
-                      cursor: hasValue ? 'pointer' : 'not-allowed',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.15s', flexShrink: 0,
-                    }}
-                  >
-                    {copied === wallet.key
-                      ? <Check style={{ width: 15, height: 15, color: '#10b981' }} />
-                      : <Copy style={{ width: 15, height: 15, color: hasValue ? wallet.color : 'var(--theme-text-disabled)' }} />
-                    }
-                  </button>
-                </div>
-
-                {/* Address length hint */}
-                {hasValue && (
-                  <p style={{ fontSize: 11, color: 'var(--theme-text-disabled)', margin: '6px 0 0', paddingLeft: 2 }}>
-                    {value.length} characters &nbsp;·&nbsp; starts with "{value.slice(0, 4)}…"
-                  </p>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* ── Actions ──────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          type="submit"
-          disabled={loading || !hasData}
-          style={{
-            height: 46, paddingLeft: 28, paddingRight: 28, borderRadius: 12, border: 'none',
-            cursor: loading || !hasData ? 'not-allowed' : 'pointer',
-            background: saved ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            color: 'white', fontSize: 14, fontWeight: 700,
-            display: 'flex', alignItems: 'center', gap: 8,
-            opacity: loading || !hasData ? 0.7 : 1,
-            transition: 'all 0.2s',
-            boxShadow: loading || !hasData ? 'none' : saved ? '0 4px 16px rgba(16,185,129,0.35)' : '0 4px 16px rgba(99,102,241,0.35)',
-          }}
-        >
-          {loading ? (
-            <>
-              <div style={{ width: 15, height: 15, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-              Saving…
-            </>
-          ) : (
-            <>
-              <Save style={{ width: 15, height: 15 }} />
-              {saved ? 'Saved!' : 'Save Wallet Details'}
-            </>
-          )}
-        </button>
-      </div>
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {/* OTP Dialog */}
+      <OTPVerification open={otpDialogOpen} onOpenChange={setOtpDialogOpen}
+        updateType="walletDetails" formData={pendingFormData} onVerified={handleOTPVerified} />
     </form>
   );
 };

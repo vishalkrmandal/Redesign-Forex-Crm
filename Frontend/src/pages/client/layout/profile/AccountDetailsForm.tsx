@@ -1,9 +1,9 @@
-// Frontend/src/pages/client/layout/profile/AccountDetailsForm.tsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Building2, User, Hash, Code2, Save, ShieldCheck, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Building2, CreditCard, Hash, Code2, Save, Loader2, ShieldCheck } from 'lucide-react';
+import OTPVerification from './OTPVerification';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -18,259 +18,165 @@ interface AccountDetailsFormProps {
 }
 
 const FIELDS = [
-  {
-    key: 'bankName',
-    label: 'Name of Bank',
-    placeholder: 'e.g. State Bank of India',
-    icon: Building2,
-    color: '#6366f1',
-    hint: 'Enter the full official name of your bank',
-  },
-  {
-    key: 'accountHolderName',
-    label: 'Account Holder Name',
-    placeholder: 'Full name as on bank account',
-    icon: User,
-    color: '#10b981',
-    hint: 'Must match exactly as on your bank records',
-  },
-  {
-    key: 'accountNumber',
-    label: 'Account Number',
-    placeholder: 'Enter your bank account number',
-    icon: Hash,
-    color: '#f59e0b',
-    hint: 'Double-check for accuracy',
-  },
-  {
-    key: 'ifscSwiftCode',
-    label: 'IFSC / SWIFT Code',
-    placeholder: 'e.g. SBIN0001234 or SBININBBXXX',
-    icon: Code2,
-    color: '#8b5cf6',
-    hint: 'Used for domestic (IFSC) or international (SWIFT) transfers',
-  },
+  { name: 'bankName' as const, label: 'Bank Name', placeholder: 'e.g. HDFC Bank', icon: Building2, color: '#6366f1', hint: 'Full name of your bank' },
+  { name: 'accountHolderName' as const, label: 'Account Holder Name', placeholder: 'Full legal name', icon: CreditCard, color: '#10b981', hint: 'Name as on bank records' },
+  { name: 'accountNumber' as const, label: 'Account Number', placeholder: 'Enter account number', icon: Hash, color: '#f59e0b', hint: 'Minimum 8 digits' },
+  { name: 'ifscSwiftCode' as const, label: 'IFSC / SWIFT Code', placeholder: 'e.g. HDFC0001234', icon: Code2, color: '#ec4899', hint: 'Bank routing code' },
 ];
 
-const SectionHead = ({ color, label }: { color: string; label: string }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-    <div style={{ width: 4, height: 18, borderRadius: 2, background: color, flexShrink: 0 }} />
-    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-text-muted)', letterSpacing: '0.09em', textTransform: 'uppercase' }}>
-      {label}
-    </span>
-  </div>
-);
-
 const AccountDetailsForm: React.FC<AccountDetailsFormProps> = ({ initialData, setProfileData }) => {
-  const [formData, setFormData] = useState({
-    bankName: initialData.bankName || '',
-    accountHolderName: initialData.accountHolderName || '',
-    accountNumber: initialData.accountNumber || '',
-    ifscSwiftCode: initialData.ifscSwiftCode || '',
-  });
+  const [formData, setFormData] = useState(initialData);
   const [loading, setLoading] = useState(false);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<any>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    setFormData({
-      bankName: initialData.bankName || '',
-      accountHolderName: initialData.accountHolderName || '',
-      accountNumber: initialData.accountNumber || '',
-      ifscSwiftCode: initialData.ifscSwiftCode || '',
-    });
-  }, [initialData]);
-
-  const handleChange = (key: string, value: string) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
-    setSaved(false);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const errors: string[] = [];
+    if (!formData.bankName?.trim()) errors.push('Please enter the bank name');
+    if (!formData.accountHolderName?.trim()) errors.push('Please enter the account holder name');
+    if (!formData.accountNumber?.trim()) errors.push('Please enter the account number');
+    else if (formData.accountNumber.length < 8) errors.push('Account number must be at least 8 characters');
+    if (!formData.ifscSwiftCode?.trim()) errors.push('Please enter the IFSC/SWIFT code');
+    else if (formData.ifscSwiftCode.length < 8) errors.push('IFSC/SWIFT code must be at least 8 characters');
+    if (errors.length > 0) { errors.forEach(err => toast.error(err)); return; }
+    setPendingFormData(formData);
+    setOtpDialogOpen(true);
+  };
+
+  const handleOTPVerified = async () => {
+    if (!pendingFormData) return;
     setLoading(true);
     try {
       const token = localStorage.getItem('clientToken');
-      if (!token) { toast.error('Please login to update your account details'); return; }
-      const res = await axios.post(`${API_BASE_URL}/api/profile/account-details`, formData, {
-        headers: { Authorization: `Bearer ${token}` },
+      const sessionId = sessionStorage.getItem('sessionId');
+      const sessionToken = sessionStorage.getItem('sessionToken');
+      if (!token) { toast.error("Please login to update your account details"); return; }
+
+      const response = await axios.post(`${API_BASE_URL}/api/profile/account-details`, pendingFormData, {
+        headers: { Authorization: `Bearer ${token}`, 'x-session-id': sessionId || '', 'x-session-token': sessionToken || '' }
       });
-      if (res.data.success) {
-        toast.success('Bank details updated successfully');
-        setSaved(true);
-        setProfileData((prev: any) => ({ ...prev, bankDetails: formData }));
+
+      if (response.data.success) {
+        toast.success("Bank details updated. Pending KYC verification.");
+        setProfileData((prev: { bankDetails?: typeof formData }) => ({ ...prev, bankDetails: pendingFormData }));
       }
     } catch {
-      toast.error('Failed to update account details');
+      toast.error("Failed to update account details");
     } finally {
       setLoading(false);
     }
   };
 
-  const hasData = Object.values(formData).some(v => v.trim() !== '');
+  const allFilled = FIELDS.every(f => !!formData[f.name]?.trim());
 
   return (
     <form onSubmit={handleSubmit}>
-      {/* ── Security Notice ────────────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'flex-start', gap: 12,
-        padding: '14px 16px', borderRadius: 12, marginBottom: 24,
-        background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.18)',
-      }}>
-        <ShieldCheck style={{ width: 18, height: 18, color: '#6366f1', flexShrink: 0, marginTop: 1 }} />
-        <div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#6366f1', margin: '0 0 2px' }}>
-            Secure Banking Information
-          </p>
-          <p style={{ fontSize: 12, color: 'var(--theme-text-muted)', margin: 0, lineHeight: 1.5 }}>
-            Your bank details are encrypted and used only for withdrawal processing. We never share this information with third parties.
-          </p>
-        </div>
-      </div>
+      <div className="space-y-4">
 
-      {/* ── Bank Details Card ──────────────────────────────────────────────── */}
-      <div style={{
-        background: 'var(--theme-bg-card)', borderRadius: 16,
-        border: '1px solid var(--theme-border)', padding: 24, marginBottom: 20,
-      }}>
-        <SectionHead color="#6366f1" label="Bank Account Details" />
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          {FIELDS.map(field => {
-            const Icon = field.icon;
-            const isFocused = focusedField === field.key;
-            const hasValue = (formData as any)[field.key]?.trim() !== '';
-
-            return (
-              <motion.div
-                key={field.key}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <label style={{ display: 'block', marginBottom: 6 }}>
-                  <span style={{
-                    fontSize: 12, fontWeight: 700,
-                    color: isFocused ? field.color : 'var(--theme-text-muted)',
-                    transition: 'color 0.15s',
-                  }}>
-                    {field.label}
-                  </span>
-                </label>
-
-                {/* Input wrapper */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 0,
-                  borderRadius: 12, overflow: 'hidden',
-                  border: `1.5px solid ${isFocused ? field.color : hasValue ? 'rgba(99,102,241,0.3)' : 'var(--theme-border)'}`,
-                  background: 'var(--theme-bg-main)',
-                  transition: 'border-color 0.15s',
-                  boxShadow: isFocused ? `0 0 0 3px ${field.color}18` : 'none',
-                }}>
-                  {/* Icon prefix */}
-                  <div style={{
-                    width: 44, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: isFocused ? `${field.color}12` : 'transparent',
-                    borderRight: `1px solid ${isFocused ? field.color + '30' : 'var(--theme-border)'}`,
-                    transition: 'all 0.15s', flexShrink: 0,
-                  }}>
-                    <Icon style={{ width: 16, height: 16, color: isFocused ? field.color : 'var(--theme-text-disabled)' }} />
-                  </div>
-
-                  <input
-                    type="text"
-                    value={(formData as any)[field.key]}
-                    onChange={e => handleChange(field.key, e.target.value)}
-                    placeholder={field.placeholder}
-                    onFocus={() => setFocusedField(field.key)}
-                    onBlur={() => setFocusedField(null)}
-                    style={{
-                      flex: 1, height: 46, paddingLeft: 14, paddingRight: 14, border: 'none',
-                      outline: 'none', fontSize: 14, background: 'transparent',
-                      color: 'var(--theme-text-primary)',
-                    }}
-                  />
-
-                  {/* Filled indicator */}
-                  {hasValue && (
-                    <div style={{ paddingRight: 12, flexShrink: 0 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: field.color }} />
-                    </div>
-                  )}
-                </div>
-
-                {/* Hint text */}
-                <p style={{ fontSize: 11, color: 'var(--theme-text-disabled)', margin: '4px 0 0', paddingLeft: 2 }}>
-                  {field.hint}
-                </p>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Completeness indicator ─────────────────────────────────────────── */}
-      {(() => {
-        const filled = Object.values(formData).filter(v => v.trim() !== '').length;
-        const total = 4;
-        const pct = Math.round((filled / total) * 100);
-        return (
-          <div style={{
-            background: 'var(--theme-bg-card)', borderRadius: 12,
-            border: '1px solid var(--theme-border)', padding: '14px 18px',
-            marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12,
-          }}>
-            <AlertCircle style={{ width: 15, height: 15, color: filled < total ? '#f59e0b' : '#10b981', flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span style={{ fontSize: 12, color: 'var(--theme-text-muted)', fontWeight: 600 }}>
-                  {filled < total ? `${total - filled} field${total - filled > 1 ? 's' : ''} remaining` : 'All fields completed'}
-                </span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: filled < total ? '#f59e0b' : '#10b981' }}>{pct}%</span>
+        {/* Bank Card Visual */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-2xl p-5"
+          style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)', minHeight: 140 }}>
+          <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #818cf8, transparent)' }} />
+          <div className="absolute -right-5 top-10 w-24 h-24 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #c4b5fd, transparent)' }} />
+          <div className="flex items-start justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/10">
+                <Building2 className="w-5 h-5 text-white" />
               </div>
-              <div style={{ height: 4, borderRadius: 2, background: 'var(--theme-border)', overflow: 'hidden' }}>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${pct}%` }}
-                  transition={{ duration: 0.5, ease: 'easeOut' }}
-                  style={{ height: '100%', borderRadius: 2, background: filled < total ? '#f59e0b' : '#10b981' }}
-                />
+              <div>
+                <p className="text-white font-bold text-sm">{formData.bankName || 'Bank Name'}</p>
+                <p className="text-white/50 text-[10px]">Banking Details</p>
               </div>
             </div>
+            <ShieldCheck className="w-5 h-5 text-white/40" />
           </div>
-        );
-      })()}
+          <div>
+            <p className="text-white/40 text-[10px] uppercase tracking-widest mb-1">Account Number</p>
+            <p className="text-white font-mono text-base tracking-widest">
+              {formData.accountNumber ? `•••• •••• ${String(formData.accountNumber).slice(-4)}` : '•••• •••• ••••'}
+            </p>
+          </div>
+          <div className="mt-3 flex items-center gap-6">
+            <div>
+              <p className="text-white/40 text-[10px] uppercase tracking-widest">Holder</p>
+              <p className="text-white/80 text-xs font-semibold">{formData.accountHolderName || '—'}</p>
+            </div>
+            <div>
+              <p className="text-white/40 text-[10px] uppercase tracking-widest">IFSC/SWIFT</p>
+              <p className="text-white/80 text-xs font-mono">{formData.ifscSwiftCode || '—'}</p>
+            </div>
+          </div>
+        </motion.div>
 
-      {/* ── Actions ────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          type="submit"
-          disabled={loading || !hasData}
-          style={{
-            height: 46, paddingLeft: 28, paddingRight: 28, borderRadius: 12, border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
-            background: saved ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            color: 'white', fontSize: 14, fontWeight: 700,
-            display: 'flex', alignItems: 'center', gap: 8,
-            opacity: loading || !hasData ? 0.7 : 1,
-            transition: 'all 0.2s',
-            boxShadow: loading || !hasData ? 'none' : saved ? '0 4px 16px rgba(16,185,129,0.35)' : '0 4px 16px rgba(99,102,241,0.35)',
-          }}
-        >
-          {loading ? (
-            <>
-              <div style={{ width: 15, height: 15, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-              Saving…
-            </>
-          ) : (
-            <>
-              <Save style={{ width: 15, height: 15 }} />
-              {saved ? 'Saved!' : 'Save Bank Details'}
-            </>
-          )}
-        </button>
+        {/* Form Fields */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="rounded-2xl overflow-hidden"
+          style={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+          <div className="px-5 py-4 border-b flex items-center gap-3" style={{ borderColor: 'var(--theme-border)' }}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(99,102,241,0.15)' }}>
+              <Building2 className="w-4 h-4" style={{ color: '#6366f1' }} />
+            </div>
+            <div>
+              <p className="text-sm font-bold" style={{ color: 'var(--theme-text-primary)' }}>Bank Account Details</p>
+              <p className="text-[10px]" style={{ color: 'var(--theme-text-disabled)' }}>Required for withdrawals via bank transfer</p>
+            </div>
+          </div>
+
+          <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {FIELDS.map(({ name, label, placeholder, icon: Icon, color, hint }) => {
+              const isFocused = focusedField === name;
+              const hasValue = !!formData[name]?.trim();
+              return (
+                <motion.div key={name} whileHover={{ y: -1 }}>
+                  <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--theme-text-disabled)' }}>{label}</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                      <Icon className="w-4 h-4 transition-colors" style={{ color: isFocused ? color : 'var(--theme-text-disabled)' }} />
+                    </div>
+                    <input name={name} type="text" value={formData[name] || ''} onChange={handleChange}
+                      placeholder={placeholder} required
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+                      style={{
+                        background: 'var(--theme-bg-main)',
+                        border: `1.5px solid ${isFocused ? color : hasValue ? `${color}50` : 'var(--theme-border)'}`,
+                        color: 'var(--theme-text-primary)'
+                      }}
+                      onFocus={() => setFocusedField(name)}
+                      onBlur={() => setFocusedField(null)} />
+                  </div>
+                  <p className="text-[10px] mt-1 ml-1" style={{ color: 'var(--theme-text-disabled)' }}>{hint}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* Footer */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
+          className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl px-5 py-4"
+          style={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}>
+          <p className="text-xs text-center sm:text-left" style={{ color: 'var(--theme-text-muted)' }}>
+            Changes require OTP verification and admin KYC approval.
+          </p>
+          <motion.button type="submit" whileTap={{ scale: 0.97 }} disabled={loading || !allFilled}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Saving…</> : <><Save className="w-4 h-4" />Save & Verify</>}
+          </motion.button>
+        </motion.div>
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {/* OTP Dialog */}
+      <OTPVerification open={otpDialogOpen} onOpenChange={setOtpDialogOpen}
+        updateType="accountDetails" formData={pendingFormData} onVerified={handleOTPVerified} />
     </form>
   );
 };
