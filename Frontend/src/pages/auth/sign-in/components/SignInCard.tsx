@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import ForgotPassword from './ForgotPassword';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3210';
+const SITE_NAME = import.meta.env.VITE_SITE_NAME || 'OXOTrade';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -177,7 +178,7 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 48 }}>
               <img src="/favicon.png" alt="Logo" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 10 }} />
               <div>
-                <p style={{ color: 'white', fontWeight: 800, fontSize: 18, lineHeight: 1, margin: 0 }}>OXOTrade</p>
+                <p style={{ color: 'white', fontWeight: 800, fontSize: 18, lineHeight: 1, margin: 0 }}>{SITE_NAME}</p>
                 <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: 0 }}>Professional Trading Platform</p>
               </div>
             </div>
@@ -214,7 +215,7 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
 
           {/* Bottom */}
           <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11 }}>
-            © {new Date().getFullYear()} OXOTrade. Secure platform.
+            © {new Date().getFullYear()} {SITE_NAME}. Secure platform.
           </p>
         </div>
 
@@ -228,7 +229,7 @@ export default function SignInCard({ loginType = 'client' }: SignInCardProps) {
             {/* Mobile logo */}
             <div className="flex lg:hidden" style={{ alignItems: 'center', gap: 10, marginBottom: 28 }}>
               <img src="/favicon.png" alt="Logo" style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8 }} />
-              <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--theme-text-primary)', margin: 0 }}>OXOTrade</p>
+              <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--theme-text-primary)', margin: 0 }}>{SITE_NAME}</p>
             </div>
 
             <h2 style={{ fontSize: 26, fontWeight: 900, color: 'var(--theme-text-primary)', margin: 0, marginBottom: 6 }}>
