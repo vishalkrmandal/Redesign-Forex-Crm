@@ -47,6 +47,7 @@ const adminIBWithdrawalRoutes = require('./routes/admin/ibWithdrawalRoutes');
 const dailyPerformanceRoutes = require('./routes/client/dailyPerformanceRoutes');
 const copyRoutes = require('./routes/copyRoutes');
 const otpRoutes = require('./routes/client/otpRoutes');
+const kycRoutes = require('./routes/admin/kycRoutes');
 
 // Import the new commission routes
 const commissionRoutes = require('./routes/client/commissionRoutes');
@@ -129,8 +130,11 @@ if (config.NODE_ENV === 'production') {
   app.use(morgan('[:ist-time] :method :url :status-colored :response-time ms - :res[content-length]'));
 }
 
-// Serve static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files (cross-origin allowed so frontend on a different port can embed images)
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -183,6 +187,7 @@ app.use('/api/admin/transactions', adminTransactionRoutes);
 app.use('/api/ib-configurations', ibConfigurationRoutes);
 app.use('/api/admin/dashboard', adminDashboardRoutes);
 app.use('/api/admin/ib-withdrawals', adminIBWithdrawalRoutes);
+app.use('/api/admin/kyc', kycRoutes);
 
 
 // Client Routes

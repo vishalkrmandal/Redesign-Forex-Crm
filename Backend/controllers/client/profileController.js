@@ -142,6 +142,15 @@ exports.updatePersonalInfo = async (req, res) => {
             profile = await Profile.create(updateData);
         }
 
+        // Mark as pending KYC verification
+        profile.kycStatus = 'unverified';
+        profile.kycRequestedAt = Date.now();
+        profile.kycUpdates.push({
+            updateType: 'personalInfo',
+            status: 'pending'
+        });
+        await profile.save();
+
         // Populate user data for notifications
         await profile.populate('user', 'firstname lastname email');
 
@@ -202,16 +211,25 @@ exports.updateAccountDetails = async (req, res) => {
             });
         }
 
+        // Mark as pending KYC verification
+        // profile.kycStatus = 'unverified';
+        // profile.kycRequestedAt = Date.now();
+        // profile.kycUpdates.push({
+        //     updateType: 'accountDetails',
+        //     status: 'pending'
+        // });
+        // await profile.save();
+
         // Populate user data for notifications
         await profile.populate('user', 'firstname lastname email');
 
         // Trigger notifications for admin about profile update
-        if (req.notificationTriggers) {
-            await req.notificationTriggers.handleProfileUpdate(
-                profile.toObject(),
-                req.user.id
-            );
-        }
+        // if (req.notificationTriggers) {
+        //     await req.notificationTriggers.handleProfileUpdate(
+        //         profile.toObject(),
+        //         req.user.id
+        //     );
+        // }
 
         res.status(200).json({
             success: true,
@@ -262,16 +280,25 @@ exports.updateWalletDetails = async (req, res) => {
             });
         }
 
+        // Mark as pending KYC verification
+        // profile.kycStatus = 'unverified';
+        // profile.kycRequestedAt = Date.now();
+        // profile.kycUpdates.push({
+        //     updateType: 'walletDetails',
+        //     status: 'pending'
+        // });
+        // await profile.save();
+
         // Populate user data for notifications
         await profile.populate('user', 'firstname lastname email');
 
         // Trigger notifications for admin about profile update
-        if (req.notificationTriggers) {
-            await req.notificationTriggers.handleProfileUpdate(
-                profile.toObject(),
-                req.user.id
-            );
-        }
+        // if (req.notificationTriggers) {
+        //     await req.notificationTriggers.handleProfileUpdate(
+        //         profile.toObject(),
+        //         req.user.id
+        //     );
+        // }
 
         res.status(200).json({
             success: true,

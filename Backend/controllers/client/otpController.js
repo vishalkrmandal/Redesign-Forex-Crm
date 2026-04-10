@@ -264,3 +264,161 @@ exports.resendWithdrawalOTP = async (req, res, next) => {
         next(error);
     }
 };
+
+// Send profile update OTP
+exports.sendProfileUpdateOTP = async (req, res, next) => {
+    try {
+        const { updateType, formData } = req.body;
+
+        // Generate OTP
+        const otp = generateOTP();
+        const otpKey = `profile_update_${req.user.id}_${Date.now()}`;
+
+        // Store OTP with expiry (5 minutes)
+        otpStore.set(otpKey, {
+            otp,
+            userId: req.user.id,
+            updateData: { updateType, formData },
+            expiresAt: Date.now() + 5 * 60 * 1000,
+            attempts: 0
+        });
+
+        // Get user details
+        const user = await User.findById(req.user.id);
+
+        const updateTypeLabels = {
+            personalInfo: 'Personal Information',
+            accountDetails: 'Account Details',
+            walletDetails: 'Wallet Details'
+        };
+
+        // Send OTP email
+        const emailTemplate = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Profile Update OTP Verification</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 650px; margin: 0 auto; padding: 5px; }
+                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .otp-box { background: white; border: 2px solid #667eea; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; }
+                    .otp-code { font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 8px; }
+                    .details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+                    .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                    .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🔐 Profile Update OTP Verification</h1>
+                        <p>Secure your profile update</p>
+                    </div>
+                    <div class="content">
+                        <h2>Hi ${user.firstname}!</h2>
+                        <p>You have requested to update your ${updateTypeLabels[updateType]}. Please use the OTP below to verify this change:</p>
+                        
+                        <div class="otp-box">
+                            <div class="otp-code">${otp}</div>
+                            <p style="margin: 10px 0 0 0; color: #666;">This OTP will expire in 5 minutes</p>
+                        </div>
+
+                        <div class="details">
+                            <h3>📋 Update Details</h3>
+                            <p><strong>Update Type:</strong> ${updateTypeLabels[updateType]}</p>
+                            <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+                        </div>
+
+                        <div class="warning">
+                            <h4 style="color: #856404; margin: 0 0 10px 0;">🚨 Security Notice</h4>
+                            <p style="margin: 0; color: #856404;">If you did not request this update, please contact our support team immediately and do not share this OTP with anyone.</p>
+                        </div>
+
+                        <div class="footer">
+                            <p>This is an automated notification from ${process.env.SITE_NAME} CRM.</p>
+                            <p>If you have any questions, please contact our support team.</p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        await emailService.sendEmail({
+            to: user.email,
+            subject: `Profile Update OTP Verification - ${process.env.SITE_NAME}`,
+            html: emailTemplate
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'OTP sent to your email address',
+            otpKey,
+            expiresIn: 300
+        });
+
+    } catch (error) {
+        console.error('Error sending profile update OTP:', error);
+        next(error);
+    }
+};
+
+// Verify profile update OTP
+exports.verifyProfileUpdateOTP = async (req, res, next) => {
+    try {
+        const { otpKey, otp } = req.body;
+
+        if (!otpStore.has(otpKey)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid or expired OTP session'
+            });
+        }
+
+        const otpData = otpStore.get(otpKey);
+
+        // Check expiry
+        if (Date.now() > otpData.expiresAt) {
+            otpStore.delete(otpKey);
+            return res.status(400).json({
+                success: false,
+                message: 'OTP has expired'
+            });
+        }
+
+        // Check attempts
+        if (otpData.attempts >= 3) {
+            otpStore.delete(otpKey);
+            return res.status(400).json({
+                success: false,
+                message: 'Too many failed attempts. Please request a new OTP.'
+            });
+        }
+
+        // Verify OTP
+        if (otpData.otp !== otp) {
+            otpData.attempts++;
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid OTP',
+                remainingAttempts: 3 - otpData.attempts
+            });
+        }
+
+        // OTP verified successfully
+        otpStore.delete(otpKey);
+
+        res.status(200).json({
+            success: true,
+            message: 'OTP verified successfully',
+            updateData: otpData.updateData
+        });
+
+    } catch (error) {
+        console.error('Error verifying profile update OTP:', error);
+        next(error);
+    }
+};

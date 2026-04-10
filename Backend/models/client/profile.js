@@ -32,6 +32,37 @@ const ProfileSchema = new mongoose.Schema({
     kycRejectReason: {
         type: String
     },
+    kycRequestedAt: {
+        type: Date
+    },
+    kycVerifiedAt: {
+        type: Date
+    },
+    kycVerifiedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    kycUpdates: [{
+        updateType: {
+            type: String,
+            enum: ['personalInfo', 'accountDetails', 'walletDetails']
+        },
+        updatedAt: {
+            type: Date,
+            default: Date.now
+        },
+        status: {
+            type: String,
+            enum: ['pending', 'verified', 'rejected'],
+            default: 'pending'
+        },
+        verifiedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        verifiedAt: Date,
+        rejectionReason: String
+    }],
     ibPartner: {
         type: String,
     },
