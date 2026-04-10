@@ -14,7 +14,6 @@ import {
   Banknote,
   TrendingUp,
   BarChart2,
-  ChevronDown,
   ShieldCheck,
 } from "lucide-react"
 
@@ -71,7 +70,7 @@ const sections: NavSection[] = [
 export default function Sidebar({ open, isMobile = false, onItemClick }: SidebarProps) {
   const location = useLocation()
   const [isHoveringCollapsed, setIsHoveringCollapsed] = useState(false)
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const shouldShowExpanded = open || isMobile || (!isMobile && !open && isHoveringCollapsed)
 

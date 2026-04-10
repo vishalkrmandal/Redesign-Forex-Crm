@@ -145,10 +145,13 @@ export function NotificationProvider({ children, userType }: NotificationProvide
 
             // Listen for notification updates
             socketInstance.on('notificationRead', ({ notificationId }) => {
-                setNotifications(prev =>
-                    prev.filter(n => n.id !== notificationId)
-                )
-                setUnreadCount(prev => Math.max(0, prev - 1))
+                setNotifications(prev => {
+                    const exists = prev.some(n => n.id === notificationId)
+                    if (exists) {
+                        setUnreadCount(count => Math.max(0, count - 1))
+                    }
+                    return prev.filter(n => n.id !== notificationId)
+                })
             })
 
             socketInstance.on('allNotificationsRead', () => {
@@ -157,10 +160,13 @@ export function NotificationProvider({ children, userType }: NotificationProvide
             })
 
             socketInstance.on('notificationDeleted', ({ notificationId }) => {
-                setNotifications(prev =>
-                    prev.filter(n => n.id !== notificationId)
-                )
-                setUnreadCount(prev => Math.max(0, prev - 1))
+                setNotifications(prev => {
+                    const target = prev.find(n => n.id === notificationId)
+                    if (target && !target.read) {
+                        setUnreadCount(count => Math.max(0, count - 1))
+                    }
+                    return prev.filter(n => n.id !== notificationId)
+                })
             })
 
             setSocket(socketInstance)

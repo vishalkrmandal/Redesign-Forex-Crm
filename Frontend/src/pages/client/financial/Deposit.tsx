@@ -202,7 +202,7 @@ export default function Deposit() {
     finally { setIsLoading(p => ({ ...p, deposits: false })); }
   };
 
-  const selectPaymentType = (type: string, key: string) => {
+  const selectPaymentType = (_type: string, key: string) => {
     setSelectedPaymentType(key);
     setSelectedMethod(null);
     setSelectedMethodDetails(null);

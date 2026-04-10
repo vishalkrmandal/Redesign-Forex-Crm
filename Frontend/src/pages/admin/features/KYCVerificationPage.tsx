@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2, XCircle, RotateCcw, Search, Eye, RefreshCw, User, Mail, Phone,
   MapPin, Calendar, GraduationCap, Briefcase, Building2, Wallet, FileText,
-  ShieldCheck, ShieldAlert, ShieldX, ChevronRight, X, AlertTriangle, Clock, Filter
+  ShieldCheck, ShieldAlert, ShieldX, X, AlertTriangle, Clock, Filter
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';

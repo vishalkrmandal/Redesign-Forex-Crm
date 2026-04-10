@@ -41,14 +41,14 @@ interface SearchPage {
 }
 
 const PAGES: SearchPage[] = [
-  { label: "Dashboard",      path: "/admin",                          section: "Main",       icon: Home            },
-  { label: "Clients",        path: "/admin/features/clients",        section: "Management", icon: Users           },
-  { label: "Deposits",       path: "/admin/features/deposits",       section: "Management", icon: ArrowDownCircle },
-  { label: "Withdrawals",    path: "/admin/features/withdrawals",    section: "Management", icon: ArrowUpCircle   },
-  { label: "Transactions",   path: "/admin/features/transactions",   section: "Management", icon: FileText        },
-  { label: "Configure",      path: "/admin/configure",               section: "Settings",   icon: Settings        },
-  { label: "IB Partners",    path: "/admin/partner/ib-partners",     section: "Partners",   icon: Link2           },
-  { label: "IB Withdrawals", path: "/admin/partner/ib-withdrawals",  section: "Partners",   icon: ArrowUpCircle   },
+  { label: "Dashboard", path: "/admin", section: "Main", icon: Home },
+  { label: "Clients", path: "/admin/features/clients", section: "Management", icon: Users },
+  { label: "Deposits", path: "/admin/features/deposits", section: "Management", icon: ArrowDownCircle },
+  { label: "Withdrawals", path: "/admin/features/withdrawals", section: "Management", icon: ArrowUpCircle },
+  { label: "Transactions", path: "/admin/features/transactions", section: "Management", icon: FileText },
+  { label: "Configure", path: "/admin/configure", section: "Settings", icon: Settings },
+  { label: "IB Partners", path: "/admin/partner/ib-partners", section: "Partners", icon: Link2 },
+  { label: "IB Withdrawals", path: "/admin/partner/ib-withdrawals", section: "Partners", icon: ArrowUpCircle },
 ]
 
 export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
@@ -83,9 +83,9 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
 
   const searchResults = searchQuery.trim()
     ? PAGES.filter((p) => {
-        const q = searchQuery.toLowerCase()
-        return p.label.toLowerCase().includes(q) || p.section.toLowerCase().includes(q)
-      })
+      const q = searchQuery.toLowerCase()
+      return p.label.toLowerCase().includes(q) || p.section.toLowerCase().includes(q)
+    })
     : []
 
   useEffect(() => {
@@ -184,12 +184,12 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
           className="rounded-lg p-2 transition-all duration-200 active:scale-95"
           style={{ color: "var(--theme-text-muted)" }}
           onMouseEnter={(e) => {
-            ;(e.currentTarget as HTMLElement).style.backgroundColor = "color-mix(in srgb, var(--theme-primary) 10%, transparent)"
-            ;(e.currentTarget as HTMLElement).style.color = "var(--theme-primary)"
+            ; (e.currentTarget as HTMLElement).style.backgroundColor = "color-mix(in srgb, var(--theme-primary) 10%, transparent)"
+              ; (e.currentTarget as HTMLElement).style.color = "var(--theme-primary)"
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLElement).style.backgroundColor = ""
-            ;(e.currentTarget as HTMLElement).style.color = "var(--theme-text-muted)"
+            ; (e.currentTarget as HTMLElement).style.backgroundColor = ""
+              ; (e.currentTarget as HTMLElement).style.color = "var(--theme-text-muted)"
           }}
           aria-label="Toggle sidebar"
         >
@@ -394,7 +394,7 @@ export default function Header({ toggleSidebar, isMobile }: HeaderProps) {
                 </div>
               </div>
               <div className="p-2">
-                <MenuItem icon={User} label="My Profile" onClick={() => { navigate("/admin/profile"); setShowUserMenu(false) }} />
+                {/* <MenuItem icon={User} label="My Profile" onClick={() => { navigate("/admin/profile"); setShowUserMenu(false) }} /> */}
                 <MenuItem icon={Settings} label="Settings" onClick={() => { navigate("/admin/configure"); setShowUserMenu(false) }} />
                 <div className="my-1 h-px" style={{ background: "var(--theme-border)" }} />
                 <MenuItem icon={LogOut} label="Logout" onClick={handleLogout} danger />

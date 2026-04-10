@@ -1,6 +1,6 @@
 // Frontend/src/pages/client/financial/Withdrawal.tsx
 import { useState, useEffect, useRef } from "react";
-import { Wallet, AlertCircle, Loader, CheckCircle2, Building2, Bitcoin, Shield, ChevronRight, ChevronDown, Copy, KeyRound, Mail, RefreshCw } from "lucide-react";
+import { Wallet, AlertCircle, Loader, CheckCircle2, Building2, Bitcoin, Shield, Copy, KeyRound, Mail, RefreshCw } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
