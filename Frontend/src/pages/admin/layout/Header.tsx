@@ -5,7 +5,7 @@ import { useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
 import { useNotifications } from "@/context/NotificationContext"
 import {
-  Menu, Search, LogOut, Shield, ChevronDown, X, User, Bell, Clock, Settings,
+  Menu, Search, LogOut, Shield, ChevronDown, X, Bell, Clock, Settings,
   Home, Users, ArrowDownCircle, ArrowUpCircle, FileText, Link2,
 } from "lucide-react"
 import NotificationDropdown from "@/components/notifications/NotificationDropdown"
