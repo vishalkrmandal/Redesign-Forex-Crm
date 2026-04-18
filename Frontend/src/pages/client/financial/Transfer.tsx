@@ -1,6 +1,6 @@
 // Frontend/src/pages/client/financial/Transfer.tsx
 import { useState, useEffect } from "react";
-import { ArrowLeftRight, AlertCircle, Loader, Wallet, CheckCircle2, TrendingUp, ArrowRight } from "lucide-react";
+import { ArrowLeftRight, AlertCircle, Loader, Wallet, TrendingUp, ArrowRight } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,8 +20,8 @@ interface Transfer {
 const fmtCurrency = (v: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(v);
 
-const fmtCompact = (v: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(v);
+// const fmtCompact = (v: number) =>
+//   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(v);
 
 const StatusBadge = ({ status }: { status: string }) => {
   const cfg: Record<string, { bg: string; text: string }> = {

@@ -10,11 +10,11 @@ import {
   Activity, RefreshCw, AlertCircle, Wifi, WifiOff,
   TrendingUp, TrendingDown, Users, DollarSign, BarChart3,
   ArrowDownCircle, ArrowUpCircle, CreditCard, UserCheck,
-  ArrowRight, Clock, Zap, Target
+  ArrowRight, Clock,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip as RechartsTooltip, ResponsiveContainer, Cell, LineChart, Line
+  Tooltip as RechartsTooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -49,7 +49,7 @@ const fmtCurrency = (v: number) =>
 const fmtFull = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v);
 
-const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+// const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 // ─── Custom Tooltip ───────────────────────────────────────────────────────────
 const CustomTooltip = ({ active, payload, label }: any) => {

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import {
   Search, Filter, Download, X, FileText, Eye,
   CheckCircle, XCircle, ChevronLeft, ChevronRight,
-  ArrowDownCircle, Calendar, RefreshCw, ExternalLink,
+  ArrowDownCircle, RefreshCw, ExternalLink,
 } from "lucide-react"
 import axios from "axios"
 import { toast } from "sonner"
@@ -35,8 +35,8 @@ interface Deposit {
 const StatusBadge = ({ status }: { status: string }) => {
   const cfg: Record<string, { bg: string; color: string }> = {
     Approved: { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
-    Pending:  { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
-    Rejected: { bg: 'rgba(239,68,68,0.12)',  color: '#ef4444' },
+    Pending: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
+    Rejected: { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' },
   }
   const c = cfg[status] || { bg: 'rgba(148,163,184,0.12)', color: '#94a3b8' }
   return (

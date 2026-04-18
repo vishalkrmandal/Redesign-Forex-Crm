@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft,
-  ArrowRight, Calendar, CreditCard, Filter
+  Calendar, CreditCard, Filter
 } from 'lucide-react';
 
 interface Transaction {
@@ -22,14 +22,14 @@ interface RecentTransactionsProps {
 }
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; label: string }> = {
-  deposit:    { icon: TrendingUp,       color: '#10b981', label: 'Deposit' },
-  withdrawal: { icon: TrendingDown,     color: '#ef4444', label: 'Withdrawal' },
-  transfer:   { icon: ArrowRightLeft,   color: '#6366f1', label: 'Transfer' },
+  deposit: { icon: TrendingUp, color: '#10b981', label: 'Deposit' },
+  withdrawal: { icon: TrendingDown, color: '#ef4444', label: 'Withdrawal' },
+  transfer: { icon: ArrowRightLeft, color: '#6366f1', label: 'Transfer' },
 };
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> = {
   approved: { bg: '#10b98115', text: '#10b981', dot: '#10b981' },
-  pending:  { bg: '#f59e0b15', text: '#f59e0b', dot: '#f59e0b' },
+  pending: { bg: '#f59e0b15', text: '#f59e0b', dot: '#f59e0b' },
   rejected: { bg: '#ef444415', text: '#ef4444', dot: '#ef4444' },
 };
 

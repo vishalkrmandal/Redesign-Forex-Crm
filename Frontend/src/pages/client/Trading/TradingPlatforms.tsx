@@ -51,7 +51,7 @@ const features = [
 ]
 
 export default function TradingPlatforms() {
-  const { theme } = useTheme()
+  useTheme()
   const [hoveredPlatform, setHoveredPlatform] = useState<number | null>(null)
 
   return (

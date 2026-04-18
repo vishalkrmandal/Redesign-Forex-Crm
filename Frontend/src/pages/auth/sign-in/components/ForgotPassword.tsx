@@ -3,7 +3,7 @@ import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Mail, ArrowRight, X, CheckCircle, KeyRound, Send } from 'lucide-react';
+import { Mail, X, CheckCircle, KeyRound, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { createPortal } from 'react-dom';

@@ -4,7 +4,6 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { RefreshCw, TrendingUp, BarChart2, DollarSign, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Users, Zap, Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import * as React from 'react'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 

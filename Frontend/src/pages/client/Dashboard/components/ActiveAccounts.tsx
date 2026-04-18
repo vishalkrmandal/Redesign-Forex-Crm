@@ -1,6 +1,6 @@
 // Frontend/src/pages/client/Dashboard/components/ActiveAccounts.tsx
 import { useState } from "react"
-import { AlertCircle, ChevronUp, ChevronDown, CreditCard, RefreshCw, MoreHorizontal, TrendingUp, TrendingDown } from "lucide-react"
+import { AlertCircle, ChevronUp, ChevronDown, CreditCard, RefreshCw, MoreHorizontal } from "lucide-react"
 
 const SERVER_NAME = import.meta.env.VITE_SERVER_NAME
 
@@ -22,9 +22,9 @@ interface ActiveAccountsProps {
 }
 
 const ACCOUNT_TYPE_COLORS: Record<string, { text: string; bg: string }> = {
-  standard: { text: "var(--theme-info)",      bg: "color-mix(in srgb, var(--theme-info)      18%, transparent)" },
-  pro:      { text: "var(--theme-highlight)", bg: "color-mix(in srgb, var(--theme-highlight) 18%, transparent)" },
-  vip:      { text: "var(--theme-warning)",   bg: "color-mix(in srgb, var(--theme-warning)   18%, transparent)" },
+  standard: { text: "var(--theme-info)", bg: "color-mix(in srgb, var(--theme-info)      18%, transparent)" },
+  pro: { text: "var(--theme-highlight)", bg: "color-mix(in srgb, var(--theme-highlight) 18%, transparent)" },
+  vip: { text: "var(--theme-warning)", bg: "color-mix(in srgb, var(--theme-warning)   18%, transparent)" },
 }
 
 function getTypeColor(type: string) {
@@ -83,12 +83,12 @@ const ActiveAccounts: React.FC<ActiveAccountsProps> = ({ accounts, onRefresh }) 
             backgroundColor: "transparent",
           }}
           onMouseEnter={(e) => {
-            ;(e.currentTarget as HTMLElement).style.borderColor = "var(--theme-primary)"
-            ;(e.currentTarget as HTMLElement).style.color = "var(--theme-primary)"
+            ; (e.currentTarget as HTMLElement).style.borderColor = "var(--theme-primary)"
+              ; (e.currentTarget as HTMLElement).style.color = "var(--theme-primary)"
           }}
           onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLElement).style.borderColor = "var(--theme-border)"
-            ;(e.currentTarget as HTMLElement).style.color = "var(--theme-text-muted)"
+            ; (e.currentTarget as HTMLElement).style.borderColor = "var(--theme-border)"
+              ; (e.currentTarget as HTMLElement).style.color = "var(--theme-text-muted)"
           }}
         >
           <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />

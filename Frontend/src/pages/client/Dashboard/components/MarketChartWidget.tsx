@@ -1,7 +1,7 @@
 // Frontend/src/pages/client/Dashboard/components/MarketChartWidget.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  AreaChart, Area, LineChart, Line, ComposedChart,
+  Area, Line, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
 import {
@@ -61,7 +61,7 @@ const fmtTime = (isoStr: string, interval: string) => {
   return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
-const CustomTooltip = ({ active, payload, label, interval }: any) => {
+const CustomTooltip = ({ active, payload, interval }: any) => {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   if (!d) return null;

@@ -1,6 +1,6 @@
 // Frontend/src/pages/client/account/AccountList.tsx
 import { useState, useEffect, useCallback } from "react"
-import { RefreshCw, Lock, EyeOff, Eye, Copy, Plus, TrendingUp, TrendingDown, Wallet, AlertCircle, X, Check, ChevronLeft, ChevronRight } from "lucide-react"
+import { RefreshCw, Lock, EyeOff, Eye, Copy, Plus, TrendingUp, TrendingDown, Wallet, AlertCircle, X, ChevronLeft, ChevronRight } from "lucide-react"
 import axios, { AxiosError } from "axios"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
-    Server, Tag, MapPin, Mail, Phone, MessageCircle,
+    Server, Tag, Mail, Phone, MessageCircle,
     ImageIcon, Star, FileText, Pencil, Upload,
     Settings2, Images, ChevronRight, Eye,
 } from "lucide-react"
@@ -26,19 +26,19 @@ const ICON_MAP: Record<string, React.ElementType> = {
 }
 
 const initialDetails = [
-    { id: 1, name: "Server Name",         value: "prod-server-01",        description: "Production server hostname" },
-    { id: 2, name: "KYC doc-1 Label",     value: "Government ID",         description: "Primary identification document" },
-    { id: 3, name: "KYC doc-2 Label",     value: "Proof of Address",      description: "Utility bill or bank statement" },
-    { id: 4, name: "KYC doc-3 Label",     value: "Selfie with ID",        description: "Photo holding government ID" },
-    { id: 5, name: "Company Email",       value: "support@example.com",   description: "Primary contact email" },
-    { id: 6, name: "Company Contact No.", value: "+1 (555) 123-4567",      description: "Customer support number" },
-    { id: 7, name: "Whatsapp contact",    value: "+1 (555) 987-6543",      description: "WhatsApp business account" },
+    { id: 1, name: "Server Name", value: "prod-server-01", description: "Production server hostname" },
+    { id: 2, name: "KYC doc-1 Label", value: "Government ID", description: "Primary identification document" },
+    { id: 3, name: "KYC doc-2 Label", value: "Proof of Address", description: "Utility bill or bank statement" },
+    { id: 4, name: "KYC doc-3 Label", value: "Selfie with ID", description: "Photo holding government ID" },
+    { id: 5, name: "Company Email", value: "support@example.com", description: "Primary contact email" },
+    { id: 6, name: "Company Contact No.", value: "+1 (555) 123-4567", description: "Customer support number" },
+    { id: 7, name: "Whatsapp contact", value: "+1 (555) 987-6543", description: "WhatsApp business account" },
 ]
 
 const initialFiles = [
-    { id: 1, name: "Company Logo",    value: "/placeholder.svg?height=100&width=200", description: "Main brand logo",           icon: ImageIcon },
-    { id: 2, name: "Favicon",         value: "/placeholder.svg?height=32&width=32",   description: "Website favicon (32×32)",   icon: Star },
-    { id: 3, name: "Terms Document",  value: "/placeholder.svg?height=150&width=120", description: "Terms and conditions PDF",  icon: FileText },
+    { id: 1, name: "Company Logo", value: "/placeholder.svg?height=100&width=200", description: "Main brand logo", icon: ImageIcon },
+    { id: 2, name: "Favicon", value: "/placeholder.svg?height=32&width=32", description: "Website favicon (32×32)", icon: Star },
+    { id: 3, name: "Terms Document", value: "/placeholder.svg?height=150&width=120", description: "Terms and conditions PDF", icon: FileText },
 ]
 
 // ─── Section Header ───────────────────────────────────────────────────────────
@@ -188,13 +188,13 @@ const FileCard = ({
 
 export default function ConfigureValues() {
     const [details, setDetails] = useState(initialDetails)
-    const [files, setFiles]     = useState(initialFiles)
+    const [files, setFiles] = useState(initialFiles)
 
-    const [isDetailOpen, setIsDetailOpen]   = useState(false)
-    const [isFileOpen, setIsFileOpen]       = useState(false)
+    const [isDetailOpen, setIsDetailOpen] = useState(false)
+    const [isFileOpen, setIsFileOpen] = useState(false)
     const [currentDetail, setCurrentDetail] = useState<any>(null)
-    const [currentFile, setCurrentFile]     = useState<any>(null)
-    const [previewUrl, setPreviewUrl]       = useState("")
+    const [currentFile, setCurrentFile] = useState<any>(null)
+    const [previewUrl, setPreviewUrl] = useState("")
 
     const fileInputRef = useRef<HTMLInputElement>(null)
 

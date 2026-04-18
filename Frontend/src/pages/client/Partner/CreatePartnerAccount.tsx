@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom"
 import axios from 'axios'
 import { Copy, Share2, Users, Crown, TrendingUp, AlertCircle, Check, Zap, ArrowRight, Shield } from "lucide-react"
 import { toast } from "sonner"
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 

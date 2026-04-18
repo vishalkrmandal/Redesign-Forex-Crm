@@ -1,7 +1,7 @@
 // Frontend/src/pages/admin/dashboard/component/TopPerformingClients.tsx
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, User, Calendar, CreditCard, TrendingUp, Crown, Medal, Award, Star } from 'lucide-react';
+import { Trophy, User, Calendar, CreditCard, TrendingUp, Crown, Medal, Award } from 'lucide-react';
 
 interface Client {
   _id: string;
@@ -18,8 +18,8 @@ interface TopPerformingClientsProps {
 const fmtCurrency = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(v);
 
-const fmtFull = (v: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+// const fmtFull = (v: number) =>
+//   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
 
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });

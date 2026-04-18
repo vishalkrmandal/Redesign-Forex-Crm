@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend, defs
+  Tooltip, ResponsiveContainer
 } from 'recharts';
 import { TrendingUp, ArrowDownCircle, ArrowUpCircle, DollarSign } from 'lucide-react';
 import { motion } from 'framer-motion';

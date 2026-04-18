@@ -5,7 +5,7 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import {
   DollarSign, Eye, CheckCircle, XCircle, Clock, Search,
-  RefreshCw, Building2, Wallet, User, Mail, Globe, X, Check,
+  RefreshCw, Building2, Wallet, User, Mail, Globe, X,
   AlertTriangle, Hash, FileText
 } from 'lucide-react'
 
@@ -698,7 +698,7 @@ const IBWithdrawalManagement = () => {
           <button onClick={handleApprove} disabled={processing === selectedWithdrawal?._id} style={{
             ...btnBase, background: '#10b981', color: '#fff', opacity: processing === selectedWithdrawal?._id ? 0.6 : 1
           }}
-            onMouseEnter={e => { if (!processing)(e.currentTarget as HTMLButtonElement).style.background = '#059669' }}
+            onMouseEnter={e => { if (!processing) (e.currentTarget as HTMLButtonElement).style.background = '#059669' }}
             onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = '#10b981'}
           >
             {processing === selectedWithdrawal?._id ? (
@@ -744,7 +744,7 @@ const IBWithdrawalManagement = () => {
           <button onClick={handleReject}
             disabled={processing === selectedWithdrawal?._id || !rejectedReason.trim()}
             style={{ ...btnBase, background: '#ef4444', color: '#fff', opacity: (processing === selectedWithdrawal?._id || !rejectedReason.trim()) ? 0.5 : 1 }}
-            onMouseEnter={e => { if (!processing && rejectedReason)(e.currentTarget as HTMLButtonElement).style.background = '#dc2626' }}
+            onMouseEnter={e => { if (!processing && rejectedReason) (e.currentTarget as HTMLButtonElement).style.background = '#dc2626' }}
             onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = '#ef4444'}
           >
             {processing === selectedWithdrawal?._id ? (

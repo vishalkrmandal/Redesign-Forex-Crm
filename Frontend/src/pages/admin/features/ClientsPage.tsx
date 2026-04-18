@@ -4,8 +4,8 @@
 import { useState, useEffect, useMemo } from "react"
 import {
   Search, Filter, X, Eye, Lock, ChevronLeft, ChevronRight,
-  Users, UserCheck, UserX, RefreshCw, Shield, ShieldCheck,
-  ShieldX, Mail, MailX, CreditCard, LogIn, KeyRound,
+  Users, UserCheck, RefreshCw,
+  CreditCard, LogIn, KeyRound,
 } from "lucide-react"
 import clientService from "./clientService"
 import { toast } from "sonner"
@@ -479,13 +479,13 @@ const ClientsPage = () => {
                       </button>
                       {client.status === 'activated'
                         ? <button title="Suspend Client" onClick={() => handleSuspendClient(client.id)}
-                            style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-                            <Lock style={{ width: 12, height: 12 }} />
-                          </button>
+                          style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                          <Lock style={{ width: 12, height: 12 }} />
+                        </button>
                         : <button title="Activate Client" onClick={() => handleActivateClient(client.id)}
-                            style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
-                            <UserCheck style={{ width: 12, height: 12 }} />
-                          </button>
+                          style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                          <UserCheck style={{ width: 12, height: 12 }} />
+                        </button>
                       }
                     </div>
                   </td>

@@ -1,6 +1,6 @@
 // Frontend/src/pages/client/Refer/ReferFriend.tsx
 "use client"
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from 'axios'
 import { Copy, Check, ArrowRight, Users, Gift, TrendingUp, Share2, Facebook, Twitter, MessageCircle, Send } from "lucide-react"
