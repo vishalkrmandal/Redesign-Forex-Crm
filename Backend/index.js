@@ -1,0 +1,283 @@
+// Backend\index.js
+
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const http = require('http');
+const path = require('path');
+const connectDB = require('./config/db');
+const config = require('./config/config');
+const setupWebSocket = require('./utils/socketServer');
+const cron = require('node-cron');
+const helmet = require('helmet');
+
+// Import the account sync service
+const accountSyncService = require('./services/accountSyncService');
+
+// Import the trade sync service
+const tradeSyncService = require('./services/tradeSyncService');
+
+
+// Import routes
+const authRoutes = require('./routes/authRoutes');
+const leverageRoutes = require('./routes/leverageRoutes');
+const groupRoutes = require('./routes/groupRoutes');
+const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
+const exchangeRoutes = require('./routes/exchangeRoutes');
+const accountRoutes = require('./routes/accountRoutes');
+const depositRoutes = require('./routes/depositRoutes');
+const adminDepositRoutes = require('./routes/admin/adminDepositRoutes');
+const withdrawalRoutes = require('./routes/client/withdrawalRoutes');
+const adminWithdrawalRoutes = require('./routes/admin/withdrawalRoutes');
+const transferRoutes = require('./routes/client/transferRoutes');
+const transactionRoutes = require('./routes/client/transactionRoutes');
+const profileRoutes = require('./routes/client/profileRoutes');
+const clientRoutes = require('./routes/admin/clientRoutes');
+const adminTransactionRoutes = require('./routes/admin/adminTransactionRoutes');
+const ticketRoutes = require('./routes/ticketRoutes');
+const ibConfigurationRoutes = require('./routes/admin/ibAdminConfigurationRoutes');
+const adminClientRoutes = require('./routes/adminClientRoutes');
+const ibClientConfigurationRoutes = require('./routes/client/ibClientConfigurationRoutes');
+const ibWithdrawalRoutes = require('./routes/client/ibwithdrawalRoutes');
+const tradingRoutes = require('./routes/client/tradingRoutes');
+const adminDashboardRoutes = require('./routes/admin/adminDashboardRoutes');
+const clientDashboardRoutes = require('./routes/client/clientDashboardRoutes');
+const adminIBWithdrawalRoutes = require('./routes/admin/ibWithdrawalRoutes');
+const dailyPerformanceRoutes = require('./routes/client/dailyPerformanceRoutes');
+const copyRoutes = require('./routes/copyRoutes');
+const otpRoutes = require('./routes/client/otpRoutes');
+const kycRoutes = require('./routes/admin/kycRoutes');
+
+// Import the new commission routes
+const commissionRoutes = require('./routes/client/commissionRoutes');
+
+// Import market data routes
+const marketRoutes = require('./routes/marketRoutes');
+
+// Import notification routes
+const { addNotificationTriggers } = require('./middlewares/notificationMiddleware');
+const notificationRoutes = require('./routes/notificationRoutes');
+
+// Import theme routes
+const themeRoutes = require('./routes/themeRoutes');
+
+
+
+
+// Connect to MongoDB
+connectDB();
+
+// Initialize Express app
+const app = express();
+const server = http.createServer(app);
+
+// Add basic security headers
+app.use(helmet());
+
+// Set up WebSocket server
+const io = setupWebSocket(server);
+
+// Make io instance available to routes
+app.set('io', io);
+
+
+// Middleware
+app.use(express.json());
+// app.use(cors({
+//   // origin: "*",
+//   origin: [config.CLIENT_URL,
+//     'https://raisecrm.vercel.app',
+//   ],
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+//   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+// }));
+
+app.use(cors({
+  origin: "*"
+}));
+
+// app.use(cors({
+//   origin: [
+//     config.CLIENT_URL,            // https://raisecrm.vercel.app
+//     'http://localhost:5173',
+//     'https://raisecrm.vercel.app',
+//     config.SERVER_URL,                    // https://vishal-test.testcrm.top
+//     'https://vishal-test.testcrm.top'     // Ensure this matches exactly
+//   ],
+//   credentials: true,
+// }));
+
+// Logging in development
+if (config.NODE_ENV === 'production') {
+  morgan.token('ist-time', (req, res) => {
+    return new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  });
+
+  // Custom token for colored status
+  morgan.token('status-colored', (req, res) => {
+    const status = res.statusCode;
+    const color = status >= 500 ? 31 // red
+      : status >= 400 ? 33 // yellow
+        : status >= 300 ? 36 // cyan
+          : status >= 200 ? 32 // green
+            : 0; // no color
+
+    return '\x1b[' + color + 'm' + status + '\x1b[0m';
+  });
+
+  app.use(morgan('[:ist-time] :method :url :status-colored :response-time ms - :res[content-length]'));
+}
+
+// Serve static files (cross-origin allowed so frontend on a different port can embed images)
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
+
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+
+// Sync status route (public) - Add this before authentication routes
+app.get('/api/sync/status', (req, res) => {
+  try {
+    const syncStatus = tradeSyncService.getSyncStatus();
+    res.status(200).json({
+      success: true,
+      syncStatus
+    });
+  } catch (error) {
+    console.error('Sync status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get sync status'
+    });
+  }
+});
+
+// IMPORTANT: Add notification middleware BEFORE routes that need it
+app.use(addNotificationTriggers);
+
+
+// app.use('/', (req,res)=>{
+//   res.status(200).json({
+//     message: "welcome to the server"
+//   });
+// })
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/leverages', leverageRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/payment-methods', paymentMethodRoutes);
+app.use('/api/exchanges', exchangeRoutes);
+app.use('/api/admindeposits', adminDepositRoutes);
+app.use('/api/adminwithdrawals', adminWithdrawalRoutes);
+app.use('/api/clients', clientRoutes);
+app.use('/api/admin/clients', adminClientRoutes);
+app.use('/api/admin/transactions', adminTransactionRoutes);
+app.use('/api/ib-configurations', ibConfigurationRoutes);
+app.use('/api/admin/dashboard', adminDashboardRoutes);
+app.use('/api/admin/ib-withdrawals', adminIBWithdrawalRoutes);
+app.use('/api/admin/kyc', kycRoutes);
+
+
+// Client Routes
+app.use('/api/accounts', accountRoutes);
+app.use('/api/clientdeposits', depositRoutes);
+app.use('/api/withdrawals', withdrawalRoutes);
+app.use('/api/transfers', transferRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/ibclients/withdrawals', ibWithdrawalRoutes);
+app.use('/api/ibclients/ib-configurations', ibClientConfigurationRoutes);
+app.use('/api/trading', tradingRoutes);
+app.use('/api/client/dashboard', clientDashboardRoutes);
+app.use('/api/daily-performance', dailyPerformanceRoutes);
+app.use('/api/otp', otpRoutes);
+
+// Copy Routes - NEW
+app.use('/api/copy', copyRoutes);
+
+// Commission Routes - NEW
+app.use('/api/ibclients/commission', commissionRoutes);
+
+// Market Data Routes
+app.use('/api/market', marketRoutes);
+
+// Ticket routes
+app.use('/api/tickets', ticketRoutes);
+
+// Add this route after existing routes:
+app.use('/api/notifications', notificationRoutes);
+
+// Theme routes
+app.use('/api/theme', themeRoutes);
+
+// Schedule notification cleanup (runs daily at 2 AM)
+cron.schedule('0 2 * * * * *', async () => {
+  try {
+    console.log('Running scheduled notification cleanup...');
+    const cleanedCount = await io.notificationService.cleanupOldNotifications(90);
+    console.log(`Notification cleanup completed. Removed ${cleanedCount} old notifications.`);
+  } catch (error) {
+    console.error('Scheduled notification cleanup failed:', error);
+  }
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
+    success: false,
+    message: err.message,
+    stack: config.NODE_ENV === 'production' ? '🥞' : err.stack
+  });
+});
+
+
+// Handle 404 routes
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
+});
+
+
+// Start the server and auto sync service
+const PORT = config.PORT;
+server.listen(PORT, async () => {
+  console.log(`
+🚀 Server is running successfully!
+📍 Environment: ${process.env.NODE_ENV || 'development'}
+🌐 Port: ${PORT}
+📊 Database: ${process.env.MONGO_URI ? '✅ Connected' : '❌ Not configured'}
+🔗 Client URL: ${process.env.CLIENT_URL || 'http://localhost:5173'}
+⏰ Started at: ${new Date().toLocaleString()}
+ `);
+
+  // Start the automated trade sync service
+  try {
+    await tradeSyncService.startAutoSync();
+    console.log('🔄 Automated trade sync service started successfully!');
+  } catch (error) {
+    console.error('❌ Failed to start trade sync service:', error);
+  }
+
+  // Start the automated account sync service
+  try {
+    await accountSyncService.startAutoSync();
+    console.log('💰 Automated account sync service started successfully!');
+  } catch (error) {
+    console.error('❌ Failed to start account sync service:', error);
+  }
+});
