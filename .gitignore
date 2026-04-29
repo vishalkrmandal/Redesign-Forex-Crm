@@ -8,7 +8,7 @@ Frontend/tsconfig.app.tsbuildinfo
 Frontend/tsconfig.node.tsbuildinfo
 
 # Backend uploads
-Backend/uploads/
+# Backend/uploads/
 
 # Environment files
 .env
