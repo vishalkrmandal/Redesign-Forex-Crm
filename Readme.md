@@ -1,4 +1,34 @@
-# Financial Trading Platform Backend
+# Financial Trading Platform Backend (Forex CRM Redesign)
+
+## Project
+
+**GitHub Repository:** [https://github.com/vishalkrmandal/Redesign-Forex-Crm](https://github.com/vishalkrmandal/Redesign-Forex-Crm)
+
+**Live Demo:** [https://forexcrm.vercel.app](https://forexcrm.vercel.app)
+
+### Login URLs & Credentials
+
+| Role | URL | Email | Password |
+|------|-----|-------|----------|
+| Client | [https://forexcrm.vercel.app](https://forexcrm.vercel.app) | client@gmail.com | 123456 |
+| Admin | [https://forexcrm.vercel.app/login/admin](https://forexcrm.vercel.app/login/admin) | admin@gmail.com | 123456 |
+| SuperAdmin | [https://forexcrm.vercel.app/login/superadmin](https://forexcrm.vercel.app/login/superadmin) | superadmin@gmail.com | 123456 |
+
+### Screenshots
+
+**Login Page**
+![Login](screenshots/login.png)
+
+**Client Dashboard**
+![Client Dashboard](screenshots/client-dashboard.png)
+
+**Admin Dashboard**
+![Admin Dashboard](screenshots/admin-dashboard.png)
+
+**SuperAdmin Configuration**
+![SuperAdmin Config](screenshots/superadmin-config.png)
+
+---
 
 ## Overview
 
